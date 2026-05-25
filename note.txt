@@ -1,0 +1,193 @@
+FE
+- Công nghệ chính sử dụng: ReactJS ( Typescript != JavaScript )
+Javacript :
+var number = 10 -> Định dạng đầu ra là bất cứ gì vd: 10, "10"
+
+Typescript:
+const number_one :number = 10  -> Định dạng đầu ra luôn luôn là số
+
+ReactJS: Đây là 1 thư viện, không phải 1 framework
++ Ưu điểm: Dễ triển khai, dễ học, dễ debug, dễ scale ( mở rộng)
++ Nhược điểm: Không thích hợp để SEO
+
+Axios: Gọi API
+Zustand: Lưu trữ state cục bộ
+Thư viện UI: tailwind css (css), Shadcn UI ( Thư viên component cho React hoặc Nextjs)
+
+Bắt buộc có nền tảng tảng:
+- html
+- css
+- 1 chút cơ bản về Javascrpit, typescrpit
+
+Tài liệu tham khảo:
+- https://tailwindcss.com/
+- https://ui.shadcn.com/
+
+Ví dụ không có tailwind, làm css thuần:
+1.  <- 3
+<head>
+    <style>
+        span {
+            color: blue:
+        }
+    <style/>
+<head/>
+<span> Tên <span/>
+2. <- 2
+<head>
+    <style>
+        .title {
+            color: blue:
+        }
+    <style/>
+<head/>
+<span class="title"> Tên <span/>
+3.  <- 1
+<span style="color:blue"> Tên <span/>
+
+Có Tailwind
+<span class="text-blue-500"> Tên </span>
+
+
+Ví dụ không có Shadcn UI
+
+for item in list
+{
+<span class="rouded-sm border">
+    <img/>
+    <span>{item.name}</span>
+<span/>
+
+}
+
+
+Ví dụ có Shadcn UI
+Muốn sử dụng cái nào thì tải xuống
+ví dụ: pnpm dlx shadcn@latest add card
+
+không cần phải tải hết như AntDessign, Material UI
+
+
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+
+export function CardDemo() {
+  return (
+  for item in list
+{
+    <Card className="w-full max-w-sm">
+      <CardHeader>
+        <CardTitle>Login to your account</CardTitle>
+        <CardDescription>
+          Enter your email below to login to your account
+        </CardDescription>
+        <CardAction>
+          <Button variant="link">Sign Up</Button>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        <form>
+          <div className="flex flex-col gap-6">
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="m@example.com"
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <div className="flex items-center">
+                <Label htmlFor="password">Password</Label>
+                <a
+                  href="#"
+                  className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
+                >
+                  Forgot your password?
+                </a>
+              </div>
+              <Input id="password" type="password" required />
+            </div>
+          </div>
+        </form>
+      </CardContent>
+      <CardFooter className="flex-col gap-2">
+        <Button type="submit" className="w-full">
+          Login
+        </Button>
+        <Button variant="outline" className="w-full">
+          Login with Google
+        </Button>
+      </CardFooter>
+    </Card>
+  )
+}
+
+
+
+Đầu tiên cài Nodejs 24>
+Cài pnpm
+Cài git
+có tài khoản github
+Chạy: cd english-center-client
+      pnpm dev
+
+
+BE
+Restfull API
+
+GET /courses/getall
+GET /courses/getbyID/:id
+- vd:
+GET /courses -> Đây là lấy tất cả khóa học
+GET /courses/:id -> Đây là lấy khóa học theo id
+GET /courses/:key/name -> lấy khóa học theo name
+
+FastAPI
++ Ưu điểm: nhanh, dễ học, dễ triển trên môi trường thực tế, nó tích được AI
++ Nhược điểm: Chậm cho hệ thống lớn
+
+Databsae: Postgres ( Cơ sở duex iệu quan hệ )
+
+Upload file:
+Minio: 1 open source giúp lưu trữ file trên máy cục bộ
+AWS S3 storage ( buck dùng để lưu trữ tệp file)
+ex: Cloudinary,
+
+Bắt buộc cài:
+python 3.12 >
+docker desktop
+cài uv ( pip )
+pip install uv
+uv add numpy
+
+Trường hợp không có docker
+Máy A: cài python 3.12
+Máy B: Cài python 3.9
+
+
+Anh đưa source python 3.13
+Máy A: Có thể chạy được -> Cài 3.13
+Máy B: Không hỗ trợ -> 3.13
+
++. Docker được sinh ra
+Máy A: 3.12 -> Chạy file docker này -> docker sẽ tự tạo 1 môi trường ảo chạy python 3.13
+Máy B: 3.9  -> Chạy file docker này -> docker sẽ tự tạo 1 môi trường ảo chạy python 3.13
+
+Anh đưa source
+-> Anh đã đóng gói trong 1 file docker Dockerfile -> Chạy trực tiếp python 3.13
+
+
+Cách tải dự án về máy cá nhân:
+* Không được download về

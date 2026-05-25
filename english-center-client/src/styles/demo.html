@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IELTS Intensive – StarEnglish</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            inter: ['Inter', 'ui-sans-serif', 'system-ui'],
+            serif: ['Instrument Serif', 'serif'],
+          },
+          colors: {
+            brand: { 50:'#EEF2FF',100:'#E0E7FF',200:'#C7D2FE',300:'#A5B4FC',400:'#818CF8',500:'#6366F1',600:'#4F46E5',700:'#4338CA' },
+            accent: { 50:'#ECFDF5',100:'#D1FAE5',200:'#A7F3D0',300:'#6EE7B7',400:'#34D399',500:'#10B981',600:'#059669' },
+            sun:   { 50:'#FFFBEB',100:'#FEF3C7',200:'#FDE68A',300:'#FCD34D',400:'#FBBF24',500:'#F59E0B' },
+            coral: { 50:'#FFF7ED',100:'#FFEDD5',200:'#FED7AA',300:'#FDBA74',400:'#FB923C',500:'#F97316',600:'#EA580C' },
+            rose:  { 50:'#FFF1F2',100:'#FFE4E6',400:'#FB7185',500:'#F43F5E' },
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { font-family:'Inter',sans-serif; }
+
+    .hero-course-gradient {
+      background: linear-gradient(135deg, #4338CA 0%, #6366F1 35%, #818CF8 65%, #A5B4FC 100%);
+    }
+
+    .blob-a { position:absolute; width:500px; height:500px; background:rgba(251,191,36,0.1); border-radius:50%; filter:blur(80px); top:-100px; right:-100px; pointer-events:none; }
+    .blob-b { position:absolute; width:400px; height:400px; background:rgba(52,211,153,0.08); border-radius:50%; filter:blur(80px); bottom:-80px; left:-80px; pointer-events:none; }
+
+    .card-hover { transition:transform 0.3s ease, box-shadow 0.3s ease; }
+    .card-hover:hover { transform:translateY(-4px); box-shadow:0 20px 40px rgba(0,0,0,0.08); }
+
+    .fade-up { opacity:0; transform:translateY(24px); transition:opacity 0.6s ease, transform 0.6s ease; }
+    .fade-up.visible { opacity:1; transform:translateY(0); }
+
+    .nav-blur { backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); }
+
+    .gradient-text { background:linear-gradient(135deg,#4F46E5,#7C3AED,#EC4899); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+
+    .tab-btn { position:relative; }
+    .tab-btn::after { content:''; position:absolute; bottom:-1px; left:0; width:0; height:2.5px; background:#6366F1; border-radius:2px; transition:width 0.3s ease; }
+    .tab-btn.active::after { width:100%; }
+    .tab-btn.active { color:#6366F1; font-weight:600; }
+
+    .accordion-content { max-height:0; overflow:hidden; transition:max-height 0.4s ease, padding 0.3s ease; }
+    .accordion-content.open { max-height:500px; padding-top:12px; padding-bottom:4px; }
+    .accordion-icon { transition:transform 0.3s ease; }
+    .accordion-icon.rotated { transform:rotate(180deg); }
+
+    .progress-ring { transition:stroke-dashoffset 1s ease; }
+
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+    .float-anim { animation:float 4s ease-in-out infinite; }
+
+    @keyframes slideIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+    .slide-in { animation:slideIn 0.4s ease forwards; }
+
+    .schedule-dot::before { content:''; position:absolute; left:15px; top:32px; bottom:-16px; width:2px; background:#E0E7FF; }
+    .schedule-item:last-child .schedule-dot::before { display:none; }
+
+    input:focus, textarea:focus, select:focus { outline:none; border-color:#6366F1; box-shadow:0 0 0 3px rgba(99,102,241,0.12); }
+  </style>
+</head>
+<body class="bg-white text-gray-700">
+
+  <!-- NAVIGATION -->
+  <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 nav-blur bg-white/80 border-b border-gray-100 transition-all duration-300">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8 py-4 flex items-center justify-between">
+      <a href="#" class="flex items-center gap-2">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-400 flex items-center justify-center">
+          <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+        </div>
+        <span class="text-xl font-bold text-gray-900">Star<span class="text-brand-500">English</span></span>
+      </a>
+      <div class="hidden md:flex items-center gap-8">
+        <a href="#" class="text-sm font-medium text-gray-600 hover:text-brand-600 transition-colors">Trang chủ</a>
+        <a href="#" class="text-sm font-medium text-brand-600 transition-colors">Khóa học</a>
+        <a href="#" class="text-sm font-medium text-gray-600 hover:text-brand-600 transition-colors">Giáo viên</a>
+        <a href="#" class="text-sm font-medium text-gray-600 hover:text-brand-600 transition-colors">Liên hệ</a>
+      </div>
+      <div class="flex items-center gap-3">
+        <button class="hidden sm:inline-flex text-sm font-medium text-brand-600 hover:text-brand-700 px-4 py-2 transition-colors">Đăng nhập</button>
+        <button class="text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 px-5 py-2.5 rounded-full transition-all shadow-lg shadow-brand-500/25">Đăng ký</button>
+        <button id="menuBtn" class="md:hidden p-2 rounded-lg hover:bg-gray-100" onclick="document.getElementById('mobileMenu').classList.toggle('hidden')">
+          <svg class="w-6 h-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
+        </button>
+      </div>
+    </div>
+    <div id="mobileMenu" class="md:hidden hidden border-t border-gray-100 bg-white/95 px-6 py-4 flex flex-col gap-3">
+      <a href="#" class="text-sm font-medium text-gray-600 py-2">Trang chủ</a>
+      <a href="#" class="text-sm font-medium text-brand-600 py-2">Khóa học</a>
+      <a href="#" class="text-sm font-medium text-gray-600 py-2">Giáo viên</a>
+      <a href="#" class="text-sm font-medium text-gray-600 py-2">Liên hệ</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero-course-gradient relative overflow-hidden pt-28 pb-20 lg:pt-36 lg:pb-28">
+    <div class="blob-a"></div>
+    <div class="blob-b"></div>
+    <div class="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
+      <!-- Breadcrumb -->
+      <div class="flex items-center gap-2 text-sm text-white/60 mb-8">
+        <a href="#" class="hover:text-white/80 transition-colors">Trang chủ</a>
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+        <a href="#" class="hover:text-white/80 transition-colors">Khóa học</a>
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+        <span class="text-white/90">IELTS Intensive</span>
+      </div>
+
+      <div class="grid lg:grid-cols-5 gap-10 lg:gap-16 items-start">
+        <!-- Left content -->
+        <div class="lg:col-span-3 text-white">
+          <div class="flex flex-wrap items-center gap-3 mb-5">
+            <span class="inline-flex items-center gap-1.5 text-xs font-semibold bg-coral-500 text-white px-3 py-1.5 rounded-full">
+              <span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span> Hot nhất 2025
+            </span>
+            <span class="text-xs font-medium text-white/70 bg-white/10 px-3 py-1.5 rounded-full border border-white/15">IELTS</span>
+            <span class="text-xs font-medium text-white/70 bg-white/10 px-3 py-1.5 rounded-full border border-white/15">18+ tuổi</span>
+          </div>
+
+          <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold leading-[1.1] tracking-tight mb-5">
+            IELTS Intensive<br>
+            <span class="font-serif italic font-normal text-white/90">Chiến lược đạt band 7.0+</span>
+          </h1>
+
+          <p class="text-lg text-white/75 leading-relaxed max-w-xl mb-8">
+            Khóa học luyện thi IELTS cấp tốc với chiến thuật làm bài hiệu quả, thực hành đề thật mỗi tuần và cam kết đạt band mục tiêu.
+          </p>
+
+          <!-- Quick stats -->
+          <div class="flex flex-wrap gap-6 mb-8">
+            <div class="flex items-center gap-2.5">
+              <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/15">
+                <svg class="w-5 h-5 text-sun-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-white">60 buổi</p>
+                <p class="text-[11px] text-white/50">4 buổi/tuần</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2.5">
+              <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/15">
+                <svg class="w-5 h-5 text-accent-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-white">Tối đa 12</p>
+                <p class="text-[11px] text-white/50">Học viên/lớp</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2.5">
+              <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/15">
+                <svg class="w-5 h-5 text-brand-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342"/></svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-white">Giáo viên bản ngữ</p>
+                <p class="text-[11px] text-white/50">TEFL/TESOL</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rating + students -->
+          <div class="flex items-center gap-5">
+            <div class="flex items-center gap-2">
+              <div class="flex gap-0.5">
+                <svg class="w-4.5 h-4.5 text-sun-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="w-4.5 h-4.5 text-sun-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="w-4.5 h-4.5 text-sun-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="w-4.5 h-4.5 text-sun-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="w-4.5 h-4.5 text-sun-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+              </div>
+              <span class="text-sm font-semibold text-white">4.9</span>
+              <span class="text-xs text-white/50">(328 đánh giá)</span>
+            </div>
+            <div class="w-px h-4 bg-white/20"></div>
+            <span class="text-xs text-white/60">1,247 học viên đã tham gia</span>
+          </div>
+        </div>
+
+        <!-- Right sticky card -->
+        <div class="lg:col-span-2">
+          <div class="bg-white rounded-3xl shadow-2xl shadow-brand-900/20 overflow-hidden float-anim">
+            <div class="relative">
+              <img src="https://picsum.photos/seed/ielts-detail-hero/800/400.jpg" alt="IELTS Intensive" class="w-full h-48 sm:h-56 object-cover">
+              <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+              <button class="absolute inset-0 flex items-center justify-center group" onclick="showToast('Video giới thiệu sẽ sớm có!')">
+                <div class="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-all shadow-xl">
+                  <svg class="w-6 h-6 text-brand-500 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </div>
+              </button>
+            </div>
+            <div class="p-6 sm:p-8">
+              <div class="flex items-end gap-3 mb-2">
+                <span class="text-4xl font-bold text-gray-900">8,500,000</span>
+                <span class="text-sm text-gray-400 mb-1">VNĐ/khóa</span>
+              </div>
+              <p class="text-xs text-gray-400 mb-6 line-through">10,500,000 VNĐ – Tiết kiệm 19%</p>
+
+              <!-- Countdown -->
+              <div class="bg-coral-50 rounded-xl p-3 mb-6 flex items-center gap-3">
+                <svg class="w-5 h-5 text-coral-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <p class="text-sm text-coral-600 font-medium">Ưu đãi kết thúc sau: <span class="font-bold" id="countdown">2 ngày 14:32:08</span></p>
+              </div>
+
+              <!-- Key info -->
+              <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="bg-gray-50 rounded-xl p-3 text-center">
+                  <p class="text-xs text-gray-400 mb-1">Trình độ</p>
+                  <p class="text-sm font-semibold text-gray-900">B1–C1</p>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-3 text-center">
+                  <p class="text-xs text-gray-400 mb-1">Thời lượng</p>
+                  <p class="text-sm font-semibold text-gray-900">15 tuần</p>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-3 text-center">
+                  <p class="text-xs text-gray-400 mb-1">Khai giảng</p>
+                  <p class="text-sm font-semibold text-gray-900">15/01/2025</p>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-3 text-center">
+                  <p class="text-xs text-gray-400 mb-1">Hình thức</p>
+                  <p class="text-sm font-semibold text-gray-900">Offline + Online</p>
+                </div>
+              </div>
+
+              <!-- Available slots -->
+              <div class="mb-6">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm text-gray-600">Còn trống</span>
+                  <span class="text-sm font-semibold text-coral-500">4/12 chỗ</span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-2.5">
+                  <div class="h-2.5 rounded-full bg-gradient-to-r from-coral-400 to-coral-500" style="width:67%"></div>
+                </div>
+              </div>
+
+              <button onclick="showToast('Đăng ký thành công! Chúng tôi sẽ liên hệ bạn sớm.')" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-semibold py-4 rounded-xl transition-all shadow-lg shadow-brand-500/20 hover:shadow-brand-500/30 flex items-center justify-center gap-2 mb-3">
+                Đăng ký ngay
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+              </button>
+              <button class="w-full border border-gray-200 text-gray-700 font-medium py-3.5 rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/></svg>
+                Thêm vào yêu thích
+              </button>
+
+              <p class="text-center text-xs text-gray-400 mt-4">Cam kết hoàn phí nếu không đạt band mục tiêu</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Wave -->
+    <div class="absolute bottom-0 left-0 right-0">
+      <svg viewBox="0 0 1440 80" fill="none"><path d="M0 40C360 80 720 0 1080 40C1260 60 1380 65 1440 60V80H0V40Z" fill="white"/></svg>
+    </div>
+  </section>
+
+  <!-- CONTENT TABS -->
+  <section class="py-16 lg:py-24">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8">
+      <!-- Tab navigation -->
+      <div class="flex gap-8 border-b border-gray-200 mb-12 overflow-x-auto pb-px">
+        <button onclick="switchTab('overview')" class="tab-btn active text-sm text-gray-400 pb-4 whitespace-nowrap transition-colors">Tổng quan</button>
+        <button onclick="switchTab('curriculum')" class="tab-btn text-sm text-gray-400 pb-4 whitespace-nowrap transition-colors">Nội dung khóa học</button>
+        <button onclick="switchTab('schedule')" class="tab-btn text-sm text-gray-400 pb-4 whitespace-nowrap transition-colors">Lịch học</button>
+        <button onclick="switchTab('reviews')" class="tab-btn text-sm text-gray-400 pb-4 whitespace-nowrap transition-colors">Đánh giá (328)</button>
+        <button onclick="switchTab('faq')" class="tab-btn text-sm text-gray-400 pb-4 whitespace-nowrap transition-colors">Câu hỏi thường gặp</button>
+      </div>
+
+      <!-- TAB: OVERVIEW -->
+      <div id="tab-overview" class="tab-content">
+        <div class="grid lg:grid-cols-3 gap-12">
+          <div class="lg:col-span-2">
+            <!-- What you'll learn -->
+            <div class="fade-up mb-12">
+              <h2 class="text-2xl font-bold text-gray-900 mb-6">Bạn sẽ học được gì?</h2>
+              <div class="grid sm:grid-cols-2 gap-4">
+                <div class="flex gap-3 p-4 rounded-xl bg-accent-50/50 border border-accent-100/50">
+                  <div class="w-8 h-8 rounded-lg bg-accent-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg class="w-4 h-4 text-accent-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                  </div>
+                  <div>
+                    <p class="text-sm font-semibold text-gray-900">Chiến thuật làm bài 4 kỹ năng</p>
+                    <p class="text-xs text-gray-500 mt-1">Listening, Reading, Writing, Speaking – phương pháp giải nhanh, chính xác</p>
+                  </div>
+                </div>
+                <div class="flex gap-3 p-4 rounded-xl bg-accent-50/50 border border-accent-100/50">
+                  <div class="w-8 h-8 rounded-lg bg-accent-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg class="w-4 h-4 text-accent-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                  </div>
+                  <div>
+                    <p class="text-sm font-semibold text-gray-900">Thực hành 10+ đề thật</p>
+                    <p class="text-xs text-gray-500 mt-1">Làm đề Cambridge dưới áp lực thời gian thực, chấm sửa chi tiết</p>
+                  </div>
+                </div>
+                <div class="flex gap-3 p-4 rounded-xl bg-accent-50/50 border border-accent-100/50">
+                  <div class="w-8 h-8 rounded-lg bg-accent-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg class="w-4 h-4 text-accent-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                  </div>
+                  <div>
+                    <p class="text-sm font-semibold text-gray-900">Writing feedback 1-1</p>
+                    <p class="text-xs text-gray-500 mt-1">Giáo viên chấm sửa từng bài viết, gợi ý nâng band cụ thể</p>
+                  </div>
+                </div>
+                <div class="flex gap-3 p-4 rounded-xl bg-accent-50/50 border border-accent-100/50">
+                  <div class="w-8 h-8 rounded-lg bg-accent-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg class="w-4 h-4 text-accent-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                  </div>
+                  <div>
+                    <p class="text-sm font-semibold text-gray-900">Speaking mock test</p>
+                    <p class="text-xs text-gray-500 mt-1">Thi thử Speaking 1-1 với giáo viên bản ngữ, nhận feedback ngay</p>
+                  </div>
+                </div>
+                <div class="flex gap-3 p-4 rounded-xl bg-accent-50/50 border border-accent-100/50">
+                  <div class="w-8 h-8 rounded-lg bg-accent-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg class="w-4 h-4 text-accent-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                  </div>
+                  <div>
+                    <p class="text-sm font-semibold text-gray-900">Từ vựng & ngữ pháp cấp tốc</p>
+                    <p class="text-xs text-gray-500 mt-1">Tủ từ vựng IELTS theo chủ đề, cấu trúc ngữ pháp ghi điểm</p>
+                  </div>
+                </div>
+                <div class="flex gap-3 p-4 rounded-xl bg-accent-50/50 border border-accent-100/50">
+                  <div class="w-8 h-8 rounded-lg bg-accent-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg class="w-4 h-4 text-accent-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                  </div>
+                  <div>
+                    <p class="text-sm font-semibold text-gray-900">AI chấm发音 & ghi âm</p>
+                    <p class="text-xs text-gray-500 mt-1">Công nghệ AI nhận diện phát âm, theo dõi tiến độ mỗi ngày</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div class="fade-up mb-12">
+              <h2 class="text-2xl font-bold text-gray-900 mb-6">Mô tả khóa học</h2>
+              <div class="prose prose-gray max-w-none">
+                <p class="text-gray-600 leading-relaxed mb-4">IELTS Intensive là khóa học được thiết kế đặc biệt cho những học viên cần đạt band IELTS 7.0+ trong thời gian ngắn. Với phương pháp "học sâu – luyện nhiều – sửa tận tình", khóa học giúp bạn không chỉ hiểu mà còn làm chủ từng dạng bài trong đề thi.</p>
+                <p class="text-gray-600 leading-relaxed mb-4">Khác với các khóa học thông thường, IELTS Intensive tại StarEnglish tập trung vào <strong>chiến thuật làm bài</strong> – giúp bạn tối ưu thời gian, tránh bẫy đề và biết chính xác giám khảo muốn gì ở câu trả lời của bạn.</p>
+                <p class="text-gray-600 leading-relaxed">Mỗi tuần bạn sẽ thực hành ít nhất 1 đề đầy đủ 4 kỹ năng, được chấm sửa chi tiết và nhận hướng dẫn cải thiện cá nhân hóa. Đặc biệt, khóa học <strong>cam kết đầu ra</strong> – nếu chưa đạt band mục tiêu, bạn được học lại miễn phí.</p>
+              </div>
+            </div>
+
+            <!-- Highlights -->
+            <div class="fade-up">
+              <h2 class="text-2xl font-bold text-gray-900 mb-6">Điểm nổi bật</h2>
+              <div class="grid sm:grid-cols-3 gap-4">
+                <div class="text-center p-6 rounded-2xl bg-brand-50 border border-brand-100/50">
+                  <div class="text-3xl font-bold text-brand-600 mb-1">98%</div>
+                  <p class="text-sm text-gray-600">Học viên đậu IELTS</p>
+                </div>
+                <div class="text-center p-6 rounded-2xl bg-accent-50 border border-accent-100/50">
+                  <div class="text-3xl font-bold text-accent-600 mb-1">+2.5</div>
+                  <p class="text-sm text-gray-600">Tăng band trung bình</p>
+                </div>
+                <div class="text-center p-6 rounded-2xl bg-sun-50 border border-sun-100/50">
+                  <div class="text-3xl font-bold text-sun-500 mb-1">10+</div>
+                  <p class="text-sm text-gray-600">Đề thi thực hành</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right sidebar -->
+          <div class="space-y-6">
+            <!-- Teacher -->
+            <div class="bg-gray-50 rounded-2xl p-6 border border-gray-100 fade-up">
+              <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Giáo viên chính</h3>
+              <div class="flex items-center gap-4 mb-4">
+                <img src="https://picsum.photos/seed/teacher-sarah/120/120.jpg" alt="Sarah Johnson" class="w-16 h-16 rounded-2xl object-cover">
+                <div>
+                  <p class="font-semibold text-gray-900">Sarah Johnson</p>
+                  <p class="text-xs text-brand-500 font-medium">IELTS Expert</p>
+                  <div class="flex items-center gap-1 mt-1">
+                    <svg class="w-3.5 h-3.5 text-sun-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <span class="text-xs text-gray-500">4.9 (210 đánh giá)</span>
+                  </div>
+                </div>
+              </div>
+              <p class="text-sm text-gray-500 leading-relaxed">8 năm kinh nghiệm giảng dạy IELTS, cựu giám khảo IELTS tại Anh Quốc, giúp hơn 500 học viên đạt band 7.0+.</p>
+            </div>
+
+            <!-- Includes -->
+            <div class="bg-gray-50 rounded-2xl p-6 border border-gray-100 fade-up">
+              <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Khóa học bao gồm</h3>
+              <div class="space-y-3">
+                <div class="flex items-center gap-3"><svg class="w-5 h-5 text-accent-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span class="text-sm text-gray-700">60 buổi học trực tiếp</span></div>
+                <div class="flex items-center gap-3"><svg class="w-5 h-5 text-accent-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span class="text-sm text-gray-700">10+ đề Cambridge thực hành</span></div>
+                <div class="flex items-center gap-3"><svg class="w-5 h-5 text-accent-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span class="text-sm text-gray-700">Sách giáo trình + tài liệu</span></div>
+                <div class="flex items-center gap-3"><svg class="w-5 h-5 text-accent-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span class="text-sm text-gray-700">AI chấm phát âm & viết</span></div>
+                <div class="flex items-center gap-3"><svg class="w-5 h-5 text-accent-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span class="text-sm text-gray-700">Speaking mock test 1-1</span></div>
+                <div class="flex items-center gap-3"><svg class="w-5 h-5 text-accent-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span class="text-sm text-gray-700">Chứng chỉ hoàn thành</span></div>
+                <div class="flex items-center gap-3"><svg class="w-5 h-5 text-accent-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span class="text-sm text-gray-700">Học lại miễn phí nếu chưa đạt</span></div>
+              </div>
+            </div>
+
+            <!-- Share -->
+            <div class="bg-gray-50 rounded-2xl p-6 border border-gray-100 fade-up">
+              <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Chia sẻ khóa học</h3>
+              <div class="flex gap-2">
+                <button class="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center hover:bg-brand-50 hover:border-brand-200 transition-all">
+                  <svg class="w-4 h-4 text-[#1877F2]" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                </button>
+                <button class="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center hover:bg-brand-50 hover:border-brand-200 transition-all">
+                  <svg class="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                </button>
+                <button class="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center hover:bg-brand-50 hover:border-brand-200 transition-all">
+                  <svg class="w-4 h-4 text-brand-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                </button>
+                <button onclick="navigator.clipboard.writeText(window.location.href); showToast('Đã sao chép liên kết!')" class="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center hover:bg-brand-50 hover:border-brand-200 transition-all">
+                  <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-2.44a4.5 4.5 0 00-1.242-7.244l4.5-4.5a4.5 4.5 0 016.364 6.364l-1.757 1.757"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: CURRICULUM -->
+      <div id="tab-curriculum" class="tab-content hidden">
+        <div class="max-w-4xl">
+          <h2 class="text-2xl font-bold text-gray-900 mb-2">Nội dung khóa học</h2>
+          <p class="text-gray-500 mb-8">60 buổi • 4 module • 15 tuần</p>
+
+          <div class="space-y-4">
+            <!-- Module 1 -->
+            <div class="border border-gray-200 rounded-2xl overflow-hidden">
+              <button onclick="toggleAccordion(this)" class="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors">
+                <div class="flex items-center gap-4">
+                  <span class="w-10 h-10 rounded-xl bg-brand-100 text-brand-600 font-bold text-sm flex items-center justify-center">01</span>
+                  <div class="text-left">
+                    <p class="font-semibold text-gray-900">Foundation – Nền tảng IELTS</p>
+                    <p class="text-xs text-gray-400 mt-0.5">12 buổi • Tuần 1–3</p>
+                  </div>
+                </div>
+                <svg class="accordion-icon w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+              </button>
+              <div class="accordion-content px-5">
+                <div class="space-y-2 pb-4 border-t border-gray-100 pt-3">
+                  <div class="flex items-center gap-3 py-2"><span class="w-6 h-6 rounded-lg bg-brand-50 text-brand-500 text-xs font-medium flex items-center justify-center">1</span><span class="text-sm text-gray-700">Tổng quan đề thi IELTS & chiến lược chung</span><span class="ml-auto text-xs text-gray-400">90 phút</span></div>
+                  <div class="flex items-center gap-3 py-2"><span class="w-6 h-6 rounded-lg bg-brand-50 text-brand-500 text-xs font-medium flex items-center justify-center">2</span><span class="text-sm text-gray-700">Listening – Dạng bài Note/Table completion</span><span class="ml-auto text-xs text-gray-400">90 phút</span></div>
+                  <div class="flex items-center gap-3 py-2"><span class="w-6 h-6 rounded-lg bg-brand-50 text-brand-500 text-xs font-medium flex items-center justify-center">3</span><span class="text-sm text-gray-700">Reading – Skimming & Scanning techniques</span><span class="ml-auto text-xs text-gray-400">90 phút</span></div>
+                  <div class="flex items-center gap-3 py-2"><span class="w-6 h-6 rounded-lg bg-brand-50 text-brand-500 text-xs font-medium flex items-center justify-center">4</span><span class="text-sm text-gray-700">Writing Task 1 – Cấu trúc mô tả biểu đồ</span><span class="ml-auto text-xs text-gray-400">90 phút</span></div>
+                  <div class="flex items-center gap-3 py-2"><span class="w-6 h-6 rounded-lg bg-brand-50 text-brand-500 text-xs font-medium flex items-center justify-center">5</span><span class="text-sm text-gray-700">Speaking Part 1 – Tự tin giới thiệu bản thân</span><span class="ml-auto text-xs text-gray-400">90 phút</span></div>
+                  <p class="text-xs text-gray-400 pl-9 pt-1">+ 7 buổi khác...</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Module 2 -->
+            <div class="border border-gray-200 rounded-2xl overflow-hidden">
+              <button onclick="toggleAccordion(this)" class="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors">
+                <div class="flex items-center gap-4">
+                  <span class="w-10 h-10 rounded-xl bg-accent-100 text-accent-600 font-bold text-sm flex items-center justify-center">02</span>
+                  <div class="text-left">
+                    <p class="font-semibold text-gray-900">Skill Builder – Nâng cao kỹ năng</p>
+                    <p class="text-xs text-gray-400 mt-0.5">20 buổi • Tuần 4–8</p>
+                  </div>
+                </div>
+                <svg class="accordion-icon w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+              </button>
+              <div class="accordion-content px-5">
+                <div class="space-y-2 pb-4 border-t border-gray-100 pt-3">
+                  <div class="flex items-center gap-3 py-2"><span class="w-6 h-6 rounded-lg bg-accent-50 text-accent-500 text-xs font-medium flex items-center justify-center">1</span><span class="text-sm text-gray-700">Listening – Multiple choice & Matching</span><span class="ml-auto text-xs text-gray-400">90 phút</span></div>
+                  <div class="flex items-center gap-3 py-2"><span class="w-6 h-6 rounded-lg bg-accent-50 text-accent-500 text-xs font-medium flex items-center justify-center">2</span><span class="text-sm text-gray-700">Reading – True/False/Not Given mastery</span><span class="ml-auto text-xs text-gray-400">90 phút</span></div>
+                  <div class="flex items-center gap-3 py-2"><span class="w-6 h-6 rounded-lg bg-accent-50 text-accent-500 text-xs font-medium flex items-center justify-center">3</span><span class="text-sm text-gray-700">Writing Task 2 – Essay structures & cohesion</span><span class="ml-auto text-xs text-gray-400">90 phút</span></div>
+                  <p class="text-xs text-gray-400 pl-9 pt-1">+ 17 buổi khác...</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Module 3 -->
+            <div class="border border-gray-200 rounded-2xl overflow-hidden">
+              <button onclick="toggleAccordion(this)" class="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors">
+                <div class="flex items-center gap-4">
+                  <span class="w-10 h-10 rounded-xl bg-sun-100 text-sun-600 font-bold text-sm flex items-center justify-center">03</span>
+                  <div class="text-left">
+                    <p class="font-semibold text-gray-900">Intensive Practice – Luyện đề cấp tốc</p>
+                    <p class="text-xs text-gray-400 mt-0.5">20 buổi • Tuần 9–13</p>
+                  </div>
+                </div>
+                <svg class="accordion-icon w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+              </button>
+              <div class="accordion-content px-5">
+                <div class="space-y-2 pb-4 border-t border-gray-100 pt-3">
+                  <div class="flex items-center gap-3 py-2"><span class="w-6 h-6 rounded-lg bg-sun-50 text-sun-500 text-xs font-medium flex items-center justify-center">1</span><span class="text-sm text-gray-700">Full Mock Test 1 + Review</span><span class="ml-auto text-xs text-gray-400">180 phút</span></div>
+                  <div class="flex items-center gap-3 py-2"><span class="w-6 h-6 rounded-lg bg-sun-50 text-sun-500 text-xs font-medium flex items-center justify-center">2</span><span class="text-sm text-gray-700">Full Mock Test 2 + Weakness analysis</span><span class="ml-auto text-xs text-gray-400">180 phút</span></div>
+                  <p class="text-xs text-gray-400 pl-9 pt-1">+ 18 buổi thực hành đề khác...</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Module 4 -->
+            <div class="border border-gray-200 rounded-2xl overflow-hidden">
+              <button onclick="toggleAccordion(this)" class="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors">
+                <div class="flex items-center gap-4">
+                  <span class="w-10 h-10 rounded-xl bg-coral-100 text-coral-600 font-bold text-sm flex items-center justify-center">04</span>
+                  <div class="text-left">
+                    <p class="font-semibold text-gray-900">Final Sprint – Tổng ôn & Chiến thuật thi</p>
+                    <p class="text-xs text-gray-400 mt-0.5">8 buổi • Tuần 14–15</p>
+                  </div>
+                </div>
+                <svg class="accordion-icon w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+              </button>
+              <div class="accordion-content px-5">
+                <div class="space-y-2 pb-4 border-t border-gray-100 pt-3">
+                  <div class="flex items-center gap-3 py-2"><span class="w-6 h-6 rounded-lg bg-coral-50 text-coral-500 text-xs font-medium flex items-center justify-center">1</span><span class="text-sm text-gray-700">Time management & Exam day tips</span><span class="ml-auto text-xs text-gray-400">90 phút</span></div>
+                  <div class="flex items-center gap-3 py-2"><span class="w-6 h-6 rounded-lg bg-coral-50 text-coral-500 text-xs font-medium flex items-center justify-center">2</span><span class="text-sm text-gray-700">Final Mock Test + Band estimation</span><span class="ml-auto text-xs text-gray-400">180 phút</span></div>
+                  <p class="text-xs text-gray-400 pl-9 pt-1">+ 6 buổi tổng ôn khác...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: SCHEDULE -->
+      <div id="tab-schedule" class="tab-content hidden">
+        <div class="max-w-4xl">
+          <h2 class="text-2xl font-bold text-gray-900 mb-2">Lịch khai giảng</h2>
+          <p class="text-gray-500 mb-8">Chọn ca học phù hợp với thời gian của bạn</p>
+
+          <div class="space-y-4">
+            <div class="schedule-item relative flex gap-5 p-5 rounded-2xl border border-brand-200 bg-brand-50/30 hover:bg-brand-50/60 transition-colors cursor-pointer" onclick="selectSchedule(this)">
+              <div class="schedule-dot relative">
+                <div class="w-8 h-8 rounded-full bg-brand-500 text-white text-xs font-bold flex items-center justify-center">01</div>
+              </div>
+              <div class="flex-1">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p class="font-semibold text-gray-900">Ca sáng – Thứ 2, 4, 6</p>
+                    <p class="text-sm text-gray-500 mt-1">08:00 – 09:30 • Khai giảng: 15/01/2025</p>
+                    <p class="text-sm text-gray-500">Giáo viên: Sarah Johnson • Phòng 3A</p>
+                  </div>
+                  <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-coral-600 bg-coral-50 px-3 py-1.5 rounded-full">
+                    <span class="w-1.5 h-1.5 bg-coral-500 rounded-full"></span> Còn 4 chỗ
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="schedule-item relative flex gap-5 p-5 rounded-2xl border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer" onclick="selectSchedule(this)">
+              <div class="schedule-dot relative">
+                <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-600 text-xs font-bold flex items-center justify-center">02</div>
+              </div>
+              <div class="flex-1">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p class="font-semibold text-gray-900">Ca chiều – Thứ 3, 5, 7</p>
+                    <p class="text-sm text-gray-500 mt-1">14:00 – 15:30 • Khai giảng: 20/01/2025</p>
+                    <p class="text-sm text-gray-500">Giáo viên: Sarah Johnson • Phòng 2B</p>
+                  </div>
+                  <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-accent-600 bg-accent-50 px-3 py-1.5 rounded-full">
+                    <span class="w-1.5 h-1.5 bg-accent-500 rounded-full"></span> Còn 7 chỗ
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="schedule-item relative flex gap-5 p-5 rounded-2xl border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer" onclick="selectSchedule(this)">
+              <div class="schedule-dot relative">
+                <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-600 text-xs font-bold flex items-center justify-center">03</div>
+              </div>
+              <div class="flex-1">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p class="font-semibold text-gray-900">Ca tối – Thứ 2, 4, 6</p>
+                    <p class="text-sm text-gray-500 mt-1">19:00 – 20:30 • Khai giảng: 22/01/2025</p>
+                    <p class="text-sm text-gray-500">Giáo viên: Michael Brown • Online (Zoom)</p>
+                  </div>
+                  <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-accent-600 bg-accent-50 px-3 py-1.5 rounded-full">
+                    <span class="w-1.5 h-1.5 bg-accent-500 rounded-full"></span> Còn 9 chỗ
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="schedule-item relative flex gap-5 p-5 rounded-2xl border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer" onclick="selectSchedule(this)">
+              <div class="schedule-dot relative">
+                <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-600 text-xs font-bold flex items-center justify-center">04</div>
+              </div>
+              <div class="flex-1">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p class="font-semibold text-gray-900">Cuối tuần – Thứ 7, CN</p>
+                    <p class="text-sm text-gray-500 mt-1">09:00 – 11:30 • Khai giảng: 01/02/2025</p>
+                    <p class="text-sm text-gray-500">Giáo viên: Sarah Johnson • Phòng 4A</p>
+                  </div>
+                  <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-600 bg-brand-50 px-3 py-1.5 rounded-full">
+                    <span class="w-1.5 h-1.5 bg-brand-500 rounded-full"></span> Còn 2 chỗ
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: REVIEWS -->
+      <div id="tab-reviews" class="tab-content hidden">
+        <div class="max-w-4xl">
+          <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
+            <div>
+              <h2 class="text-2xl font-bold text-gray-900 mb-1">Đánh giá từ học viên</h2>
+              <div class="flex items-center gap-2">
+                <span class="text-4xl font-bold text-gray-900">4.9</span>
+                <div>
+                  <div class="flex gap-0.5">
+                    <svg class="w-4 h-4 text-sun-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg class="w-4 h-4 text-sun-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg class="w-4 h-4 text-sun-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg class="w-4 h-4 text-sun-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg class="w-4 h-4 text-sun-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  </div>
+                  <p class="text-xs text-gray-400">328 đánh giá</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rating bars -->
+          <div class="grid sm:grid-cols-2 gap-8 mb-10">
+            <div class="space-y-2.5">
+              <div class="flex items-center gap-3"><span class="text-xs text-gray-500 w-8">5 ★</span><div class="flex-1 h-2.5 bg-gray-100 rounded-full"><div class="h-2.5 rounded-full bg-sun-400" style="width:82%"></div></div><span class="text-xs text-gray-400 w-8">82%</span></div>
+              <div class="flex items-center gap-3"><span class="text-xs text-gray-500 w-8">4 ★</span><div class="flex-1 h-2.5 bg-gray-100 rounded-full"><div class="h-2.5 rounded-full bg-sun-400" style="width:12%"></div></div><span class="text-xs text-gray-400 w-8">12%</span></div>
+              <div class="flex items-center gap-3"><span class="text-xs text-gray-500 w-8">3 ★</span><div class="flex-1 h-2.5 bg-gray-100 rounded-full"><div class="h-2.5 rounded-full bg-sun-400" style="width:4%"></div></div><span class="text-xs text-gray-400 w-8">4%</span></div>
+              <div class="flex items-center gap-3"><span class="text-xs text-gray-500 w-8">2 ★</span><div class="flex-1 h-2.5 bg-gray-100 rounded-full"><div class="h-2.5 rounded-full bg-sun-400" style="width:1%"></div></div><span class="text-xs text-gray-400 w-8">1%</span></div>
+              <div class="flex items-center gap-3"><span class="text-xs text-gray-500 w-8">1 ★</span><div class="flex-1 h-2.5 bg-gray-100 rounded-full"><div class="h-2.5 rounded-full bg-sun-400" style="width:1%"></div></div><span class="text-xs text-gray-400 w-8">1%</span></div>
+            </div>
+            <div class="space-y-2.5">
+              <div class="flex items-center justify-between"><span class="text-sm text-gray-600">Chất lượng giảng dạy</span><span class="text-sm font-semibold text-gray-900">4.9</span></div>
+              <div class="flex items-center justify-between"><span class="text-sm text-gray-600">Tài liệu học tập</span><span class="text-sm font-semibold text-gray-900">4.8</span></div>
+              <div class="flex items-center justify-between"><span class="text-sm text-gray-600">Hỗ trợ học viên</span><span class="text-sm font-semibold text-gray-900">5.0</span></div>
+              <div class="flex items-center justify-between"><span class="text-sm text-gray-600">Đạt mục tiêu</span><span class="text-sm font-semibold text-gray-900">4.9</span></div>
+            </div>
+          </div>
+
+          <!-- Review cards -->
+          <div class="space-y-6">
+            <div class="p-6 rounded-2xl border border-gray-100 bg-white">
+              <div class="flex items-center gap-3 mb-3">
+                <img src="https://picsum.photos/seed/rev1/80/80.jpg" class="w-10 h-10 rounded-full object-cover">
+                <div><p class="text-sm font-semibold text-gray-900">Nguyễn Minh Linh</p><p class="text-xs text-gray-400">Band 4.5 → 7.5 • 6 tháng trước</p></div>
+                <div class="ml-auto flex gap-0.5">
+                  <svg class="w-3.5 h-3.5 text-sun-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  <svg class="w-3.5 h-3.5 text-sun-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  <svg class="w-3.5 h-3.5 text-sun-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  <svg class="w-3.5 h-3.5 text-sun-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  <svg class="w-3.5 h-3.5 text-sun-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                </div>
+              </div>
+              <p class="text-sm text-gray-600 leading-relaxed">Từ band 4.5 lên 7.5 chỉ sau 6 tháng, mình không thể tin được! Cô Sarah dạy cực kỳ dễ hiểu, chiến thuật làm bài thực sự hiệu quả. Đặc biệt phần Writing feedback 1-1 giúp mình cải thiện rất nhanh. Highly recommended!</p>
+            </div>
+            <div class="p-6 rounded-2xl border border-gray-100 bg-white">
+              <div class="flex items-center gap-3 mb-3">
+                <img src="https://picsum.photos/seed/rev2/80/80.jpg" class="w-10 h-10 rounded-full object-cover">
+                <div><p class="text-sm font-semibold text-gray-900">Trần Quốc Bảo</p><p class="text-xs text-gray-400">Band 5.5 → 8.0 • 4 tháng trước</p></div>
+                <div class="ml-auto flex gap-0.5">
+                  <svg class="w-3.5 h-3.5 text-sun-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  <svg class="w-3.5 h-3.5 text-sun-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  <svg class="w-3.5 h-3.5 text-sun-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  <svg class="w-3.5 h-3.5 text-sun-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  <svg class="w-3.5 h-3.5 text-sun-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                </div>
+              </div>
+              <p class="text-sm text-gray-600 leading-relaxed">Luyện đề mỗi tuần giúp mình quen với áp lực thời gian thực. Đặc biệt mock test Speaking 1-1 giống y như thi thật nên lên phòng thi không hề căng thẳng. Band 8.0 là minh chứng!</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: FAQ -->
+      <div id="tab-faq" class="tab-content hidden">
+        <div class="max-w-3xl">
+          <h2 class="text-2xl font-bold text-gray-900 mb-8">Câu hỏi thường gặp</h2>
+          <div class="space-y-3">
+            <div class="border border-gray-200 rounded-2xl overflow-hidden">
+              <button onclick="toggleAccordion(this)" class="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors text-left">
+                <span class="text-sm font-semibold text-gray-900 pr-4">Tôi cần trình độ đầu vào bao nhiêu để tham gia khóa học?</span>
+                <svg class="accordion-icon w-5 h-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+              </button>
+              <div class="accordion-content px-5">
+                <p class="text-sm text-gray-600 leading-relaxed pb-4 border-t border-gray-100 pt-3">Bạn nên có trình độ tối thiểu B1 (band 4.0+) để theo kịp tiến độ khóa học. Trước khi nhập học, bạn sẽ làm bài test đầu vào miễn phí để chúng tôi tư vấn lộ trình phù hợp nhất.</p>
+              </div>
+            </div>
+            <div class="border border-gray-200 rounded-2xl overflow-hidden">
+              <button onclick="toggleAccordion(this)" class="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors text-left">
+                <span class="text-sm font-semibold text-gray-900 pr-4">Cam kết đầu ra hoạt động như thế nào?</span>
+                <svg class="accordion-icon w-5 h-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+              </button>
+              <div class="accordion-content px-5">
+                <p class="text-sm text-gray-600 leading-relaxed pb-4 border-t border-gray-100 pt-3">Nếu bạn tham gia ít nhất 90% số buổi và hoàn thành bài tập nhưng chưa đạt band mục tiêu, StarEnglish cho phép bạn học lại miễn phí 1 lần trong khóa tiếp theo.</p>
+              </div>
+            </div>
+            <div class="border border-gray-200 rounded-2xl overflow-hidden">
+              <button onclick="toggleAccordion(this)" class="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors text-left">
+                <span class="text-sm font-semibold text-gray-900 pr-4">Học phí đã bao gồm tài liệu và đề thi chưa?</span>
+                <svg class="accordion-icon w-5 h-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+              </button>
+              <div class="accordion-content px-5">
+                <p class="text-sm text-gray-600 leading-relaxed pb-4 border-t border-gray-100 pt-3">Có, học phí đã bao gồm toàn bộ giáo trình, sách luyện đề Cambridge, đề thi thử và quyền truy cập nền tảng AI luyện tập trong suốt khóa học.</p>
+              </div>
+            </div>
+            <div class="border border-gray-200 rounded-2xl overflow-hidden">
+              <button onclick="toggleAccordion(this)" class="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors text-left">
+                <span class="text-sm font-semibold text-gray-900 pr-4">Tôi có thể chuyển ca học hoặc tạm nghỉ không?</span>
+                <svg class="accordion-icon w-5 h-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+              </button>
+              <div class="accordion-content px-5">
+                <p class="text-sm text-gray-600 leading-relaxed pb-4 border-t border-gray-100 pt-3">Bạn có thể chuyển ca học nếu còn chỗ trống và báo trước 3 ngày. Được phép nghỉ tối đa 6 buổi/khóa, các buổi nghỉ sẽ được sắp xếp học bù cùng nội dung.</p>
+              </div>
+            </div>
+            <div class="border border-gray-200 rounded-2xl overflow-hidden">
+              <button onclick="toggleAccordion(this)" class="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors text-left">
+                <span class="text-sm font-semibold text-gray-900 pr-4">Chính sách hoàn học phí như thế nào?</span>
+                <svg class="accordion-icon w-5 h-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+              </button>
+              <div class="accordion-content px-5">
+                <p class="text-sm text-gray-600 leading-relaxed pb-4 border-t border-gray-100 pt-3">Hoàn 100% học phí nếu hủy trước khai giảng 7 ngày. Sau đó, hoàn theo tỷ lệ: trước 3 buổi đầu hoàn 70%, trước 6 buổi đầu hoàn 40%. Sau 6 buổi không hoàn học phí.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RELATED COURSES -->
+  <section class="py-16 bg-gray-50">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8">
+      <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-8">Khóa học liên quan</h2>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="card-hover bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm group">
+          <div class="relative overflow-hidden h-44"><img src="https://picsum.photos/seed/related1/600/400.jpg" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"><div class="absolute top-3 left-3"><span class="bg-accent-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full">Mới</span></div></div>
+          <div class="p-5">
+            <div class="flex items-center gap-2 mb-2"><span class="text-xs font-medium text-coral-500 bg-coral-50 px-2 py-0.5 rounded-full">18+ tuổi</span><span class="text-xs text-gray-400">• 48 buổi</span></div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-1">TOEIC 600+</h3>
+            <p class="text-sm text-gray-500 mb-4 line-clamp-2">Tập trung Reading & Listening, mẹo làm bài nhanh, đạt 750+ dễ dàng.</p>
+            <div class="flex items-center justify-between"><span class="text-xl font-bold text-brand-600">6,200,000 <span class="text-xs text-gray-400 font-normal">VNĐ</span></span><a href="#" class="text-sm text-brand-500 font-medium hover:text-brand-600">Xem chi tiết →</a></div>
+          </div>
+        </div>
+        <div class="card-hover bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm group">
+          <div class="relative overflow-hidden h-44"><img src="https://picsum.photos/seed/related2/600/400.jpg" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"></div>
+          <div class="p-5">
+            <div class="flex items-center gap-2 mb-2"><span class="text-xs font-medium text-brand-500 bg-brand-50 px-2 py-0.5 rounded-full">Người lớn</span><span class="text-xs text-gray-400">• 36 buổi</span></div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-1">Giao Tiếp Ứng Dụng</h3>
+            <p class="text-sm text-gray-500 mb-4 line-clamp-2">Tự tin giao tiếp trong công việc và đời sống với phương pháp thực hành.</p>
+            <div class="flex items-center justify-between"><span class="text-xl font-bold text-brand-600">5,200,000 <span class="text-xs text-gray-400 font-normal">VNĐ</span></span><a href="#" class="text-sm text-brand-500 font-medium hover:text-brand-600">Xem chi tiết →</a></div>
+          </div>
+        </div>
+        <div class="card-hover bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm group">
+          <div class="relative overflow-hidden h-44"><img src="https://picsum.photos/seed/related3/600/400.jpg" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"></div>
+          <div class="p-5">
+            <div class="flex items-center gap-2 mb-2"><span class="text-xs font-medium text-brand-500 bg-brand-50 px-2 py-0.5 rounded-full">Doanh nghiệp</span><span class="text-xs text-gray-400">• 48 buổi</span></div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-1">Tiếng Anh Thương Mại</h3>
+            <p class="text-sm text-gray-500 mb-4 line-clamp-2">Email, thuyết trình, đàm phán – kỹ năng tiếng Anh chuyên sâu cho dân văn phòng.</p>
+            <div class="flex items-center justify-between"><span class="text-xl font-bold text-brand-600">7,800,000 <span class="text-xs text-gray-400 font-normal">VNĐ</span></span><a href="#" class="text-sm text-brand-500 font-medium hover:text-brand-600">Xem chi tiết →</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER CTA -->
+  <section class="py-16 hero-course-gradient relative overflow-hidden">
+    <div class="blob-a"></div>
+    <div class="blob-b"></div>
+    <div class="max-w-4xl mx-auto px-6 lg:px-8 text-center relative z-10">
+      <h2 class="text-3xl sm:text-4xl font-bold text-white mb-4">Sẵn sàng đạt band IELTS mơ ước?</h2>
+      <p class="text-lg text-white/75 mb-8 max-w-2xl mx-auto">Đăng ký ngay để nhận ưu đãi giảm 19% học phí. Chỉ còn 4 chỗ trống!</p>
+      <div class="flex flex-wrap justify-center gap-4">
+        <button onclick="showToast('Đăng ký thành công! Chúng tôi sẽ liên hệ bạn sớm.')" class="inline-flex items-center gap-2 bg-white text-brand-600 font-semibold px-8 py-4 rounded-full hover:bg-gray-50 transition-all shadow-xl">
+          Đăng ký khóa học
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+        </button>
+        <a href="tel:19001234" class="inline-flex items-center gap-2 bg-white/10 text-white font-medium px-8 py-4 rounded-full border border-white/20 hover:bg-white/20 transition-all backdrop-blur-sm">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
+          Gọi 1900 1234
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- TOAST -->
+  <div id="toast" class="fixed bottom-6 right-6 z-[70] hidden">
+    <div class="bg-gray-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 slide-in max-w-sm">
+      <div class="w-8 h-8 rounded-full bg-accent-500 flex items-center justify-center flex-shrink-0">
+        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+      </div>
+      <span id="toastMsg" class="text-sm font-medium"></span>
+    </div>
+  </div>
+
+  <script>
+    // Navbar scroll
+    window.addEventListener('scroll', () => {
+      document.getElementById('navbar').classList.toggle('shadow-md', window.scrollY > 50);
+    });
+
+    // Fade-up observer
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+    }, { threshold:0.1, rootMargin:'0px 0px -40px 0px' });
+    document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+    // Tab switching
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('text-gray-400'); });
+      document.getElementById('tab-' + tab).classList.remove('hidden');
+      event.target.classList.add('active');
+      event.target.classList.remove('text-gray-400');
+    }
+
+    // Accordion
+    function toggleAccordion(btn) {
+      const content = btn.nextElementSibling;
+      const icon = btn.querySelector('.accordion-icon');
+      const isOpen = content.classList.contains('open');
+      // Close all in same parent
+      btn.closest('.space-y-3, .space-y-4')?.querySelectorAll('.accordion-content').forEach(c => c.classList.remove('open'));
+      btn.closest('.space-y-3, .space-y-4')?.querySelectorAll('.accordion-icon').forEach(i => i.classList.remove('rotated'));
+      if (!isOpen) { content.classList.add('open'); icon.classList.add('rotated'); }
+    }
+
+    // Schedule selection
+    function selectSchedule(el) {
+      document.querySelectorAll('.schedule-item').forEach(s => {
+        s.classList.remove('border-brand-200','bg-brand-50/30');
+        s.classList.add('border-gray-200');
+        s.querySelector('.w-8')?.classList.remove('bg-brand-500','text-white');
+        s.querySelector('.w-8')?.classList.add('bg-gray-200','text-gray-600');
+      });
+      el.classList.remove('border-gray-200');
+      el.classList.add('border-brand-200','bg-brand-50/30');
+      const dot = el.querySelector('.w-8');
+      dot.classList.remove('bg-gray-200','text-gray-600');
+      dot.classList.add('bg-brand-500','text-white');
+      showToast('Đã chọn ca học thành công!');
+    }
+
+    // Toast
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      t.classList.remove('hidden');
+      setTimeout(() => t.classList.add('hidden'), 3500);
+    }
+
+    // Countdown timer
+    let totalSeconds = 2*86400 + 14*3600 + 32*60 + 8;
+    function updateCountdown() {
+      if (totalSeconds <= 0) return;
+      totalSeconds--;
+      const d = Math.floor(totalSeconds/86400);
+      const h = Math.floor((totalSeconds%86400)/3600);
+      const m = Math.floor((totalSeconds%3600)/60);
+      const s = totalSeconds%60;
+      document.getElementById('countdown').textContent = `${d} ngày ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }
+    setInterval(updateCountdown, 1000);
+
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', function(e) {
+        e.preventDefault();
+        const t = document.querySelector(this.getAttribute('href'));
+        if (t) t.scrollIntoView({ behavior:'smooth', block:'start' });
+      });
+    });
+  </script>
+</body>
+</html>
