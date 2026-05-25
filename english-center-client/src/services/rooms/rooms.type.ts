@@ -1,4 +1,4 @@
-import type { ApiResponse, SortOrder } from "../common/common.type";
+import type { SortOrder } from "@/shared/types/response";
 
 export type RoomStatus = string;
 
@@ -34,9 +34,3 @@ export type ListRoomsQuery = {
   sort_order?: SortOrder;
   status?: RoomStatus;
 };
-
-export type CreateRoomResponse = ApiResponse<Room>;
-export type ListRoomsResponse = ApiResponse<Room[]>;
-export type GetRoomResponse = ApiResponse<Room>;
-export type UpdateRoomResponse = ApiResponse<Room>;
-export type DeleteRoomResponse = ApiResponse<null>;

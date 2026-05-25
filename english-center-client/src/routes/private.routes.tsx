@@ -11,8 +11,20 @@ import DashboardCourseEditPage from "@/pages/Dashboard/Courses/Edit";
 import DashboardCourseTagsPage from "@/pages/Dashboard/CourseTags";
 import DashboardHomePage from "@/pages/Dashboard/Home";
 import DashboardPermissionsPage from "@/pages/Dashboard/Permissions";
+import DashboardPermissionCreatePage from "@/pages/Dashboard/Permissions/Create";
+import DashboardPermissionEditPage from "@/pages/Dashboard/Permissions/Edit";
 import DashboardRolesPage from "@/pages/Dashboard/Roles";
+import DashboardRoleCreatePage from "@/pages/Dashboard/Roles/Create";
+import DashboardRoleEditPage from "@/pages/Dashboard/Roles/Edit";
 import DashboardStaffPage from "@/pages/Dashboard/Staff";
+import DashboardStaffCreatePage from "@/pages/Dashboard/Staff/Create";
+import DashboardStaffEditPage from "@/pages/Dashboard/Staff/Edit";
+import DashboardStudentsPage from "@/pages/Dashboard/Students";
+import DashboardStudentCreatePage from "@/pages/Dashboard/Students/Create";
+import DashboardStudentEditPage from "@/pages/Dashboard/Students/Edit";
+import DashboardTeachersPage from "@/pages/Dashboard/Teachers";
+import DashboardTeacherCreatePage from "@/pages/Dashboard/Teachers/Create";
+import DashboardTeacherEditPage from "@/pages/Dashboard/Teachers/Edit";
 import FavoritesPage from "@/pages/Favorites";
 import { PRIVATE_ROUTES, PUBLIC_ROUTES } from "@/shared/routes";
 
@@ -52,12 +64,60 @@ export const privateRoutes: RouteObject[] = [
             element: <DashboardStaffPage />,
           },
           {
+            path: PRIVATE_ROUTES.DASHBOARD_STAFF_CREATE,
+            element: <DashboardStaffCreatePage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_STAFF_EDIT,
+            element: <DashboardStaffEditPage />,
+          },
+          {
             path: PRIVATE_ROUTES.DASHBOARD_PERMISSIONS,
             element: <DashboardPermissionsPage />,
           },
           {
+            path: PRIVATE_ROUTES.DASHBOARD_PERMISSIONS_CREATE,
+            element: <DashboardPermissionCreatePage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_PERMISSIONS_EDIT,
+            element: <DashboardPermissionEditPage />,
+          },
+          {
             path: PRIVATE_ROUTES.DASHBOARD_ROLES,
             element: <DashboardRolesPage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_ROLES_CREATE,
+            element: <DashboardRoleCreatePage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_ROLES_EDIT,
+            element: <DashboardRoleEditPage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_STUDENTS,
+            element: <DashboardStudentsPage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_STUDENTS_CREATE,
+            element: <DashboardStudentCreatePage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_STUDENTS_EDIT,
+            element: <DashboardStudentEditPage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_TEACHERS,
+            element: <DashboardTeachersPage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_TEACHERS_CREATE,
+            element: <DashboardTeacherCreatePage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_TEACHERS_EDIT,
+            element: <DashboardTeacherEditPage />,
           },
         ],
       },

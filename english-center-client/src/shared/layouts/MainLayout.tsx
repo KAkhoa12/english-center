@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 import type { MouseEvent } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 
+import ChatbotPopup from "@/components/Main/ChatbotPopup";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -384,6 +385,7 @@ export default function MainLayout() {
         <Outlet />
       </main>
       <Footer />
+      <ChatbotPopup />
     </div>
   );
 }

@@ -1,6 +1,11 @@
 import { apiClient } from "@/config/api-client";
 
-import type { ListPermissionsQuery, Permission } from "./permissions.type";
+import type {
+  ListPermissionsQuery,
+  Permission,
+  PermissionCreateRequest,
+  PermissionUpdateRequest,
+} from "./permissions.type";
 
 const appendQuery = (url: string, query?: Record<string, unknown>): string => {
   if (!query) return url;
@@ -19,4 +24,16 @@ const appendQuery = (url: string, query?: Record<string, unknown>): string => {
 export const permissionsApi = {
   listPermissions: (query?: ListPermissionsQuery) =>
     apiClient.getWithMeta<Permission[]>(appendQuery("/permissions", query)),
+
+  createPermission: (data: PermissionCreateRequest) =>
+    apiClient.post<Permission, PermissionCreateRequest>("/permissions", data),
+
+  getPermission: (permissionId: string) =>
+    apiClient.get<Permission>(`/permissions/${permissionId}`),
+
+  updatePermission: (permissionId: string, data: PermissionUpdateRequest) =>
+    apiClient.patch<Permission, PermissionUpdateRequest>(`/permissions/${permissionId}`, data),
+
+  deletePermission: (permissionId: string) =>
+    apiClient.delete<void>(`/permissions/${permissionId}`),
 };

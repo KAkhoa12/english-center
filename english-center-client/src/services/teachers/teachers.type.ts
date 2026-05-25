@@ -1,4 +1,4 @@
-import type { ApiResponse, SortOrder, UserRef } from "../common/common.type";
+import type { SortOrder, UserRef } from "@/shared/types/response";
 
 export type Teacher = {
   id: string;
@@ -38,9 +38,3 @@ export type ListTeachersQuery = {
   sort_by?: string;
   sort_order?: SortOrder;
 };
-
-export type CreateTeacherResponse = ApiResponse<Teacher>;
-export type ListTeachersResponse = ApiResponse<Teacher[]>;
-export type GetTeacherResponse = ApiResponse<Teacher>;
-export type UpdateTeacherResponse = ApiResponse<Teacher>;
-export type DeleteTeacherResponse = ApiResponse<null>;
