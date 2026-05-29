@@ -1,22 +1,31 @@
-from datetime import datetime, timezone
-
-from fastapi import HTTPException, status
-from sqlalchemy import func, or_, select
+from fastapi import HTTPException
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.core.security import hash_password
-from app.models.role import Role, UserRole
-from app.models.user import User, UserStatus
+from app.models import User, UserStatus
 from app.schemas.common import PaginationParams
 from app.schemas.user import UserCreate, UserUpdate
-
+from app.repositories.role import RoleRepository
+from app.repositories.user import UserRepository
+from app.repositories.user_role import UserRoleRepository
 
 class UserService:
-    def __init__(self, db: Session) -> None:
+    def __init__(
+        self,
+        db: Session,
+        user_repo: UserRepository | None = None,
+        role_repo: RoleRepository | None = None,
+        user_role_repo: UserRoleRepository | None = None,
+    ) -> None:
         self.db = db
+        self.user_repo = user_repo or UserRepository(db)
+        self.role_repo = role_repo or RoleRepository(db)
+        self.user_role_repo = user_role_repo or UserRoleRepository(db)
 
     def create_user(self, payload: UserCreate) -> User:
-        exists = self.db.execute(select(User).where(User.email == str(payload.email), User.deleted_at.is_(None))).scalar_one_or_none()
+        exists = self.user_repo.email_exists(str(payload.email))
         if exists:
             raise HTTPException(status_code=400, detail="Email already exists")
 
@@ -28,31 +37,30 @@ class UserService:
             avatar_url=payload.avatar_url,
             status=UserStatus(payload.status),
         )
-        self.db.add(user)
-        self.db.flush()
+        self.user_repo.create(user)
 
         if payload.role_ids:
             self.assign_roles(str(user.id), payload.role_ids)
 
         self.db.commit()
-        self.db.refresh(user)
         return user
 
     def get_users(self, query: PaginationParams) -> tuple[list[User], int]:
-        filters = [User.deleted_at.is_(None)]
+        filters: list[ColumnElement[bool]] = []
         if query.search:
             term = f"%{query.search}%"
             filters.append(or_(User.full_name.ilike(term), User.email.ilike(term), User.phone.ilike(term)))
 
-        total = self.db.execute(select(func.count()).select_from(User).where(*filters)).scalar_one()
-        stmt = select(User).where(*filters)
         sort_field = getattr(User, query.sort_by, User.created_at) if query.sort_by else User.created_at
-        stmt = stmt.order_by(sort_field.asc() if query.sort_order == "asc" else sort_field.desc())
-        stmt = stmt.offset((query.page - 1) * query.page_size).limit(query.page_size)
-        return list(self.db.execute(stmt).scalars().all()), int(total)
+        order_by = sort_field.asc() if query.sort_order == "asc" else sort_field.desc()
+        skip = (query.page - 1) * query.page_size
+
+        total = self.user_repo.count(filters=filters)
+        users = self.user_repo.list(filters=filters, skip=skip, limit=query.page_size, order_by=order_by)
+        return users, total
 
     def get_user_by_id(self, user_id: str) -> User:
-        user = self.db.execute(select(User).where(User.id == user_id, User.deleted_at.is_(None))).scalar_one_or_none()
+        user = self.user_repo.get(user_id)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         return user
@@ -65,35 +73,31 @@ class UserService:
                 setattr(user, field, value)
         if payload.status is not None:
             user.status = UserStatus(payload.status)
+        self.user_repo.update(user)
         self.db.commit()
-        self.db.refresh(user)
         return user
 
     def soft_delete_user(self, user_id: str) -> None:
         user = self.get_user_by_id(user_id)
-        user.deleted_at = datetime.now(timezone.utc)
+        self.user_repo.soft_delete(user)
         self.db.commit()
 
     def assign_roles(self, user_id: str, role_ids: list[str]) -> None:
         user = self.get_user_by_id(user_id)
         _ = user
-        roles = self.db.execute(select(Role).where(Role.id.in_(role_ids), Role.deleted_at.is_(None))).scalars().all()
+        roles = self.role_repo.get_active_by_ids(role_ids)
         if len(roles) != len(set(role_ids)):
             raise HTTPException(status_code=404, detail="One or more roles not found")
 
         for role_id in set(role_ids):
-            existing = self.db.execute(
-                select(UserRole).where(UserRole.user_id == user_id, UserRole.role_id == role_id, UserRole.deleted_at.is_(None))
-            ).scalar_one_or_none()
+            existing = self.user_role_repo.get_active_relation(user_id, role_id)
             if not existing:
-                self.db.add(UserRole(user_id=user_id, role_id=role_id))
+                self.user_role_repo.create_or_restore_relation(user_id, role_id)
         self.db.commit()
 
     def remove_role(self, user_id: str, role_id: str) -> None:
-        relation = self.db.execute(
-            select(UserRole).where(UserRole.user_id == user_id, UserRole.role_id == role_id, UserRole.deleted_at.is_(None))
-        ).scalar_one_or_none()
+        relation = self.user_role_repo.get_active_relation(user_id, role_id)
         if not relation:
             raise HTTPException(status_code=404, detail="User role not found")
-        relation.deleted_at = datetime.now(timezone.utc)
+        self.user_role_repo.soft_delete(relation)
         self.db.commit()

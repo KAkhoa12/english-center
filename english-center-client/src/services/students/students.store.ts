@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { Pagination } from "@/shared/types/response";
+import type { ApiResponse, Pagination } from "@/shared/types/response";
 
 import { studentsApi } from "./students.api";
 import type {
@@ -9,6 +9,11 @@ import type {
   StudentCreateRequest,
   StudentUpdateRequest,
 } from "./students.type";
+
+const unwrap = <T>(response: ApiResponse<T>, fallbackMessage: string): T => {
+  if (!response.success) throw new Error(response.message || fallbackMessage);
+  return response.payload;
+};
 
 type StudentsState = {
   students: Student[];
@@ -35,31 +40,29 @@ export const useStudentsStore = create<StudentsState>()((set) => ({
   error: null,
 
   listStudents: async (query) => {
-    try {
-      set({ isLoading: true, error: null });
-      const response = await studentsApi.listStudents(query);
-      set({ students: response.payload, pagination: response.pagination ?? null, isLoading: false, error: null });
-      return response.payload;
-    } catch {
-      set({ isLoading: false, error: "Lấy danh sách học viên thất bại" });
-      throw new Error("Lấy danh sách học viên thất bại");
-    }
+    const response = await studentsApi.listStudents(query);
+    const students = unwrap(response, "Lay danh sach hoc vien that bai");
+    set({ students, pagination: response.pagination ?? null });
+    return students;
   },
 
   getStudent: async (studentId) => {
-    const item = await studentsApi.getStudent(studentId);
+    const response = await studentsApi.getStudent(studentId);
+    const item = unwrap(response, "Lay thong tin hoc vien that bai");
     set({ selectedStudent: item });
     return item;
   },
 
   createStudent: async (data) => {
-    const item = await studentsApi.createStudent(data);
+    const response = await studentsApi.createStudent(data);
+    const item = unwrap(response, "Tao hoc vien that bai");
     set((state) => ({ students: [item, ...state.students], selectedStudent: item }));
     return item;
   },
 
   updateStudent: async (studentId, data) => {
-    const item = await studentsApi.updateStudent(studentId, data);
+    const response = await studentsApi.updateStudent(studentId, data);
+    const item = unwrap(response, "Cap nhat hoc vien that bai");
     set((state) => ({
       students: state.students.map((x) => (x.id === item.id ? item : x)),
       selectedStudent: state.selectedStudent?.id === item.id ? item : state.selectedStudent,
@@ -68,7 +71,8 @@ export const useStudentsStore = create<StudentsState>()((set) => ({
   },
 
   updateStudentAvatar: async (studentId, file) => {
-    const item = await studentsApi.updateStudentAvatar(studentId, file);
+    const response = await studentsApi.updateStudentAvatar(studentId, file);
+    const item = unwrap(response, "Cap nhat avatar hoc vien that bai");
     set((state) => ({
       students: state.students.map((x) => (x.id === item.id ? item : x)),
       selectedStudent: state.selectedStudent?.id === item.id ? item : state.selectedStudent,
@@ -77,7 +81,8 @@ export const useStudentsStore = create<StudentsState>()((set) => ({
   },
 
   deleteStudent: async (studentId) => {
-    await studentsApi.deleteStudent(studentId);
+    const response = await studentsApi.deleteStudent(studentId);
+    unwrap(response, "Xoa hoc vien that bai");
     set((state) => ({
       students: state.students.filter((x) => x.id !== studentId),
       selectedStudent: state.selectedStudent?.id === studentId ? null : state.selectedStudent,

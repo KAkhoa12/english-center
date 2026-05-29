@@ -1,8 +1,15 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import type { ApiResponse } from "@/shared/types/response";
 import { authApi } from "./auth.api";
-import type { LoginRequest, LoginResponse, MeResponse } from "./auth.type";
+import type {
+  LoginRequest,
+  LoginResponse,
+  MeResponse,
+  RegisterRequest,
+  RegisterResponse,
+} from "./auth.type";
 
 type AuthState = {
   me: MeResponse | null;
@@ -12,12 +19,15 @@ type AuthState = {
 
   isAuthenticated: boolean;
   isLoading: boolean;
+  message: string | null;
   error: string | null;
 
-  login: (data: LoginRequest) => Promise<LoginResponse>;
+  login: (data: LoginRequest) => Promise<ApiResponse<LoginResponse>>;
+  register: (data: RegisterRequest) => Promise<ApiResponse<RegisterResponse>>;
   fetchMe: () => Promise<void>;
   checkAuth: () => Promise<boolean>;
   logout: () => Promise<void>;
+  clearMessage: () => void;
   clearError: () => void;
 };
 
@@ -31,57 +41,112 @@ export const useAuthStore = create<AuthState>()(
 
       isAuthenticated: false,
       isLoading: false,
+      message: null,
       error: null,
 
       login: async (data) => {
-        try {
-          set({ isLoading: true, error: null });
+        set({ isLoading: true, message: null, error: null });
 
-          const response = await authApi.login(data);
+        const response = await authApi.login(data);
+
+        if (response.success) {
+          const info = response.payload;
 
           set({
-            me: response,
-            accessToken: response.access_token,
-            refreshToken: response.refresh_token ?? null,
+            me: {
+              user: info.user,
+              roles: info.roles,
+              permissions: info.permissions,
+            },
+            accessToken: info.access_token,
+            refreshToken: info.refresh_token ?? null,
             isAuthenticated: true,
             isLoading: false,
+            message: response.message,
             error: null,
           });
 
           return response;
-        } catch {
+        }
+
+        set({
+          me: null,
+          accessToken: null,
+          refreshToken: null,
+          isAuthenticated: false,
+          isLoading: false,
+          message: response.message,
+          error: response.message,
+        });
+
+        return response;
+      },
+
+      register: async (data) => {
+        set({ isLoading: true, message: null, error: null });
+
+        const response = await authApi.register(data);
+
+        if (response.success) {
+          const info = response.payload;
+
           set({
-            me: null,
-            accessToken: null,
-            refreshToken: null,
-            isAuthenticated: false,
+            me: {
+              user: {
+                id: info.user.id,
+                full_name: info.user.full_name,
+                email: info.user.email,
+              },
+              roles: info.roles,
+              permissions: info.permissions,
+            },
+            accessToken: info.access_token,
+            refreshToken: info.refresh_token ?? null,
+            isAuthenticated: true,
             isLoading: false,
-            error: "Đăng nhập thất bại",
+            message: response.message,
+            error: null,
           });
 
-          throw new Error("Đăng nhập thất bại");
+          return response;
         }
+
+        set({
+          me: null,
+          accessToken: null,
+          refreshToken: null,
+          isAuthenticated: false,
+          isLoading: false,
+          message: response.message,
+          error: response.message,
+        });
+
+        return response;
       },
 
       fetchMe: async () => {
-        try {
-          set({ isLoading: true, error: null });
+        set({ isLoading: true, message: null, error: null });
 
-          const user = await authApi.me();
+        const response = await authApi.me();
 
+        if (response.success) {
           set({
-            me : user,
+            me: response.payload,
             isAuthenticated: true,
             isLoading: false,
+            message: response.message,
             error: null,
           });
-        } catch {
-          set({
-            me: null,
-            isAuthenticated: false,
-            isLoading: false,
-          });
+          return;
         }
+
+        set({
+          me: null,
+          isAuthenticated: false,
+          isLoading: false,
+          message: response.message,
+          error: response.message,
+        });
       },
 
       checkAuth: async () => {
@@ -97,50 +162,57 @@ export const useAuthStore = create<AuthState>()(
           return false;
         }
 
-        try {
-          set({ isLoading: true, error: null });
+        set({ isLoading: true, message: null, error: null });
 
-          const user = await authApi.me();
+        const meResponse = await authApi.me();
 
+        if (meResponse.success) {
           set({
-            me:user,
+            me: meResponse.payload,
             isAuthenticated: true,
             isLoading: false,
+            message: meResponse.message,
             error: null,
           });
 
           return true;
-        } catch {
-          if (!refreshToken) {
-            await get().logout();
-            return false;
-          }
-
-          try {
-            const tokenResponse = await authApi.refreshToken({
-              refresh_token: refreshToken,
-            });
-
-            set({
-              accessToken: tokenResponse.access_token,
-              refreshToken: tokenResponse.refresh_token ?? refreshToken,
-            });
-
-            const user = await authApi.me();
-
-            set({
-              me:user,
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-            });
-
-            return true;
-          } catch {
-            await get().logout();
-            return false;
-          }
         }
+
+        if (!refreshToken) {
+          await get().logout();
+          return false;
+        }
+
+        const tokenResponse = await authApi.refreshToken({
+          refresh_token: refreshToken,
+        });
+
+        if (!tokenResponse.success) {
+          await get().logout();
+          return false;
+        }
+
+        set({
+          accessToken: tokenResponse.payload.access_token,
+          refreshToken: tokenResponse.payload.refresh_token ?? refreshToken,
+        });
+
+        const refreshedMeResponse = await authApi.me();
+
+        if (!refreshedMeResponse.success) {
+          await get().logout();
+          return false;
+        }
+
+        set({
+          me: refreshedMeResponse.payload,
+          isAuthenticated: true,
+          isLoading: false,
+          message: refreshedMeResponse.message,
+          error: null,
+        });
+
+        return true;
       },
 
       logout: async () => {
@@ -150,8 +222,13 @@ export const useAuthStore = create<AuthState>()(
           refreshToken: null,
           isAuthenticated: false,
           isLoading: false,
+          message: null,
           error: null,
         });
+      },
+
+      clearMessage: () => {
+        set({ message: null });
       },
 
       clearError: () => {
@@ -166,6 +243,6 @@ export const useAuthStore = create<AuthState>()(
         refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
-    }
-  )
+    },
+  ),
 );

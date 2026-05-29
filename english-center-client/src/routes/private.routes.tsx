@@ -10,6 +10,18 @@ import DashboardCourseCreatePage from "@/pages/Dashboard/Courses/Create";
 import DashboardCourseEditPage from "@/pages/Dashboard/Courses/Edit";
 import DashboardCourseTagsPage from "@/pages/Dashboard/CourseTags";
 import DashboardHomePage from "@/pages/Dashboard/Home";
+import DashboardCashflowPage from "@/pages/Dashboard/Cashflow";
+import DashboardCashflowCreatePage from "@/pages/Dashboard/Cashflow/Create";
+import DashboardCashflowEditPage from "@/pages/Dashboard/Cashflow/Edit";
+import DashboardInvoicesPage from "@/pages/Dashboard/Invoices";
+import DashboardInvoiceCreatePage from "@/pages/Dashboard/Invoices/Create";
+import DashboardInvoiceEditPage from "@/pages/Dashboard/Invoices/Edit";
+import DashboardDocumentsPage from "@/pages/Dashboard/Documents";
+import DashboardDocumentCreatePage from "@/pages/Dashboard/Documents/Create";
+import DashboardDocumentEditPage from "@/pages/Dashboard/Documents/Edit";
+import DashboardClassesPage from "@/pages/Dashboard/Classes";
+import DashboardClassCreatePage from "@/pages/Dashboard/Classes/Create";
+import DashboardClassEditPage from "@/pages/Dashboard/Classes/Edit";
 import DashboardPermissionsPage from "@/pages/Dashboard/Permissions";
 import DashboardPermissionCreatePage from "@/pages/Dashboard/Permissions/Create";
 import DashboardPermissionEditPage from "@/pages/Dashboard/Permissions/Edit";
@@ -118,6 +130,54 @@ export const privateRoutes: RouteObject[] = [
           {
             path: PRIVATE_ROUTES.DASHBOARD_TEACHERS_EDIT,
             element: <DashboardTeacherEditPage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_FINANCE_CASHFLOW,
+            element: <DashboardCashflowPage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_FINANCE_CASHFLOW_CREATE,
+            element: <DashboardCashflowCreatePage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_FINANCE_CASHFLOW_EDIT,
+            element: <DashboardCashflowEditPage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_FINANCE_INVOICES,
+            element: <DashboardInvoicesPage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_FINANCE_INVOICES_CREATE,
+            element: <DashboardInvoiceCreatePage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_FINANCE_INVOICES_EDIT,
+            element: <DashboardInvoiceEditPage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_DOCUMENTS,
+            element: <DashboardDocumentsPage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_DOCUMENTS_CREATE,
+            element: <DashboardDocumentCreatePage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_DOCUMENTS_EDIT,
+            element: <DashboardDocumentEditPage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_CLASSES,
+            element: <DashboardClassesPage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_CLASSES_CREATE,
+            element: <DashboardClassCreatePage />,
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_CLASSES_EDIT,
+            element: <DashboardClassEditPage />,
           },
         ],
       },

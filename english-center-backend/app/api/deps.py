@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import UnauthorizedException
 from app.core.security import decode_token
 from app.db.session import get_db
-from app.models.user import User
-from app.repositories.user_repository import UserRepository
+from app.models.rbac.user import User
+from app.repositories.user import UserRepository
 from app.services.auth_service import AuthService
 from app.services.user_service import UserService
 

@@ -18,8 +18,6 @@ depends_on = None
 def upgrade() -> None:
     user_status = sa.Enum("active", "inactive", "banned", name="user_status")
     student_level = sa.Enum("beginner", "elementary", "intermediate", "upper_intermediate", "advanced", name="student_level")
-    user_status.create(op.get_bind(), checkfirst=True)
-    student_level.create(op.get_bind(), checkfirst=True)
 
     op.create_table("users", sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True), sa.Column("full_name", sa.String(255), nullable=False), sa.Column("email", sa.String(255), nullable=False, unique=True), sa.Column("phone", sa.String(30), nullable=True), sa.Column("password_hash", sa.String(255), nullable=False), sa.Column("avatar_url", sa.String(500), nullable=True), sa.Column("status", user_status, nullable=False, server_default="active"), sa.Column("is_verified", sa.Boolean(), nullable=False, server_default=sa.false()), sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()), sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()), sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True))
     op.create_index("ix_users_email", "users", ["email"], unique=True)

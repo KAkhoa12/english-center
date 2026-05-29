@@ -3,14 +3,15 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.models.course import (
     CategoryStatus,
     Course,
     CourseCategory,
-    CourseCategoryMapping,
+    CourseMedia,
+    CourseMode,
     CourseModule,
     CourseModuleStatus,
     CourseOutcome,
@@ -22,7 +23,7 @@ from app.models.course import (
     Lesson,
     LessonMaterial,
     LessonStatus,
-    MaterialType,
+    Media,
 )
 from app.core.config import settings
 from app.schemas.common import PaginationParams
@@ -30,6 +31,8 @@ from app.schemas.course import (
     CourseCategoryCreate,
     CourseCategoryUpdate,
     CourseCreate,
+    CourseMediaCreate,
+    CourseMediaUpdate,
     CourseModuleCreate,
     CourseModuleUpdate,
     CourseOutcomeCreate,
@@ -44,6 +47,8 @@ from app.schemas.course import (
     LessonMaterialUpdate,
     LessonUpdate,
 )
+from app.repositories.course_media import CourseMediaRepository
+from app.repositories.media import MediaRepository
 from app.services.storage_service import StorageService
 
 
@@ -62,17 +67,7 @@ def _enum(enum_cls, value: str | None, field_name: str):
         return None
     normalized_value = value.strip() if isinstance(value, str) else value
     if enum_cls is CourseTargetLevel and isinstance(normalized_value, str):
-        cefr_aliases = {
-            "a0": CourseTargetLevel.beginner.value,
-            "a1": CourseTargetLevel.beginner.value,
-            "a2": CourseTargetLevel.elementary.value,
-            "b1": CourseTargetLevel.intermediate.value,
-            "b2": CourseTargetLevel.upper_intermediate.value,
-            "c1": CourseTargetLevel.advanced.value,
-            "c2": CourseTargetLevel.advanced.value,
-        }
-        lowered = normalized_value.lower()
-        normalized_value = cefr_aliases.get(lowered, lowered)
+        normalized_value = normalized_value.upper()
     try:
         return enum_cls(normalized_value)
     except ValueError as exc:
@@ -80,19 +75,43 @@ def _enum(enum_cls, value: str | None, field_name: str):
 
 
 class CourseSerializationMixin:
-    def _thumbnail_url(self, course: Course) -> str | None:
-        if not course.thumbnail_bucket or not course.thumbnail_object_name:
-            return None
+    def _media_url(self, media: Media) -> str | None:
         try:
-            return StorageService().get_presigned_url(course.thumbnail_bucket, course.thumbnail_object_name)
+            return StorageService().get_presigned_url(media.bucket, media.object_name)
         except HTTPException:
             return None
+
+    def _course_primary_media(self, course_id: str) -> CourseMedia | None:
+        return (
+            self.db.execute(
+                select(CourseMedia)
+                .where(
+                    CourseMedia.course_id == course_id,
+                    CourseMedia.deleted_at.is_(None),
+                    CourseMedia.is_primary.is_(True),
+                )
+                .order_by(CourseMedia.order_index.asc(), CourseMedia.created_at.asc())
+            )
+            .scalars()
+            .first()
+        )
 
     def _category_dict(self, category: CourseCategory) -> dict[str, Any]:
         return {"id": str(category.id), "name": category.name, "slug": category.slug}
 
     def _tag_dict(self, tag: CourseTag) -> dict[str, Any]:
         return {"id": str(tag.id), "name": tag.name, "slug": tag.slug}
+
+    def _media_dict(self, media: Media) -> dict[str, Any]:
+        return {
+            "id": str(media.id),
+            "bucket": media.bucket,
+            "object_name": media.object_name,
+            "original_filename": media.original_filename,
+            "content_type": media.content_type,
+            "size": media.size,
+            "url": self._media_url(media),
+        }
 
     def _requirement_dict(self, item: CourseRequirement) -> dict[str, Any]:
         return {
@@ -111,28 +130,45 @@ class CourseSerializationMixin:
         }
 
     def _module_dict(self, item: CourseModule) -> dict[str, Any]:
+        media = None
+        if item.media_id:
+            media = self.db.execute(select(Media).where(Media.id == item.media_id, Media.deleted_at.is_(None))).scalar_one_or_none()
         return {
             "id": str(item.id),
             "course_id": str(item.course_id),
             "title": item.title,
             "description": item.description,
+            "media_id": str(item.media_id) if item.media_id else None,
+            "media": self._media_dict(media) if media else None,
             "order_index": item.order_index,
             "status": item.status.value,
         }
 
     def _course_base_dict(self, course: Course) -> dict[str, Any]:
+        category = self.db.execute(
+            select(CourseCategory).where(CourseCategory.id == course.category_id, CourseCategory.deleted_at.is_(None))
+        ).scalar_one_or_none()
+        primary_mapping = self._course_primary_media(str(course.id))
+        primary_media = None
+        if primary_mapping:
+            primary_media = self.db.execute(
+                select(Media).where(Media.id == primary_mapping.media_id, Media.deleted_at.is_(None))
+            ).scalar_one_or_none()
         return {
             "id": str(course.id),
             "name": course.name,
             "code": course.code,
             "slug": course.slug,
             "description": course.description,
+            "category": self._category_dict(category) if category else None,
+            "mode": course.mode.value,
             "target_level": course.target_level.value if course.target_level else None,
             "duration_weeks": course.duration_weeks,
             "total_sessions": course.total_sessions,
             "price": float(course.price),
             "status": course.status.value,
-            "thumbnail_url": self._thumbnail_url(course),
+            "thumbnail_url": self._media_url(primary_media) if primary_media else None,
+            "thumbnail": self._media_dict(primary_media) if primary_media else None,
             "created_at": course.created_at,
             "updated_at": course.updated_at,
         }
@@ -203,10 +239,7 @@ class CourseCategoryService:
     def soft_delete_category(self, category_id: str) -> None:
         category = self.get_category_by_id(category_id)
         in_use = self.db.execute(
-            select(CourseCategoryMapping).where(
-                CourseCategoryMapping.category_id == category_id,
-                CourseCategoryMapping.deleted_at.is_(None),
-            )
+            select(Course).where(Course.category_id == category_id, Course.deleted_at.is_(None))
         ).first()
         if in_use:
             raise HTTPException(status_code=400, detail="Category is used by courses")
@@ -273,15 +306,13 @@ class CourseService(CourseSerializationMixin):
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def _validate_categories(self, category_ids: list[str]) -> list[CourseCategory]:
-        if not category_ids:
-            return []
-        items = self.db.execute(
-            select(CourseCategory).where(CourseCategory.id.in_(category_ids), CourseCategory.deleted_at.is_(None))
-        ).scalars().all()
-        if len(items) != len(set(category_ids)):
-            raise HTTPException(status_code=404, detail="One or more categories not found")
-        return list(items)
+    def _validate_category(self, category_id: str) -> CourseCategory:
+        item = self.db.execute(
+            select(CourseCategory).where(CourseCategory.id == category_id, CourseCategory.deleted_at.is_(None))
+        ).scalar_one_or_none()
+        if not item:
+            raise HTTPException(status_code=404, detail="Course category not found")
+        return item
 
     def _validate_tags(self, tag_ids: list[str]) -> list[CourseTag]:
         if not tag_ids:
@@ -298,13 +329,15 @@ class CourseService(CourseSerializationMixin):
         ).scalar_one_or_none()
         if exists:
             raise HTTPException(status_code=400, detail="Course code or slug already exists")
-        self._validate_categories(payload.category_ids or [])
+        self._validate_category(payload.category_id)
         self._validate_tags(payload.tag_ids or [])
         course = Course(
             name=payload.name,
             code=payload.code,
             slug=slug,
             description=payload.description,
+            category_id=payload.category_id,
+            mode=_enum(CourseMode, payload.mode, "mode"),
             target_level=_enum(CourseTargetLevel, payload.target_level, "target_level"),
             output_goal=payload.output_goal,
             duration_weeks=payload.duration_weeks,
@@ -314,7 +347,6 @@ class CourseService(CourseSerializationMixin):
         )
         self.db.add(course)
         self.db.flush()
-        self.replace_course_categories(str(course.id), payload.category_ids or [], commit=False)
         self.replace_course_tags(str(course.id), payload.tag_ids or [], commit=False)
         for index, text in enumerate(payload.requirements or []):
             if text.strip():
@@ -355,10 +387,7 @@ class CourseService(CourseSerializationMixin):
         if max_price is not None:
             stmt = stmt.where(Course.price <= max_price)
         if category_id:
-            stmt = stmt.join(CourseCategoryMapping, CourseCategoryMapping.course_id == Course.id).where(
-                CourseCategoryMapping.category_id == category_id,
-                CourseCategoryMapping.deleted_at.is_(None),
-            )
+            stmt = stmt.where(Course.category_id == category_id)
         if tag_id:
             stmt = stmt.join(CourseTagMapping, CourseTagMapping.course_id == Course.id).where(
                 CourseTagMapping.tag_id == tag_id,
@@ -373,8 +402,9 @@ class CourseService(CourseSerializationMixin):
 
     def course_list_dict(self, course: Course) -> dict[str, Any]:
         data = self._course_base_dict(course)
-        data["categories"] = [self._category_dict(item) for item in self.get_course_categories(str(course.id))]
+        data["category_id"] = str(course.category_id)
         data["tags"] = [self._tag_dict(item) for item in self.get_course_tags(str(course.id))]
+        data["media"] = [self._course_media_dict(item) for item in self.get_course_media(str(course.id))]
         return data
 
     def course_detail_dict(self, course: Course) -> dict[str, Any]:
@@ -385,6 +415,7 @@ class CourseService(CourseSerializationMixin):
                 "requirements": [self._requirement_dict(item) for item in self.get_course_requirements(str(course.id))],
                 "outcomes": [self._outcome_dict(item) for item in self.get_course_outcomes(str(course.id))],
                 "modules": [self._module_dict(item) for item in self.get_course_modules(str(course.id))],
+                "media": [self._course_media_dict(item) for item in self.get_course_media(str(course.id))],
                 "lessons_count": self.db.execute(
                     select(func.count()).select_from(Lesson).where(Lesson.course_id == course.id, Lesson.deleted_at.is_(None))
                 ).scalar_one(),
@@ -418,10 +449,13 @@ class CourseService(CourseSerializationMixin):
             course.slug = payload.slug
         if payload.target_level is not None:
             course.target_level = _enum(CourseTargetLevel, payload.target_level, "target_level")
+        if payload.category_id is not None:
+            self._validate_category(payload.category_id)
+            course.category_id = payload.category_id
+        if payload.mode is not None:
+            course.mode = _enum(CourseMode, payload.mode, "mode")
         if payload.status is not None:
             course.status = _enum(CourseStatus, payload.status, "status")
-        if payload.category_ids is not None:
-            self.replace_course_categories(course_id, payload.category_ids, commit=False)
         if payload.tag_ids is not None:
             self.replace_course_tags(course_id, payload.tag_ids, commit=False)
         self.db.commit()
@@ -430,8 +464,6 @@ class CourseService(CourseSerializationMixin):
 
     def upload_course_thumbnail(self, course_id: str, file, file_size: int) -> dict[str, Any]:
         course = self.get_course_by_id(course_id)
-        old_bucket = course.thumbnail_bucket
-        old_object_name = course.thumbnail_object_name
 
         uploaded = StorageService().upload_file(
             bucket_name=settings.MINIO_BUCKET_AVATARS,
@@ -439,52 +471,42 @@ class CourseService(CourseSerializationMixin):
             file_size=file_size,
             folder=f"courses/{course_id}",
         )
-        course.thumbnail_bucket = uploaded["bucket"]
-        course.thumbnail_object_name = uploaded["object_name"]
+        media = Media(
+            bucket=uploaded["bucket"],
+            object_name=uploaded["object_name"],
+            original_filename=file.filename,
+            content_type=file.content_type,
+            size=file_size,
+            uploaded_by=None,
+        )
+        self.db.add(media)
+        self.db.flush()
+        self.db.execute(
+            update(CourseMedia)
+            .where(CourseMedia.course_id == course.id, CourseMedia.media_type == "thumbnail", CourseMedia.deleted_at.is_(None))
+            .values(is_primary=False)
+        )
+        mapping = CourseMedia(
+            course_id=course.id,
+            media_id=media.id,
+            media_type="thumbnail",
+            order_index=0,
+            is_primary=True,
+        )
+        self.db.add(mapping)
         self.db.commit()
-        self.db.refresh(course)
-
-        if (
-            old_bucket
-            and old_object_name
-            and (old_bucket != course.thumbnail_bucket or old_object_name != course.thumbnail_object_name)
-        ):
-            storage = StorageService()
-            if storage.object_exists(old_bucket, old_object_name):
-                storage.delete_file(old_bucket, old_object_name)
+        self.db.refresh(media)
 
         return {
             "course_id": str(course.id),
-            "thumbnail_url": self._thumbnail_url(course),
-            "bucket": course.thumbnail_bucket,
-            "object_name": course.thumbnail_object_name,
+            "thumbnail_url": self._media_url(media),
+            "media": self._media_dict(media),
         }
 
     def soft_delete_course(self, course_id: str) -> None:
         course = self.get_course_by_id(course_id)
         course.deleted_at = _now()
         self.db.commit()
-
-    def replace_course_categories(self, course_id: str, category_ids: list[str], commit: bool = True) -> None:
-        self._validate_categories(category_ids)
-        active = self.db.execute(
-            select(CourseCategoryMapping).where(CourseCategoryMapping.course_id == course_id, CourseCategoryMapping.deleted_at.is_(None))
-        ).scalars().all()
-        for mapping in active:
-            mapping.deleted_at = _now()
-        for category_id in set(category_ids):
-            existing = self.db.execute(
-                select(CourseCategoryMapping).where(
-                    CourseCategoryMapping.course_id == course_id,
-                    CourseCategoryMapping.category_id == category_id,
-                )
-            ).scalar_one_or_none()
-            if existing:
-                existing.deleted_at = None
-            else:
-                self.db.add(CourseCategoryMapping(course_id=course_id, category_id=category_id))
-        if commit:
-            self.db.commit()
 
     def replace_course_tags(self, course_id: str, tag_ids: list[str], commit: bool = True) -> None:
         self._validate_tags(tag_ids)
@@ -507,13 +529,26 @@ class CourseService(CourseSerializationMixin):
         if commit:
             self.db.commit()
 
-    def get_course_categories(self, course_id: str) -> list[CourseCategory]:
-        stmt = (
-            select(CourseCategory)
-            .join(CourseCategoryMapping, CourseCategoryMapping.category_id == CourseCategory.id)
-            .where(CourseCategoryMapping.course_id == course_id, CourseCategoryMapping.deleted_at.is_(None), CourseCategory.deleted_at.is_(None))
+    def _course_media_dict(self, mapping: CourseMedia) -> dict[str, Any]:
+        media = self.db.execute(select(Media).where(Media.id == mapping.media_id, Media.deleted_at.is_(None))).scalar_one_or_none()
+        return {
+            "id": str(mapping.id),
+            "course_id": str(mapping.course_id),
+            "media_id": str(mapping.media_id),
+            "media_type": mapping.media_type,
+            "order_index": mapping.order_index,
+            "is_primary": mapping.is_primary,
+            "media": self._media_dict(media) if media else None,
+        }
+
+    def get_course_media(self, course_id: str) -> list[CourseMedia]:
+        return list(
+            self.db.execute(
+                select(CourseMedia)
+                .where(CourseMedia.course_id == course_id, CourseMedia.deleted_at.is_(None))
+                .order_by(CourseMedia.order_index.asc(), CourseMedia.created_at.asc())
+            ).scalars().all()
         )
-        return list(self.db.execute(stmt).scalars().all())
 
     def get_course_tags(self, course_id: str) -> list[CourseTag]:
         stmt = (
@@ -589,6 +624,114 @@ class CourseRequirementService(CourseSerializationMixin):
         self.db.commit()
 
 
+class CourseMediaService(CourseSerializationMixin):
+    def __init__(self, db: Session) -> None:
+        self.db = db
+        self.media_repo = MediaRepository(db)
+        self.course_media_repo = CourseMediaRepository(db)
+
+    def _get_course_media_by_id(self, course_media_id: str) -> CourseMedia:
+        item = self.course_media_repo.get_active_by_id(course_media_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Course media not found")
+        return item
+
+    def _get_media_by_id(self, media_id: str) -> Media:
+        item = self.media_repo.get_active_by_id(media_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Media not found")
+        return item
+
+    def _unset_primary(self, course_id: str, media_type: str | None) -> None:
+        stmt = update(CourseMedia).where(CourseMedia.course_id == course_id, CourseMedia.deleted_at.is_(None))
+        if media_type is None:
+            stmt = stmt.where(CourseMedia.media_type.is_(None))
+        else:
+            stmt = stmt.where(CourseMedia.media_type == media_type)
+        self.db.execute(stmt.values(is_primary=False))
+
+    def attach_media(self, course_id: str, payload: CourseMediaCreate) -> dict[str, Any]:
+        CourseService(self.db).get_course_by_id(course_id)
+        media = self._get_media_by_id(payload.media_id)
+        if payload.is_primary:
+            self._unset_primary(course_id, payload.media_type)
+        mapping = CourseMedia(
+            course_id=course_id,
+            media_id=media.id,
+            media_type=payload.media_type,
+            order_index=payload.order_index,
+            is_primary=payload.is_primary,
+        )
+        self.db.add(mapping)
+        self.db.commit()
+        self.db.refresh(mapping)
+        return CourseService(self.db)._course_media_dict(mapping)
+
+    def list_media(self, course_id: str) -> list[dict[str, Any]]:
+        CourseService(self.db).get_course_by_id(course_id)
+        items = self.course_media_repo.get_active_by_course(course_id)
+        return [CourseService(self.db)._course_media_dict(item) for item in items]
+
+    def update_media(self, course_media_id: str, payload: CourseMediaUpdate) -> dict[str, Any]:
+        item = self._get_course_media_by_id(course_media_id)
+        if payload.media_type is not None:
+            item.media_type = payload.media_type
+        if payload.order_index is not None:
+            item.order_index = payload.order_index
+        if payload.is_primary is not None:
+            if payload.is_primary:
+                self._unset_primary(str(item.course_id), item.media_type)
+            item.is_primary = payload.is_primary
+        self.db.commit()
+        self.db.refresh(item)
+        return CourseService(self.db)._course_media_dict(item)
+
+    def delete_media(self, course_media_id: str) -> None:
+        item = self._get_course_media_by_id(course_media_id)
+        item.deleted_at = _now()
+        self.db.commit()
+
+    def upload_and_attach_media(
+        self,
+        course_id: str,
+        file,
+        file_size: int,
+        media_type: str | None = None,
+        is_primary: bool = False,
+        order_index: int = 0,
+    ) -> dict[str, Any]:
+        CourseService(self.db).get_course_by_id(course_id)
+        uploaded = StorageService().upload_file(
+            bucket_name=settings.MINIO_BUCKET_AVATARS,
+            file=file,
+            file_size=file_size,
+            folder=f"courses/{course_id}",
+        )
+        media = Media(
+            bucket=uploaded["bucket"],
+            object_name=uploaded["object_name"],
+            original_filename=file.filename,
+            content_type=file.content_type,
+            size=file_size,
+            uploaded_by=None,
+        )
+        self.db.add(media)
+        self.db.flush()
+        if is_primary:
+            self._unset_primary(course_id, media_type)
+        mapping = CourseMedia(
+            course_id=course_id,
+            media_id=media.id,
+            media_type=media_type,
+            order_index=order_index,
+            is_primary=is_primary,
+        )
+        self.db.add(mapping)
+        self.db.commit()
+        self.db.refresh(mapping)
+        return CourseService(self.db)._course_media_dict(mapping)
+
+
 class CourseOutcomeService(CourseSerializationMixin):
     def __init__(self, db: Session) -> None:
         self.db = db
@@ -631,10 +774,19 @@ class CourseModuleService(CourseSerializationMixin):
     def __init__(self, db: Session) -> None:
         self.db = db
 
+    def _validate_media(self, media_id: str | None) -> None:
+        if not media_id:
+            return
+        media = self.db.execute(select(Media).where(Media.id == media_id, Media.deleted_at.is_(None))).scalar_one_or_none()
+        if not media:
+            raise HTTPException(status_code=404, detail="Media not found")
+
     def create_module(self, course_id: str, payload: CourseModuleCreate) -> CourseModule:
         CourseService(self.db).get_course_by_id(course_id)
+        self._validate_media(payload.media_id)
         module = CourseModule(
             course_id=course_id,
+            media_id=payload.media_id,
             title=payload.title,
             description=payload.description,
             order_index=payload.order_index,
@@ -662,6 +814,9 @@ class CourseModuleService(CourseSerializationMixin):
 
     def update_module(self, module_id: str, payload: CourseModuleUpdate) -> CourseModule:
         module = self.get_module_by_id(module_id)
+        if payload.media_id is not None:
+            self._validate_media(payload.media_id)
+            module.media_id = payload.media_id
         for field in ["title", "description", "order_index"]:
             value = getattr(payload, field)
             if value is not None:
@@ -692,9 +847,11 @@ class LessonService:
     def create_lesson(self, course_id: str, payload: LessonCreate, created_by: str | None = None) -> Lesson:
         CourseService(self.db).get_course_by_id(course_id)
         self._validate_module_for_course(course_id, payload.module_id)
+        CourseModuleService(self.db)._validate_media(payload.media_id)
         lesson = Lesson(
             course_id=course_id,
             module_id=payload.module_id,
+            media_id=payload.media_id,
             title=payload.title,
             description=payload.description,
             content=payload.content,
@@ -743,11 +900,49 @@ class LessonService:
             raise HTTPException(status_code=404, detail="Lesson not found")
         return lesson
 
+    def set_thumbnail_media(self, lesson_id: str, media_id: str) -> Lesson:
+        lesson = self.get_lesson_by_id(lesson_id)
+        media = self.db.execute(select(Media).where(Media.id == media_id, Media.deleted_at.is_(None))).scalar_one_or_none()
+        if not media:
+            raise HTTPException(status_code=404, detail="Media not found")
+        lesson.media_id = media.id
+        self.db.commit()
+        self.db.refresh(lesson)
+        return lesson
+
+    def upload_thumbnail(self, lesson_id: str, file, file_size: int) -> Lesson:
+        lesson = self.get_lesson_by_id(lesson_id)
+        uploaded = StorageService().upload_file(
+            bucket_name=settings.MINIO_BUCKET_AVATARS,
+            file=file,
+            file_size=file_size,
+            folder=f"lessons/{lesson_id}/thumbnail",
+        )
+        media = Media(
+            bucket=uploaded["bucket"],
+            object_name=uploaded["object_name"],
+            original_filename=file.filename,
+            content_type=file.content_type,
+            size=file_size,
+            uploaded_by=None,
+        )
+        self.db.add(media)
+        self.db.flush()
+        lesson.media_id = media.id
+        self.db.commit()
+        self.db.refresh(lesson)
+        return lesson
+
     def lesson_list_dict(self, lesson: Lesson) -> dict[str, Any]:
+        media = None
+        if lesson.media_id:
+            media = self.db.execute(select(Media).where(Media.id == lesson.media_id, Media.deleted_at.is_(None))).scalar_one_or_none()
         return {
             "id": str(lesson.id),
             "course_id": str(lesson.course_id),
             "module_id": str(lesson.module_id) if lesson.module_id else None,
+            "media_id": str(lesson.media_id) if lesson.media_id else None,
+            "thumbnail": CourseService(self.db)._media_dict(media) if media else None,
             "title": lesson.title,
             "description": lesson.description,
             "order_index": lesson.order_index,
@@ -777,6 +972,9 @@ class LessonService:
         if payload.module_id is not None:
             self._validate_module_for_course(str(lesson.course_id), payload.module_id)
             lesson.module_id = payload.module_id
+        if payload.media_id is not None:
+            CourseModuleService(self.db)._validate_media(payload.media_id)
+            lesson.media_id = payload.media_id
         for field in ["title", "description", "content", "order_index", "estimated_duration_minutes"]:
             value = getattr(payload, field)
             if value is not None:
@@ -797,29 +995,22 @@ class LessonMaterialService:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def _validate_material_payload(
-        self,
-        material_type: MaterialType,
-        external_url: str | None,
-        file_bucket: str | None,
-        file_object_name: str | None,
-    ) -> None:
-        if material_type == MaterialType.link and not external_url:
-            raise HTTPException(status_code=400, detail="external_url is required for link materials")
-        if material_type != MaterialType.link and not (file_bucket and file_object_name):
-            raise HTTPException(status_code=400, detail="file_bucket and file_object_name are required for file materials")
+    def _validate_material_payload(self, media_id: str | None, external_url: str | None) -> None:
+        if not media_id and not external_url:
+            raise HTTPException(status_code=400, detail="Either media_id or external_url is required")
+        if media_id:
+            media = self.db.execute(select(Media).where(Media.id == media_id, Media.deleted_at.is_(None))).scalar_one_or_none()
+            if not media:
+                raise HTTPException(status_code=404, detail="Media not found")
 
     def create_material(self, lesson_id: str, payload: LessonMaterialCreate, created_by: str | None = None) -> LessonMaterial:
         LessonService(self.db).get_lesson_by_id(lesson_id)
-        material_type = _enum(MaterialType, payload.material_type, "material_type")
-        self._validate_material_payload(material_type, payload.external_url, payload.file_bucket, payload.file_object_name)
+        self._validate_material_payload(payload.media_id, payload.external_url)
         material = LessonMaterial(
             lesson_id=lesson_id,
+            media_id=payload.media_id,
             title=payload.title,
             description=payload.description,
-            material_type=material_type,
-            file_bucket=payload.file_bucket,
-            file_object_name=payload.file_object_name,
             external_url=payload.external_url,
             order_index=payload.order_index,
             is_downloadable=payload.is_downloadable,
@@ -848,40 +1039,86 @@ class LessonMaterialService:
             raise HTTPException(status_code=404, detail="Lesson material not found")
         return material
 
-    def attach_presigned_url(self, material: LessonMaterial) -> str | None:
-        if not material.file_bucket or not material.file_object_name:
-            return None
-        try:
-            return StorageService().get_presigned_url(material.file_bucket, material.file_object_name)
-        except HTTPException:
-            return None
+    def upload_material_file(
+        self,
+        lesson_id: str,
+        title: str,
+        file,
+        file_size: int,
+        description: str | None = None,
+        external_url: str | None = None,
+        order_index: int = 0,
+        is_downloadable: bool = True,
+        created_by: str | None = None,
+    ) -> LessonMaterial:
+        LessonService(self.db).get_lesson_by_id(lesson_id)
+        uploaded = StorageService().upload_file(
+            bucket_name=settings.MINIO_BUCKET_AVATARS,
+            file=file,
+            file_size=file_size,
+            folder=f"lessons/{lesson_id}/materials",
+        )
+        media = Media(
+            bucket=uploaded["bucket"],
+            object_name=uploaded["object_name"],
+            original_filename=file.filename,
+            content_type=file.content_type,
+            size=file_size,
+            uploaded_by=created_by,
+        )
+        self.db.add(media)
+        self.db.flush()
+        material = LessonMaterial(
+            lesson_id=lesson_id,
+            media_id=media.id,
+            title=title,
+            description=description,
+            external_url=external_url,
+            order_index=order_index,
+            is_downloadable=is_downloadable,
+            created_by=created_by,
+        )
+        self.db.add(material)
+        self.db.commit()
+        self.db.refresh(material)
+        return material
+
+    def set_material_media(self, material_id: str, media_id: str) -> LessonMaterial:
+        material = self.get_material_by_id(material_id)
+        media = self.db.execute(select(Media).where(Media.id == media_id, Media.deleted_at.is_(None))).scalar_one_or_none()
+        if not media:
+            raise HTTPException(status_code=404, detail="Media not found")
+        material.media_id = media.id
+        self._validate_material_payload(str(material.media_id), material.external_url)
+        self.db.commit()
+        self.db.refresh(material)
+        return material
 
     def material_dict(self, material: LessonMaterial) -> dict[str, Any]:
+        media = None
+        if material.media_id:
+            media = self.db.execute(select(Media).where(Media.id == material.media_id, Media.deleted_at.is_(None))).scalar_one_or_none()
         return {
             "id": str(material.id),
             "lesson_id": str(material.lesson_id),
             "title": material.title,
             "description": material.description,
-            "material_type": material.material_type.value,
-            "file_bucket": material.file_bucket,
-            "file_object_name": material.file_object_name,
+            "media_id": str(material.media_id) if material.media_id else None,
+            "media": CourseService(self.db)._media_dict(media) if media else None,
             "external_url": material.external_url,
-            "presigned_url": self.attach_presigned_url(material),
             "order_index": material.order_index,
             "is_downloadable": material.is_downloadable,
         }
 
     def update_material(self, material_id: str, payload: LessonMaterialUpdate) -> LessonMaterial:
         material = self.get_material_by_id(material_id)
-        material_type = material.material_type
-        if payload.material_type is not None:
-            material_type = _enum(MaterialType, payload.material_type, "material_type")
-            material.material_type = material_type
-        for field in ["title", "description", "file_bucket", "file_object_name", "external_url", "order_index", "is_downloadable"]:
+        for field in ["title", "description", "external_url", "order_index", "is_downloadable"]:
             value = getattr(payload, field)
             if value is not None:
                 setattr(material, field, value)
-        self._validate_material_payload(material_type, material.external_url, material.file_bucket, material.file_object_name)
+        if payload.media_id is not None:
+            material.media_id = payload.media_id
+        self._validate_material_payload(str(material.media_id) if material.media_id else None, material.external_url)
         self.db.commit()
         self.db.refresh(material)
         return material

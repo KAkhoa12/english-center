@@ -11,13 +11,12 @@ from app.models.class_session import ClassSession, SessionStatus
 from app.models.class_student import ClassEnrollmentStatus, ClassStudent
 from app.models.student import Student
 from app.models.teacher import Teacher
-from app.models.user import User
+from app.models.rbac.user import User
 from app.schemas.attendance import AttendanceBulkItem, AttendanceUpdateRequest
 from app.schemas.common import PaginationParams
 from app.services.class_service import AcademicAccessMixin, ClassService, _enum
 from app.services.class_session_service import ClassSessionService
 from app.services.course_service import CourseService
-from app.utils.serializers import user_to_dict
 
 
 def _now() -> datetime:
@@ -81,11 +80,25 @@ class AttendanceService(AcademicAccessMixin):
             "session_id": str(attendance.session_id),
             "class_id": str(attendance.class_id),
             "student_id": str(attendance.student_id),
-            "student": user_to_dict(user, include_meta=False),
+            "student": {
+                "id": str(user.id),
+                "full_name": user.full_name,
+                "email": user.email,
+                "avatar_url": getattr(student, "avatar_url", None),
+                "status": user.status.value if getattr(student, "status", None) else None,
+                "is_verified": getattr(student, "is_verified", None),
+            },
             "status": attendance.status.value,
             "check_in_time": attendance.check_in_time,
             "note": attendance.note,
-            "recorded_by": user_to_dict(recorder, include_meta=False) if recorder else None,
+            "recorded_by": {
+                "id": str(recorder.id),
+                "full_name": recorder.full_name,
+                "email": recorder.email,
+                "avatar_url": getattr(recorder, "avatar_url", None),
+                "status": recorder.status.value if getattr(recorder, "status", None) else None,
+                "is_verified": getattr(recorder, "is_verified", None),
+            } if recorder else None,
             "recorded_at": attendance.recorded_at,
         }
 

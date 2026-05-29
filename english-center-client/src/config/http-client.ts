@@ -19,14 +19,13 @@ httpClient.interceptors.request.use((config) => {
   return config;
 });
 
-httpClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    if (error.response?.status === 401) {
-      await useAuthStore.getState().logout();
-      window.location.href = "/login";
-    }
-
-    return Promise.reject(error);
-  }
-);
+// httpClient.interceptors.response.use(
+//   (response) => response,
+//   async (error) => {
+//     if (error.response?.status === 401) {
+//       await useAuthStore.getState().logout();
+//       window.location.href = "/login";
+//     }
+//     return Promise.reject(error);
+//   }
+// );

@@ -1,5 +1,3 @@
-import type { ApiResponse } from "../common/common.type";
-
 export type BucketType = "avatar" | "material" | "submission" | "video" | "export";
 
 export type UploadedFilePayload = {
@@ -25,9 +23,3 @@ export type BucketObjectListPayload = {
   prefix: string | null;
   items: Array<Record<string, unknown>>;
 };
-
-export type UploadFileResponse = ApiResponse<UploadedFilePayload>;
-export type PresignedUrlResponse = ApiResponse<PresignedUrlPayload>;
-export type ListBucketsResponse = ApiResponse<BucketPayload[]>;
-export type ListBucketObjectsResponse = ApiResponse<BucketObjectListPayload>;
-export type DeleteFileResponse = ApiResponse<{ bucket: string; object_name: string } | null>;

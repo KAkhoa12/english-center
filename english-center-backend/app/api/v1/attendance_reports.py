@@ -7,7 +7,7 @@ from app.core.response import api_response, build_pagination
 from app.db.session import get_db
 from app.dependencies.auth import require_jwt
 from app.dependencies.permissions import require_permission
-from app.models.user import User
+from app.models.rbac.user import User
 from app.schemas.common import PaginationParams
 from app.services.attendance_service import AttendanceReportService
 
@@ -39,4 +39,3 @@ def get_student_attendance_summary(
     current_user: User = Depends(require_jwt),
 ):
     return api_response(True, "Student attendance summary retrieved successfully", AttendanceReportService(db).get_student_attendance_summary(student_id, current_user), None)
-

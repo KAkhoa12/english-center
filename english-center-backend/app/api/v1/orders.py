@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.response import api_response, build_pagination
 from app.db.session import get_db
 from app.dependencies.permissions import require_permission
-from app.models.user import User
+from app.models.rbac.user import User
 from app.schemas.commerce import CheckoutRequest
 from app.schemas.common import PaginationParams
 from app.services.commerce_service import OrderSerializer, OrderService
@@ -71,4 +71,3 @@ def get_order_payment_status(order_id: str, db: Annotated[Session, Depends(get_d
 def cancel_order(order_id: str, db: Annotated[Session, Depends(get_db)], current_user: User = Depends(require_permission("order.update"))):
     order = OrderService(db).cancel_order(order_id, current_user)
     return api_response(True, "Order cancelled successfully", OrderSerializer(db).order_detail(order), None)
-

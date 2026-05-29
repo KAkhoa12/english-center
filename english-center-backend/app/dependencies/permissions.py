@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.rbac import has_permission
 from app.db.session import get_db
 from app.dependencies.auth import get_current_active_user
-from app.models.user import User
+from app.models.rbac.user import User
 from app.services.rbac_service import RBACService
 
 

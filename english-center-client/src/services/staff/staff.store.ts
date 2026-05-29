@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { Pagination } from "@/shared/types/response";
+import type { ApiResponse, Pagination } from "@/shared/types/response";
 
 import { staffApi } from "./staff.api";
 import type {
@@ -9,6 +9,11 @@ import type {
   StaffCreateRequest,
   StaffUpdateRequest,
 } from "./staff.type";
+
+const unwrap = <T>(response: ApiResponse<T>, fallbackMessage: string): T => {
+  if (!response.success) throw new Error(response.message || fallbackMessage);
+  return response.payload;
+};
 
 type StaffState = {
   staff: Staff[];
@@ -35,60 +40,39 @@ export const useStaffStore = create<StaffState>()((set) => ({
   error: null,
 
   listStaff: async (query) => {
-    try {
-      set({ isLoading: true, error: null });
-      const response = await staffApi.listStaff(query);
-      set({ staff: response.payload, pagination: response.pagination ?? null, isLoading: false, error: null });
-      return response.payload;
-    } catch {
-      set({ isLoading: false, error: "Lấy danh sách nhân viên thất bại" });
-      throw new Error("Lấy danh sách nhân viên thất bại");
-    }
+    const response = await staffApi.listStaff(query);
+    const staff = unwrap(response, "Lay danh sach nhan vien that bai");
+    set({ staff, pagination: response.pagination ?? null });
+    return staff;
   },
 
   getStaff: async (staffId) => {
-    try {
-      set({ isLoading: true, error: null });
-      const item = await staffApi.getStaff(staffId);
-      set({ selectedStaff: item, isLoading: false, error: null });
-      return item;
-    } catch {
-      set({ isLoading: false, error: "Lấy thông tin nhân viên thất bại" });
-      throw new Error("Lấy thông tin nhân viên thất bại");
-    }
+    const response = await staffApi.getStaff(staffId);
+    const item = unwrap(response, "Lay thong tin nhan vien that bai");
+    set({ selectedStaff: item });
+    return item;
   },
 
   createStaff: async (data) => {
-    try {
-      set({ isLoading: true, error: null });
-      const item = await staffApi.createStaff(data);
-      set((state) => ({ staff: [item, ...state.staff], selectedStaff: item, isLoading: false, error: null }));
-      return item;
-    } catch {
-      set({ isLoading: false, error: "Tạo nhân viên thất bại" });
-      throw new Error("Tạo nhân viên thất bại");
-    }
+    const response = await staffApi.createStaff(data);
+    const item = unwrap(response, "Tao nhan vien that bai");
+    set((state) => ({ staff: [item, ...state.staff], selectedStaff: item }));
+    return item;
   },
 
   updateStaff: async (staffId, data) => {
-    try {
-      set({ isLoading: true, error: null });
-      const item = await staffApi.updateStaff(staffId, data);
-      set((state) => ({
-        staff: state.staff.map((x) => (x.id === item.id ? item : x)),
-        selectedStaff: state.selectedStaff?.id === item.id ? item : state.selectedStaff,
-        isLoading: false,
-        error: null,
-      }));
-      return item;
-    } catch {
-      set({ isLoading: false, error: "Cập nhật nhân viên thất bại" });
-      throw new Error("Cập nhật nhân viên thất bại");
-    }
+    const response = await staffApi.updateStaff(staffId, data);
+    const item = unwrap(response, "Cap nhat nhan vien that bai");
+    set((state) => ({
+      staff: state.staff.map((x) => (x.id === item.id ? item : x)),
+      selectedStaff: state.selectedStaff?.id === item.id ? item : state.selectedStaff,
+    }));
+    return item;
   },
 
   updateStaffAvatar: async (staffId, file) => {
-    const item = await staffApi.updateStaffAvatar(staffId, file);
+    const response = await staffApi.updateStaffAvatar(staffId, file);
+    const item = unwrap(response, "Cap nhat avatar nhan vien that bai");
     set((state) => ({
       staff: state.staff.map((x) => (x.id === item.id ? item : x)),
       selectedStaff: state.selectedStaff?.id === item.id ? item : state.selectedStaff,
@@ -97,19 +81,12 @@ export const useStaffStore = create<StaffState>()((set) => ({
   },
 
   deleteStaff: async (staffId) => {
-    try {
-      set({ isLoading: true, error: null });
-      await staffApi.deleteStaff(staffId);
-      set((state) => ({
-        staff: state.staff.filter((x) => x.id !== staffId),
-        selectedStaff: state.selectedStaff?.id === staffId ? null : state.selectedStaff,
-        isLoading: false,
-        error: null,
-      }));
-    } catch {
-      set({ isLoading: false, error: "Xóa nhân viên thất bại" });
-      throw new Error("Xóa nhân viên thất bại");
-    }
+    const response = await staffApi.deleteStaff(staffId);
+    unwrap(response, "Xoa nhan vien that bai");
+    set((state) => ({
+      staff: state.staff.filter((x) => x.id !== staffId),
+      selectedStaff: state.selectedStaff?.id === staffId ? null : state.selectedStaff,
+    }));
   },
 
   clearSelectedStaff: () => set({ selectedStaff: null }),

@@ -20,7 +20,7 @@ from app.core.security import hash_password
 from app.models.course import (
     Course,
     CourseCategory,
-    CourseCategoryMapping,
+    CourseMode,
     CourseModule,
     CourseRequirement,
     CourseOutcome,
@@ -31,12 +31,10 @@ from app.models.course import (
     Lesson,
     LessonStatus,
 )
-from app.models.permission import Permission, RolePermission
+from app.models import Permission, RolePermission, Role, UserRole, User, UserStatus
 from app.models.room import Room, RoomStatus
-from app.models.role import Role, UserRole
 from app.models.student import Student
 from app.models.teacher import Teacher
-from app.models.user import User, UserStatus
 from app.services.course_service import slugify
 
 ROLES = ["admin", "staff", "teacher", "student"]
@@ -109,9 +107,9 @@ ADMIN_FULL_NAME = "System Admin"
 SAMPLE_CATEGORIES = ["IELTS", "TOEIC", "Giao tiếp", "Tiếng Anh trẻ em", "Business English"]
 SAMPLE_TAGS = ["mất gốc", "luyện thi", "người đi làm", "online", "offline", "giao tiếp", "ngữ pháp", "từ vựng"]
 SAMPLE_COURSES = [
-    ("IELTS Foundation", "IELTS_FOUNDATION", CourseTargetLevel.beginner, 12, 36, 4500000),
-    ("TOEIC 650+", "TOEIC_650", CourseTargetLevel.intermediate, 10, 30, 3900000),
-    ("English Communication Basic", "COMM_BASIC", CourseTargetLevel.beginner, 8, 24, 3200000),
+    ("IELTS Foundation", "IELTS_FOUNDATION", CourseTargetLevel.a1, 12, 36, 4500000),
+    ("TOEIC 650+", "TOEIC_650", CourseTargetLevel.b1, 10, 30, 3900000),
+    ("English Communication Basic", "COMM_BASIC", CourseTargetLevel.a0, 8, 24, 3200000),
 ]
 SAMPLE_ROOMS = [
     ("Room A101", 20, "Floor A1"),
@@ -215,6 +213,8 @@ def seed_course_samples(db: Session) -> None:
                 name=course_name,
                 code=code,
                 slug=slugify(course_name),
+                category_id=default_category.id,
+                mode=CourseMode.center,
                 target_level=level,
                 duration_weeks=duration,
                 total_sessions=sessions,
@@ -223,16 +223,8 @@ def seed_course_samples(db: Session) -> None:
             )
             db.add(course)
             db.flush()
-
-        category_exists = db.execute(
-            select(CourseCategoryMapping).where(
-                CourseCategoryMapping.course_id == course.id,
-                CourseCategoryMapping.category_id == default_category.id,
-                CourseCategoryMapping.deleted_at.is_(None),
-            )
-        ).scalar_one_or_none()
-        if not category_exists:
-            db.add(CourseCategoryMapping(course_id=course.id, category_id=default_category.id))
+        elif not course.category_id:
+            course.category_id = default_category.id
 
         for tag in default_tags:
             tag_exists = db.execute(

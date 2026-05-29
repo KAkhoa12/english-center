@@ -30,8 +30,6 @@ def upgrade() -> None:
     module_status = sa.Enum("active", "inactive", name="course_module_status")
     lesson_status = sa.Enum("draft", "published", "archived", name="lesson_status")
     material_type = sa.Enum("pdf", "document", "slide", "image", "audio", "video", "link", "other", name="material_type")
-    for enum in [category_status, course_status, target_level, module_status, lesson_status, material_type]:
-        enum.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
         "course_categories",

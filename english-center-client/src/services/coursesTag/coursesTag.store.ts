@@ -1,13 +1,18 @@
 import { create } from "zustand";
 
+import type { ApiResponse, Pagination } from "@/shared/types/response";
 import { coursesTagApi } from "./coursesTag.api";
-import type { Pagination } from "@/shared/types/response";
 import type {
   CourseTag,
   CreateCourseTagRequest,
   ListCourseTagsQuery,
   UpdateCourseTagRequest,
 } from "./coursesTag.type";
+
+const unwrap = <T>(response: ApiResponse<T>, fallbackMessage: string): T => {
+  if (!response.success) throw new Error(response.message || fallbackMessage);
+  return response.payload;
+};
 
 type CoursesTagState = {
   tags: CourseTag[];
@@ -33,89 +38,45 @@ export const useCoursesTagStore = create<CoursesTagState>()((set) => ({
   error: null,
 
   listTags: async (query) => {
-    try {
-      set({ isLoading: true, error: null });
-      const response = await coursesTagApi.listTags(query);
-      set({
-        tags: response.payload,
-        pagination: response.pagination ?? null,
-        isLoading: false,
-        error: null,
-      });
-      return response.payload;
-    } catch {
-      set({ isLoading: false, error: "Lấy danh sách tag khóa học thất bại" });
-      throw new Error("Lấy danh sách tag khóa học thất bại");
-    }
+    const response = await coursesTagApi.listTags(query);
+    const tags = unwrap(response, "Lay danh sach tag khoa hoc that bai");
+    set({ tags, pagination: response.pagination ?? null });
+    return tags;
   },
 
   getTag: async (tagId) => {
-    try {
-      set({ isLoading: true, error: null });
-      const tag = await coursesTagApi.getTag(tagId);
-      set({ selectedTag: tag, isLoading: false, error: null });
-      return tag;
-    } catch {
-      set({ isLoading: false, error: "Lấy thông tin tag khóa học thất bại" });
-      throw new Error("Lấy thông tin tag khóa học thất bại");
-    }
+    const response = await coursesTagApi.getTag(tagId);
+    const tag = unwrap(response, "Lay thong tin tag khoa hoc that bai");
+    set({ selectedTag: tag });
+    return tag;
   },
 
   createTag: async (data) => {
-    try {
-      set({ isLoading: true, error: null });
-      const tag = await coursesTagApi.createTag(data);
-      set((state) => ({
-        tags: [tag, ...state.tags],
-        selectedTag: tag,
-        isLoading: false,
-        error: null,
-      }));
-      return tag;
-    } catch {
-      set({ isLoading: false, error: "Tạo tag khóa học thất bại" });
-      throw new Error("Tạo tag khóa học thất bại");
-    }
+    const response = await coursesTagApi.createTag(data);
+    const tag = unwrap(response, "Tao tag khoa hoc that bai");
+    set((state) => ({ tags: [tag, ...state.tags], selectedTag: tag }));
+    return tag;
   },
 
   updateTag: async (tagId, data) => {
-    try {
-      set({ isLoading: true, error: null });
-      const updated = await coursesTagApi.updateTag(tagId, data);
-      set((state) => ({
-        tags: state.tags.map((item) => (item.id === updated.id ? updated : item)),
-        selectedTag: state.selectedTag?.id === updated.id ? updated : state.selectedTag,
-        isLoading: false,
-        error: null,
-      }));
-      return updated;
-    } catch {
-      set({ isLoading: false, error: "Cập nhật tag khóa học thất bại" });
-      throw new Error("Cập nhật tag khóa học thất bại");
-    }
+    const response = await coursesTagApi.updateTag(tagId, data);
+    const updated = unwrap(response, "Cap nhat tag khoa hoc that bai");
+    set((state) => ({
+      tags: state.tags.map((item) => (item.id === updated.id ? updated : item)),
+      selectedTag: state.selectedTag?.id === updated.id ? updated : state.selectedTag,
+    }));
+    return updated;
   },
 
   deleteTag: async (tagId) => {
-    try {
-      set({ isLoading: true, error: null });
-      await coursesTagApi.deleteTag(tagId);
-      set((state) => ({
-        tags: state.tags.filter((item) => item.id !== tagId),
-        selectedTag: state.selectedTag?.id === tagId ? null : state.selectedTag,
-        isLoading: false,
-        error: null,
-      }));
-    } catch {
-      set({ isLoading: false, error: "Xóa tag khóa học thất bại" });
-      throw new Error("Xóa tag khóa học thất bại");
-    }
+    const response = await coursesTagApi.deleteTag(tagId);
+    unwrap(response, "Xoa tag khoa hoc that bai");
+    set((state) => ({
+      tags: state.tags.filter((item) => item.id !== tagId),
+      selectedTag: state.selectedTag?.id === tagId ? null : state.selectedTag,
+    }));
   },
 
-  clearSelectedTag: () => {
-    set({ selectedTag: null });
-  },
-
-  clearError: () => {
-    set({ error: null });
-  },
+  clearSelectedTag: () => set({ selectedTag: null }),
+  clearError: () => set({ error: null }),
 }));

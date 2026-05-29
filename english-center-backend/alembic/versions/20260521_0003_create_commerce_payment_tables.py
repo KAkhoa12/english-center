@@ -32,8 +32,6 @@ def upgrade() -> None:
     payment_method = sa.Enum("BANK_TRANSFER", "CARD", "NAPAS_BANK_TRANSFER", "MANUAL_CASH", "MANUAL_BANK_TRANSFER", name="payment_method")
     payment_status = sa.Enum("pending", "processing", "approved", "failed", "cancelled", "refunded", name="payment_status")
     enrollment_status = sa.Enum("active", "completed", "cancelled", name="enrollment_status")
-    for enum in [cart_status, order_status, order_payment_method, invoice_status, payment_provider, payment_method, payment_status, enrollment_status]:
-        enum.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
         "carts",

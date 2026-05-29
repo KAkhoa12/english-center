@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import decode_access_token
 from app.db.session import get_db
-from app.models.user import User, UserStatus
+from app.models.rbac.user import User, UserStatus
 
 bearer_scheme = HTTPBearer(auto_error=False)
 

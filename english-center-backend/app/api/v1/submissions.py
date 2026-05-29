@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.response import api_response, build_pagination
 from app.db.session import get_db
 from app.dependencies.permissions import require_permission
-from app.models.user import User
+from app.models.rbac.user import User
 from app.schemas.assignment import AssignmentSubmissionCreate, AssignmentSubmissionUpdate
 from app.schemas.common import PaginationParams
 from app.services.assignment_service import AssignmentSubmissionService

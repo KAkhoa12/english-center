@@ -25,7 +25,7 @@ from app.models.commerce import (
 from app.models.course import (
     Course,
     CourseCategory,
-    CourseCategoryMapping,
+    CourseMedia,
     CourseModule,
     CourseOutcome,
     CourseRequirement,
@@ -33,14 +33,13 @@ from app.models.course import (
     CourseTagMapping,
     Lesson,
     LessonMaterial,
+    Media,
 )
-from app.models.permission import Permission, RolePermission
+from app.models import Permission, RolePermission, Role, UserRole, User
 from app.models.room import Room
-from app.models.role import Role, UserRole
 from app.models.staff import StaffProfile
 from app.models.student import Student
 from app.models.teacher import Teacher
-from app.models.user import User
 
 __all__ = [
     "Base",
@@ -55,7 +54,8 @@ __all__ = [
     "CourseCategory",
     "CourseTag",
     "Course",
-    "CourseCategoryMapping",
+    "Media",
+    "CourseMedia",
     "CourseTagMapping",
     "CourseRequirement",
     "CourseOutcome",

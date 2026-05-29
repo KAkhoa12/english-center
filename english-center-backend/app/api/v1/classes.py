@@ -8,7 +8,7 @@ from app.core.response import api_response, build_pagination
 from app.db.session import get_db
 from app.dependencies.auth import require_jwt
 from app.dependencies.permissions import require_permission
-from app.models.user import User
+from app.models.rbac.user import User
 from app.schemas.class_schema import ClassCreate, ClassUpdate
 from app.schemas.class_student import AddStudentToClassRequest, UpdateClassStudentRequest
 from app.schemas.common import PaginationParams
@@ -143,4 +143,3 @@ def get_student_classes(
     class_service = ClassService(db)
     items, total = ClassStudentService(db).get_classes_by_student(student_id, query, current_user)
     return api_response(True, "Student classes retrieved successfully", [class_service.class_list_dict(item) for item in items], build_pagination(page, page_size, total))
-

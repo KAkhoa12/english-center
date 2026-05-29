@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { Pagination } from "@/shared/types/response";
+import type { ApiResponse, Pagination } from "@/shared/types/response";
 
 import { rolesApi } from "./roles.api";
 import type {
@@ -10,6 +10,11 @@ import type {
   RoleCreateRequest,
   RoleUpdateRequest,
 } from "./roles.type";
+
+const unwrap = <T>(response: ApiResponse<T>, fallbackMessage: string): T => {
+  if (!response.success) throw new Error(response.message || fallbackMessage);
+  return response.payload;
+};
 
 type RolesState = {
   roles: Role[];
@@ -37,80 +42,53 @@ export const useRolesStore = create<RolesState>()((set) => ({
   error: null,
 
   listRoles: async (query) => {
-    try {
-      set({ isLoading: true, error: null });
-      const response = await rolesApi.listRoles(query);
-      set({ roles: response.payload, pagination: response.pagination ?? null, isLoading: false, error: null });
-      return response.payload;
-    } catch {
-      set({ isLoading: false, error: "Lấy danh sách vai trò thất bại" });
-      throw new Error("Lấy danh sách vai trò thất bại");
-    }
+    const response = await rolesApi.listRoles(query);
+    const roles = unwrap(response, "Lay danh sach vai tro that bai");
+    set({ roles, pagination: response.pagination ?? null });
+    return roles;
   },
 
   getRole: async (roleId) => {
-    try {
-      set({ isLoading: true, error: null });
-      const role = await rolesApi.getRole(roleId);
-      set({ selectedRole: role, isLoading: false, error: null });
-      return role;
-    } catch {
-      set({ isLoading: false, error: "Lấy thông tin vai trò thất bại" });
-      throw new Error("Lấy thông tin vai trò thất bại");
-    }
+    const response = await rolesApi.getRole(roleId);
+    const role = unwrap(response, "Lay thong tin vai tro that bai");
+    set({ selectedRole: role });
+    return role;
   },
 
   createRole: async (data) => {
-    try {
-      set({ isLoading: true, error: null });
-      const created = await rolesApi.createRole(data);
-      set((state) => ({ roles: [created, ...state.roles], selectedRole: created, isLoading: false, error: null }));
-      return created;
-    } catch {
-      set({ isLoading: false, error: "Tạo vai trò thất bại" });
-      throw new Error("Tạo vai trò thất bại");
-    }
+    const response = await rolesApi.createRole(data);
+    const created = unwrap(response, "Tao vai tro that bai");
+    set((state) => ({ roles: [created, ...state.roles], selectedRole: created }));
+    return created;
   },
 
   updateRole: async (roleId, data) => {
-    try {
-      set({ isLoading: true, error: null });
-      const updated = await rolesApi.updateRole(roleId, data);
-      set((state) => ({
-        roles: state.roles.map((item) => (item.id === updated.id ? updated : item)),
-        selectedRole: state.selectedRole?.id === updated.id ? updated : state.selectedRole,
-        isLoading: false,
-        error: null,
-      }));
-      return updated;
-    } catch {
-      set({ isLoading: false, error: "Cập nhật vai trò thất bại" });
-      throw new Error("Cập nhật vai trò thất bại");
-    }
+    const response = await rolesApi.updateRole(roleId, data);
+    const updated = unwrap(response, "Cap nhat vai tro that bai");
+    set((state) => ({
+      roles: state.roles.map((item) => (item.id === updated.id ? updated : item)),
+      selectedRole: state.selectedRole?.id === updated.id ? updated : state.selectedRole,
+    }));
+    return updated;
   },
 
   deleteRole: async (roleId) => {
-    try {
-      set({ isLoading: true, error: null });
-      await rolesApi.deleteRole(roleId);
-      set((state) => ({
-        roles: state.roles.filter((item) => item.id !== roleId),
-        selectedRole: state.selectedRole?.id === roleId ? null : state.selectedRole,
-        isLoading: false,
-        error: null,
-      }));
-    } catch {
-      set({ isLoading: false, error: "Xóa vai trò thất bại" });
-      throw new Error("Xóa vai trò thất bại");
-    }
+    const response = await rolesApi.deleteRole(roleId);
+    unwrap(response, "Xoa vai tro that bai");
+    set((state) => ({
+      roles: state.roles.filter((item) => item.id !== roleId),
+      selectedRole: state.selectedRole?.id === roleId ? null : state.selectedRole,
+    }));
   },
 
   assignPermissions: async (roleId, data) => {
-    await rolesApi.assignPermissions(roleId, data);
+    const response = await rolesApi.assignPermissions(roleId, data);
+    unwrap(response, "Gan quyen cho vai tro that bai");
   },
 
   removePermission: async (roleId, permissionId) => {
-    await rolesApi.removePermission(roleId, permissionId);
+    const response = await rolesApi.removePermission(roleId, permissionId);
+    unwrap(response, "Xoa quyen khoi vai tro that bai");
   },
 
   clearSelectedRole: () => set({ selectedRole: null }),

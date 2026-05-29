@@ -8,7 +8,7 @@ from app.core.response import api_response, build_pagination
 from app.db.session import get_db
 from app.dependencies.auth import require_jwt
 from app.dependencies.permissions import require_permission
-from app.models.user import User
+from app.models.rbac.user import User
 from app.schemas.attendance import AttendanceBulkItem, AttendanceUpdateRequest
 from app.schemas.common import PaginationParams
 from app.services.attendance_service import AttendanceService
@@ -104,4 +104,3 @@ def get_my_attendance(
     service = AttendanceService(db)
     items, total = service.get_my_attendance(query, current_user)
     return api_response(True, "My attendance retrieved successfully", [service.attendance_dict(item) for item in items], build_pagination(page, page_size, total))
-

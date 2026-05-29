@@ -47,6 +47,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -71,7 +73,7 @@ app.add_middleware(
 @app.on_event("startup")
 def create_tables_and_seed_on_startup() -> None:
     # Auto-create missing tables for local/dev runs.
-    Base.metadata.create_all(bind=engine)
+    # Base.metadata.create_all(bind=engine)
 
     # Seed default roles/permissions and ensure admin has privileges.
     db = SessionLocal()

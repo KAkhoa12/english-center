@@ -1,4 +1,4 @@
-import type { ApiResponse, SortOrder, UserRef } from "../common/common.type";
+import type { UserRef } from "@/shared/types/response";
 
 export type AttendanceStatus = string;
 
@@ -66,14 +66,3 @@ export type ClassAttendanceSummary = {
   summary: Record<string, number>;
   attendance_rate: number;
 };
-
-export type MarkAttendanceResponse = ApiResponse<AttendanceItem[]>;
-export type GetSessionAttendanceResponse = ApiResponse<AttendanceItem[]>;
-export type UpdateAttendanceResponse = ApiResponse<AttendanceItem>;
-export type DeleteAttendanceResponse = ApiResponse<null>;
-export type GetClassAttendanceResponse = ApiResponse<AttendanceItem[]>;
-export type GetStudentAttendanceResponse = ApiResponse<AttendanceItem[]>;
-export type GetMyAttendanceResponse = ApiResponse<AttendanceItem[]>;
-export type GetClassAttendanceSummaryResponse = ApiResponse<ClassAttendanceSummary>;
-export type GetClassStudentsAttendanceSummaryResponse = ApiResponse<StudentAttendanceSummary[]>;
-export type GetStudentAttendanceSummaryResponse = ApiResponse<StudentAttendanceSummary>;

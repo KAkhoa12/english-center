@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { Pagination } from "@/shared/types/response";
+import type { ApiResponse, Pagination } from "@/shared/types/response";
 
 import { permissionsApi } from "./permissions.api";
 import type {
@@ -9,6 +9,11 @@ import type {
   PermissionCreateRequest,
   PermissionUpdateRequest,
 } from "./permissions.type";
+
+const unwrap = <T>(response: ApiResponse<T>, fallbackMessage: string): T => {
+  if (!response.success) throw new Error(response.message || fallbackMessage);
+  return response.payload;
+};
 
 type PermissionsState = {
   permissions: Permission[];
@@ -34,82 +39,43 @@ export const usePermissionsStore = create<PermissionsState>()((set) => ({
   error: null,
 
   listPermissions: async (query) => {
-    try {
-      set({ isLoading: true, error: null });
-      const response = await permissionsApi.listPermissions(query);
-      set({
-        permissions: response.payload,
-        pagination: response.pagination ?? null,
-        isLoading: false,
-        error: null,
-      });
-      return response.payload;
-    } catch {
-      set({ isLoading: false, error: "Lấy danh sách quyền thất bại" });
-      throw new Error("Lấy danh sách quyền thất bại");
-    }
+    const response = await permissionsApi.listPermissions(query);
+    const permissions = unwrap(response, "Lay danh sach quyen that bai");
+    set({ permissions, pagination: response.pagination ?? null });
+    return permissions;
   },
 
   getPermission: async (permissionId) => {
-    try {
-      set({ isLoading: true, error: null });
-      const permission = await permissionsApi.getPermission(permissionId);
-      set({ selectedPermission: permission, isLoading: false, error: null });
-      return permission;
-    } catch {
-      set({ isLoading: false, error: "Lấy thông tin quyền thất bại" });
-      throw new Error("Lấy thông tin quyền thất bại");
-    }
+    const response = await permissionsApi.getPermission(permissionId);
+    const permission = unwrap(response, "Lay thong tin quyen that bai");
+    set({ selectedPermission: permission });
+    return permission;
   },
 
   createPermission: async (data) => {
-    try {
-      set({ isLoading: true, error: null });
-      const created = await permissionsApi.createPermission(data);
-      set((state) => ({
-        permissions: [created, ...state.permissions],
-        selectedPermission: created,
-        isLoading: false,
-        error: null,
-      }));
-      return created;
-    } catch {
-      set({ isLoading: false, error: "Tạo quyền thất bại" });
-      throw new Error("Tạo quyền thất bại");
-    }
+    const response = await permissionsApi.createPermission(data);
+    const created = unwrap(response, "Tao quyen that bai");
+    set((state) => ({ permissions: [created, ...state.permissions], selectedPermission: created }));
+    return created;
   },
 
   updatePermission: async (permissionId, data) => {
-    try {
-      set({ isLoading: true, error: null });
-      const updated = await permissionsApi.updatePermission(permissionId, data);
-      set((state) => ({
-        permissions: state.permissions.map((item) => (item.id === updated.id ? updated : item)),
-        selectedPermission: state.selectedPermission?.id === updated.id ? updated : state.selectedPermission,
-        isLoading: false,
-        error: null,
-      }));
-      return updated;
-    } catch {
-      set({ isLoading: false, error: "Cập nhật quyền thất bại" });
-      throw new Error("Cập nhật quyền thất bại");
-    }
+    const response = await permissionsApi.updatePermission(permissionId, data);
+    const updated = unwrap(response, "Cap nhat quyen that bai");
+    set((state) => ({
+      permissions: state.permissions.map((item) => (item.id === updated.id ? updated : item)),
+      selectedPermission: state.selectedPermission?.id === updated.id ? updated : state.selectedPermission,
+    }));
+    return updated;
   },
 
   deletePermission: async (permissionId) => {
-    try {
-      set({ isLoading: true, error: null });
-      await permissionsApi.deletePermission(permissionId);
-      set((state) => ({
-        permissions: state.permissions.filter((item) => item.id !== permissionId),
-        selectedPermission: state.selectedPermission?.id === permissionId ? null : state.selectedPermission,
-        isLoading: false,
-        error: null,
-      }));
-    } catch {
-      set({ isLoading: false, error: "Xóa quyền thất bại" });
-      throw new Error("Xóa quyền thất bại");
-    }
+    const response = await permissionsApi.deletePermission(permissionId);
+    unwrap(response, "Xoa quyen that bai");
+    set((state) => ({
+      permissions: state.permissions.filter((item) => item.id !== permissionId),
+      selectedPermission: state.selectedPermission?.id === permissionId ? null : state.selectedPermission,
+    }));
   },
 
   clearSelectedPermission: () => set({ selectedPermission: null }),

@@ -29,7 +29,7 @@ from app.models.commerce import (
 )
 from app.models.course import Course, CourseStatus
 from app.models.student import Student
-from app.models.user import User
+from app.models import User
 from app.schemas.commerce import CheckoutRequest
 from app.schemas.common import PaginationParams
 from app.services.course_service import CourseService

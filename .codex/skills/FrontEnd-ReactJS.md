@@ -1,0 +1,58 @@
+## Cấu trúc của dự án FrontEnd React: 
+-english-center-client
+-- .env
+-- public
+-- src
+---- assets ( Chứa các hình ảnh các tệp file cần thiết để khai báo )
+---- components (Chứa các components dùng chung)
+----- ui (Chứa các components UI của thư viên Shadcn UI)
+----- Dashboards (Chứa các components dùng trong trong phần /dashboard)
+------- Comon (Chứa các components dùng chung trong dashboard)
+------- <....> (Các components của các modules khác)
+----- <...>(Các components của các modules trong trang chủ, trang đăng nhập/đăng ký, các trang khác)
+---- config (Chứa các cấu hình chung của dự án)
+------ api-client (Chứa các phương thức gọi API từ các endpoint của API của http-client.ts)
+------ http-client.ts (Cấu hình gọi API đến Server BE)
+---- hooks (Chứa các hooks dùng chung)
+---- pages (Chứa các trang của dự án)
+------ Home (Trang chủ)
+-------- index.tsx (Trang chủ của dashboard)
+------ Dashboard (Trang quản trị dashboard)
+-------- Home (Trang chủ của dashboard)
+-------- <...> (Các trang khác của dashboard)
+------ <...> (Các trang khác)
+---- routes (Chứa các route của dự án)
+------ private.routes.tsx (Chứa các route cần đăng nhập mới truy cập được)
+------ public.routes.tsx (Chứa các route không cần đăng nhập mới truy cập được)
+------ router.tsx (tạo các route từ private.routes và public.routes)
+---- services (Chứa các service dùng chung)
+------ auth (service của auth)
+-------- auth.api.ts (API của auth)
+-------- auth.type.ts (Các kiểu dữ liệu respone, request của auth)
+-------- auth.store.ts (store zustand của auth)
+------ <...> (Các service còn lại)
+---- shared ( Chứa các phần được chia sẻ để dùng chung trong scope)
+------ guards (Chứa các guards dùng chung)
+------ layouts (Chứa các layout dùng chung)
+------ routes (Chứa các route khai báo const dùng chung)
+------ types (Chứa các kiểu dữ liệu dùng chung)
+---- styles (Chứa các style dùng chung)
+------ index.css (Chứa các style global css tailwind)
+---- App.tsx (Trang chủ của ứng dụng)
+---- main.tsx
+
+## Công nghệ chính
+- **React 18+** với TypeScript.
+- **Vite** – build tool.
+- **React Router DOM v6** – routing.
+- **Zustand** – state management (cho auth, global UI).
+- **Axios** – HTTP client.
+- **Tailwind CSS** + **Shadcn UI** – styling & components.
+- **React Hook Form** + **Zod** – form validation.
+
+## Quy tắc code
+- Component: function component với interface props, export default.
+- Sử dụng `clsx` hoặc `cn` để gộp className.
+- Tất cả API calls phải qua `api-client.ts` (axios instance).
+- Biến môi trường: `VITE_API_BASE_URL` (đặt trong `.env`).
+- Không hardcode URL, path, message.

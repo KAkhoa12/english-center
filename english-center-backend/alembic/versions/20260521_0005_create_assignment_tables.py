@@ -29,8 +29,6 @@ def upgrade() -> None:
     assignment_attachment_type = sa.Enum("file", "link", name="assignment_attachment_type")
     assignment_submission_status = sa.Enum("draft", "submitted", "late", "graded", "returned", "cancelled", name="assignment_submission_status")
     assignment_grading_method = sa.Enum("teacher", "ai", "mixed", name="assignment_grading_method")
-    for enum in [assignment_type, assignment_status, assignment_attachment_type, assignment_submission_status, assignment_grading_method]:
-        enum.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
         "assignments",

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.response import api_response, build_pagination
 from app.db.session import get_db
 from app.dependencies.permissions import require_permission
-from app.models.user import User
+from app.models.rbac.user import User
 from app.schemas.common import PaginationParams
 from app.services.commerce_service import InvoiceService
 
@@ -49,4 +49,3 @@ def get_order_invoice(order_id: str, db: Annotated[Session, Depends(get_db)], cu
     service = InvoiceService(db)
     invoice = service.get_invoice_by_order(order_id, current_user)
     return api_response(True, "Invoice retrieved successfully", service.invoice_detail(invoice), None)
-

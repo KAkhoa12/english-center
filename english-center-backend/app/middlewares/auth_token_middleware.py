@@ -16,6 +16,8 @@ class AccessTokenValidationMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         authorization = request.headers.get("Authorization", "").strip()
+        if not authorization:
+            return await call_next(request)
         if not authorization.startswith("Bearer "):
             return error_response(message="Invalid or expired token", status_code=status.HTTP_401_UNAUTHORIZED)
 

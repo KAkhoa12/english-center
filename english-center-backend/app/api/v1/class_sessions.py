@@ -8,7 +8,7 @@ from app.core.response import api_response, build_pagination
 from app.db.session import get_db
 from app.dependencies.auth import require_jwt
 from app.dependencies.permissions import require_permission
-from app.models.user import User
+from app.models.rbac.user import User
 from app.schemas.class_session import ClassSessionCreate, ClassSessionUpdate
 from app.schemas.common import PaginationParams
 from app.services.class_session_service import ClassSessionService
@@ -76,4 +76,3 @@ def my_sessions(
     service = ClassSessionService(db)
     items, total = service.get_my_sessions(current_user, query, status, from_date, to_date)
     return api_response(True, "My sessions retrieved successfully", [service.session_detail_dict(item) for item in items], build_pagination(page, page_size, total))
-

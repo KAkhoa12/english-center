@@ -1,15 +1,16 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.response import api_response, build_pagination
 from app.db.session import get_db
 from app.dependencies.permissions import require_permission
-from app.models.user import User
+from app.models.rbac.user import User
 from app.schemas.common import PaginationParams
-from app.schemas.course import LessonCreate, LessonUpdate
+from app.schemas.course import LessonCreate, LessonThumbnailUpdate, LessonUpdate
 from app.services.course_service import LessonService
+from app.utils.file import get_upload_file_size, validate_file_extension, validate_file_size
 
 router = APIRouter(tags=["lessons"])
 
@@ -57,8 +58,22 @@ def update_lesson(lesson_id: str, payload: LessonUpdate, db: Annotated[Session, 
     return api_response(True, "Lesson updated successfully", service.lesson_detail_dict(lesson), None)
 
 
+@router.post("/lessons/{lesson_id}/thumbnail", dependencies=[Depends(require_permission("lesson.update"))])
+def upload_lesson_thumbnail(lesson_id: str, db: Annotated[Session, Depends(get_db)], file: UploadFile = File(...)):
+    size = get_upload_file_size(file)
+    validate_file_extension(file.filename or "file", "avatar")
+    validate_file_size(size, "avatar")
+    lesson = LessonService(db).upload_thumbnail(lesson_id, file=file, file_size=size)
+    return api_response(True, "Lesson thumbnail uploaded successfully", LessonService(db).lesson_detail_dict(lesson), None)
+
+
+@router.patch("/lessons/{lesson_id}/thumbnail", dependencies=[Depends(require_permission("lesson.update"))])
+def set_lesson_thumbnail(lesson_id: str, payload: LessonThumbnailUpdate, db: Annotated[Session, Depends(get_db)]):
+    lesson = LessonService(db).set_thumbnail_media(lesson_id, payload.media_id)
+    return api_response(True, "Lesson thumbnail updated successfully", LessonService(db).lesson_detail_dict(lesson), None)
+
+
 @router.delete("/lessons/{lesson_id}", dependencies=[Depends(require_permission("lesson.delete"))])
 def delete_lesson(lesson_id: str, db: Annotated[Session, Depends(get_db)]):
     LessonService(db).soft_delete_lesson(lesson_id)
     return api_response(True, "Lesson deleted successfully", None, None)
-

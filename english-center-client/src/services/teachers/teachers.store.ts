@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { Pagination } from "@/shared/types/response";
+import type { ApiResponse, Pagination } from "@/shared/types/response";
 
 import { teachersApi } from "./teachers.api";
 import type {
@@ -9,6 +9,11 @@ import type {
   TeacherCreateRequest,
   TeacherUpdateRequest,
 } from "./teachers.type";
+
+const unwrap = <T>(response: ApiResponse<T>, fallbackMessage: string): T => {
+  if (!response.success) throw new Error(response.message || fallbackMessage);
+  return response.payload;
+};
 
 type TeachersState = {
   teachers: Teacher[];
@@ -35,31 +40,29 @@ export const useTeachersStore = create<TeachersState>()((set) => ({
   error: null,
 
   listTeachers: async (query) => {
-    try {
-      set({ isLoading: true, error: null });
-      const response = await teachersApi.listTeachers(query);
-      set({ teachers: response.payload, pagination: response.pagination ?? null, isLoading: false, error: null });
-      return response.payload;
-    } catch {
-      set({ isLoading: false, error: "Lấy danh sách giáo viên thất bại" });
-      throw new Error("Lấy danh sách giáo viên thất bại");
-    }
+    const response = await teachersApi.listTeachers(query);
+    const teachers = unwrap(response, "Lay danh sach giao vien that bai");
+    set({ teachers, pagination: response.pagination ?? null });
+    return teachers;
   },
 
   getTeacher: async (teacherId) => {
-    const item = await teachersApi.getTeacher(teacherId);
+    const response = await teachersApi.getTeacher(teacherId);
+    const item = unwrap(response, "Lay thong tin giao vien that bai");
     set({ selectedTeacher: item });
     return item;
   },
 
   createTeacher: async (data) => {
-    const item = await teachersApi.createTeacher(data);
+    const response = await teachersApi.createTeacher(data);
+    const item = unwrap(response, "Tao giao vien that bai");
     set((state) => ({ teachers: [item, ...state.teachers], selectedTeacher: item }));
     return item;
   },
 
   updateTeacher: async (teacherId, data) => {
-    const item = await teachersApi.updateTeacher(teacherId, data);
+    const response = await teachersApi.updateTeacher(teacherId, data);
+    const item = unwrap(response, "Cap nhat giao vien that bai");
     set((state) => ({
       teachers: state.teachers.map((x) => (x.id === item.id ? item : x)),
       selectedTeacher: state.selectedTeacher?.id === item.id ? item : state.selectedTeacher,
@@ -68,7 +71,8 @@ export const useTeachersStore = create<TeachersState>()((set) => ({
   },
 
   updateTeacherAvatar: async (teacherId, file) => {
-    const item = await teachersApi.updateTeacherAvatar(teacherId, file);
+    const response = await teachersApi.updateTeacherAvatar(teacherId, file);
+    const item = unwrap(response, "Cap nhat avatar giao vien that bai");
     set((state) => ({
       teachers: state.teachers.map((x) => (x.id === item.id ? item : x)),
       selectedTeacher: state.selectedTeacher?.id === item.id ? item : state.selectedTeacher,
@@ -77,7 +81,8 @@ export const useTeachersStore = create<TeachersState>()((set) => ({
   },
 
   deleteTeacher: async (teacherId) => {
-    await teachersApi.deleteTeacher(teacherId);
+    const response = await teachersApi.deleteTeacher(teacherId);
+    unwrap(response, "Xoa giao vien that bai");
     set((state) => ({
       teachers: state.teachers.filter((x) => x.id !== teacherId),
       selectedTeacher: state.selectedTeacher?.id === teacherId ? null : state.selectedTeacher,

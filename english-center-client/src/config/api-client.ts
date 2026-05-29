@@ -1,38 +1,54 @@
 import { httpClient } from "@/config/http-client";
-import type { ApiResponse, Pagination } from "@/shared/types/response";
+import type { ApiResponse } from "@/shared/types/response";
+import axios from "axios";
+
+const getErrorResponse = <T>(error: unknown): ApiResponse<T> => {
+  if (axios.isAxiosError<ApiResponse<T>>(error) && error.response?.data) {
+    return error.response.data;
+  }
+
+  throw error;
+};
 
 export const apiClient = {
-  get: async <T>(url: string): Promise<T> => {
-    const response = await httpClient.get<ApiResponse<T>>(url);
-    return response.data.payload;
+  get: async <T>(url: string): Promise<ApiResponse<T>> => {
+    return httpClient
+      .get<ApiResponse<T>>(url)
+      .then((response) => response.data)
+      .catch(getErrorResponse<T>);
   },
 
-  getWithMeta: async <T>(
-    url: string
-  ): Promise<{ payload: T; pagination?: Pagination }> => {
-    const response = await httpClient.get<ApiResponse<T>>(url);
-    return {
-      payload: response.data.payload,
-      pagination: response.data.pagination,
-    };
+  getWithMeta: async <T>(url: string): Promise<ApiResponse<T>> => {
+    return httpClient
+      .get<ApiResponse<T>>(url)
+      .then((response) => response.data)
+      .catch(getErrorResponse<T>);
   },
 
-  post: async <T, D = unknown>(url: string, data?: D): Promise<T> => {
-    const response = await httpClient.post<ApiResponse<T>>(url, data);
-    return response.data.payload;
+  post: async <T, D = unknown>(url: string, data?: D): Promise<ApiResponse<T>> => {
+    return httpClient
+      .post<ApiResponse<T>>(url, data)
+      .then((response) => response.data)
+      .catch(getErrorResponse<T>);
   },
 
-  put: async <T, D = unknown>(url: string, data?: D): Promise<T> => {
-    const response = await httpClient.put<ApiResponse<T>>(url, data);
-    return response.data.payload;
+  put: async <T, D = unknown>(url: string, data?: D): Promise<ApiResponse<T>> => {
+    return httpClient
+      .put<ApiResponse<T>>(url, data)
+      .then((response) => response.data)
+      .catch(getErrorResponse<T>);
   },
-  patch: async <T, D = unknown>(url: string, data?: D): Promise<T> => {
-    const response = await httpClient.patch<ApiResponse<T>>(url, data);
-    return response.data.payload;
+  patch: async <T, D = unknown>(url: string, data?: D): Promise<ApiResponse<T>> => {
+    return httpClient
+      .patch<ApiResponse<T>>(url, data)
+      .then((response) => response.data)
+      .catch(getErrorResponse<T>);
   },
 
-  delete: async <T = void>(url: string): Promise<T> => {
-    const response = await httpClient.delete<ApiResponse<T>>(url);
-    return response.data.payload;
+  delete: async <T = void>(url: string): Promise<ApiResponse<T>> => {
+    return httpClient
+      .delete<ApiResponse<T>>(url)
+      .then((response) => response.data)
+      .catch(getErrorResponse<T>);
   },
 };

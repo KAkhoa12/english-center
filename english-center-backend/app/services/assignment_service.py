@@ -3,7 +3,6 @@ from decimal import Decimal
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.assignment import (
@@ -20,10 +19,20 @@ from app.models.assignment import (
 )
 from app.models.class_model import CourseClass
 from app.models.class_session import ClassSession
-from app.models.class_student import ClassEnrollmentStatus, ClassStudent
+from app.models.class_student import ClassEnrollmentStatus
 from app.models.course import Lesson
 from app.models.student import Student
-from app.models.user import User
+from app.models.rbac.user import User
+from app.repositories.assignment import AssignmentRepository
+from app.repositories.assignment_attachment import AssignmentAttachmentRepository
+from app.repositories.assignment_grade import AssignmentGradeRepository
+from app.repositories.assignment_submission import AssignmentSubmissionRepository
+from app.repositories.class_session import ClassSessionRepository
+from app.repositories.class_student import ClassStudentRepository
+from app.repositories.lesson import LessonRepository
+from app.repositories.student import StudentRepository
+from app.repositories.submission_attachment import SubmissionAttachmentRepository
+from app.repositories.user import UserRepository
 from app.schemas.assignment import (
     AssignmentAttachmentCreate,
     AssignmentAttachmentUpdate,
@@ -36,9 +45,8 @@ from app.schemas.assignment import (
     SubmissionAttachmentCreate,
 )
 from app.schemas.common import PaginationParams
-from app.services.class_service import AcademicAccessMixin, ClassService, _enum
+from app.services.class_service import AcademicAccessMixin, ClassService, _enum_required
 from app.services.storage_service import StorageService
-from app.utils.serializers import user_to_dict
 
 
 def _now() -> datetime:
@@ -46,8 +54,21 @@ def _now() -> datetime:
 
 
 class AssignmentAccessMixin(AcademicAccessMixin):
+    def __init__(self, db: Session) -> None:
+        super().__init__(db)
+        self.assignment_repo = AssignmentRepository(db)
+        self.assignment_attachment_repo = AssignmentAttachmentRepository(db)
+        self.assignment_submission_repo = AssignmentSubmissionRepository(db)
+        self.submission_attachment_repo = SubmissionAttachmentRepository(db)
+        self.assignment_grade_repo = AssignmentGradeRepository(db)
+        self.class_student_repo = ClassStudentRepository(db)
+        self.class_session_repo = ClassSessionRepository(db)
+        self.lesson_repo = LessonRepository(db)
+        self.student_repo = StudentRepository(db)
+        self.user_repo = UserRepository(db)
+
     def _get_student(self, student_id: str) -> Student:
-        student = self.db.execute(select(Student).where(Student.id == student_id, Student.deleted_at.is_(None))).scalar_one_or_none()
+        student = self.student_repo.get_active_by_id(student_id)
         if not student:
             raise HTTPException(status_code=404, detail="Student not found")
         return student
@@ -56,14 +77,9 @@ class AssignmentAccessMixin(AcademicAccessMixin):
         return ClassService(self.db).get_class_by_id(str(assignment.class_id))
 
     def _student_in_class(self, student_id: str, class_id: str) -> bool:
-        item = self.db.execute(
-            select(ClassStudent).where(
-                ClassStudent.class_id == class_id,
-                ClassStudent.student_id == student_id,
-                ClassStudent.deleted_at.is_(None),
-                ClassStudent.enrollment_status.notin_([ClassEnrollmentStatus.cancelled, ClassEnrollmentStatus.dropped]),
-            )
-        ).scalar_one_or_none()
+        item = self.class_student_repo.get_by_class_and_student(class_id, student_id)
+        if item and item.enrollment_status in {ClassEnrollmentStatus.cancelled, ClassEnrollmentStatus.dropped}:
+            return False
         return item is not None
 
     def _teacher_owns_assignment(self, assignment: Assignment, user: User) -> bool:
@@ -109,14 +125,14 @@ class AssignmentService(AssignmentAccessMixin):
     def _validate_class_links(self, class_obj: CourseClass, session_id: str | None, lesson_id: str | None) -> tuple[ClassSession | None, Lesson | None]:
         session = None
         if session_id:
-            session = self.db.execute(select(ClassSession).where(ClassSession.id == session_id, ClassSession.deleted_at.is_(None))).scalar_one_or_none()
+            session = self.class_session_repo.get_active_by_id(session_id)
             if not session:
                 raise HTTPException(status_code=404, detail="Class session not found")
             if str(session.class_id) != str(class_obj.id):
                 raise HTTPException(status_code=400, detail="Session does not belong to class")
         lesson = None
         if lesson_id:
-            lesson = self.db.execute(select(Lesson).where(Lesson.id == lesson_id, Lesson.deleted_at.is_(None))).scalar_one_or_none()
+            lesson = self.lesson_repo.get_active_by_id(lesson_id)
             if not lesson:
                 raise HTTPException(status_code=404, detail="Lesson not found")
             if str(lesson.course_id) != str(class_obj.course_id):
@@ -125,30 +141,29 @@ class AssignmentService(AssignmentAccessMixin):
 
     def create_assignment(self, class_id: str, payload: AssignmentCreate, current_user: User) -> Assignment:
         class_obj = ClassService(self.db).get_class_by_id(class_id)
-        fake_assignment = Assignment(class_id=class_obj.id, title=payload.title, max_score=payload.max_score, created_by=current_user.id)
+        fake_assignment = Assignment(class_id=class_obj.id, title=payload.title, max_score=payload.max_score, created_by=str(current_user.id))
         self.assert_can_manage_assignment(fake_assignment, current_user)
         self._validate_class_links(class_obj, payload.session_id, payload.lesson_id)
         assignment = Assignment(
-            class_id=class_obj.id,
+            class_id=str(class_obj.id),
             session_id=payload.session_id,
             lesson_id=payload.lesson_id,
             title=payload.title.strip(),
             description=payload.description,
             instruction=payload.instruction,
-            assignment_type=_enum(AssignmentType, payload.assignment_type, "assignment type"),
-            status=_enum(AssignmentStatus, payload.status, "assignment status"),
+            assignment_type=_enum_required(AssignmentType, payload.assignment_type, "assignment type"),
+            status=_enum_required(AssignmentStatus, payload.status, "assignment status"),
             max_score=payload.max_score,
             due_at=payload.due_at,
             allow_late_submission=payload.allow_late_submission,
-            created_by=current_user.id,
+            created_by=str(current_user.id),
         )
-        self.db.add(assignment)
+        created = self.assignment_repo.create(assignment)
         self.db.commit()
-        self.db.refresh(assignment)
-        return assignment
+        return created
 
     def get_assignment_by_id(self, assignment_id: str) -> Assignment:
-        assignment = self.db.execute(select(Assignment).where(Assignment.id == assignment_id, Assignment.deleted_at.is_(None))).scalar_one_or_none()
+        assignment = self.assignment_repo.get_active_by_id(assignment_id)
         if not assignment:
             raise HTTPException(status_code=404, detail="Assignment not found")
         return assignment
@@ -166,35 +181,26 @@ class AssignmentService(AssignmentAccessMixin):
         due_to: datetime | None = None,
     ) -> tuple[list[Assignment], int]:
         class_obj = ClassService(self.db).get_class_by_id(class_id)
-        stmt = select(Assignment).where(Assignment.class_id == class_obj.id, Assignment.deleted_at.is_(None))
         student = self.get_student_profile_by_user(str(current_user.id))
         can_manage = self.has_any_permission(current_user, "admin.all", "assignment.all") or self._teacher_owns_assignment(
-            Assignment(class_id=class_obj.id, title="", max_score=10, created_by=current_user.id), current_user
+            Assignment(class_id=class_obj.id, title="", max_score=10, created_by=str(current_user.id)), current_user
         )
+        only_published = False
         if student and not can_manage:
             if not self._student_in_class(str(student.id), class_id):
                 raise HTTPException(status_code=403, detail="Permission denied")
-            stmt = stmt.where(Assignment.status == AssignmentStatus.published)
-        if status:
-            stmt = stmt.where(Assignment.status == _enum(AssignmentStatus, status, "assignment status"))
-        if assignment_type:
-            stmt = stmt.where(Assignment.assignment_type == _enum(AssignmentType, assignment_type, "assignment type"))
-        if session_id:
-            stmt = stmt.where(Assignment.session_id == session_id)
-        if lesson_id:
-            stmt = stmt.where(Assignment.lesson_id == lesson_id)
-        if due_from:
-            stmt = stmt.where(Assignment.due_at >= due_from)
-        if due_to:
-            stmt = stmt.where(Assignment.due_at <= due_to)
-        if query.search:
-            term = f"%{query.search}%"
-            stmt = stmt.where(or_(Assignment.title.ilike(term), Assignment.description.ilike(term)))
-        total = self.db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
-        sort_field = getattr(Assignment, query.sort_by, Assignment.created_at) if query.sort_by else Assignment.created_at
-        stmt = stmt.order_by(sort_field.asc() if query.sort_order == "asc" else sort_field.desc())
-        stmt = stmt.offset((query.page - 1) * query.page_size).limit(query.page_size)
-        return list(self.db.execute(stmt).scalars().all()), int(total)
+            only_published = True
+        return self.assignment_repo.list_filtered_by_class(
+            class_id=str(class_obj.id),
+            query=query,
+            status=_enum_required(AssignmentStatus, status, "assignment status") if status else None,
+            assignment_type=_enum_required(AssignmentType, assignment_type, "assignment type") if assignment_type else None,
+            session_id=session_id,
+            lesson_id=lesson_id,
+            due_from=due_from,
+            due_to=due_to,
+            only_published=only_published,
+        )
 
     def update_assignment(self, assignment_id: str, payload: AssignmentUpdate, current_user: User) -> Assignment:
         assignment = self.get_assignment_by_id(assignment_id)
@@ -216,58 +222,43 @@ class AssignmentService(AssignmentAccessMixin):
         if payload.lesson_id is not None:
             assignment.lesson_id = payload.lesson_id
         if payload.assignment_type is not None:
-            assignment.assignment_type = _enum(AssignmentType, payload.assignment_type, "assignment type")
+            assignment.assignment_type = _enum_required(AssignmentType, payload.assignment_type, "assignment type")
         if payload.status is not None:
-            assignment.status = _enum(AssignmentStatus, payload.status, "assignment status")
+            assignment.status = _enum_required(AssignmentStatus, payload.status, "assignment status")
         if payload.max_score is not None:
             assignment.max_score = payload.max_score
+        updated = self.assignment_repo.update(assignment)
         self.db.commit()
-        self.db.refresh(assignment)
-        return assignment
+        return updated
 
     def soft_delete_assignment(self, assignment_id: str, current_user: User) -> None:
         assignment = self.get_assignment_by_id(assignment_id)
         self.assert_can_manage_assignment(assignment, current_user)
         assignment.status = AssignmentStatus.archived
-        assignment.deleted_at = _now()
+        self.assignment_repo.soft_delete(assignment)
         self.db.commit()
 
     def publish_assignment(self, assignment_id: str, current_user: User) -> Assignment:
         assignment = self.get_assignment_by_id(assignment_id)
         self.assert_can_manage_assignment(assignment, current_user)
         assignment.status = AssignmentStatus.published
+        updated = self.assignment_repo.update(assignment)
         self.db.commit()
-        self.db.refresh(assignment)
-        return assignment
+        return updated
 
     def close_assignment(self, assignment_id: str, current_user: User) -> Assignment:
         assignment = self.get_assignment_by_id(assignment_id)
         self.assert_can_manage_assignment(assignment, current_user)
         assignment.status = AssignmentStatus.closed
+        updated = self.assignment_repo.update(assignment)
         self.db.commit()
-        self.db.refresh(assignment)
-        return assignment
+        return updated
 
     def count_submissions(self, assignment_id: str) -> int:
-        return int(
-            self.db.execute(
-                select(func.count()).select_from(AssignmentSubmission).where(
-                    AssignmentSubmission.assignment_id == assignment_id,
-                    AssignmentSubmission.deleted_at.is_(None),
-                )
-            ).scalar_one()
-        )
+        return self.assignment_submission_repo.count_by_assignment_id(assignment_id)
 
     def count_graded_submissions(self, assignment_id: str) -> int:
-        return int(
-            self.db.execute(
-                select(func.count()).select_from(AssignmentSubmission).where(
-                    AssignmentSubmission.assignment_id == assignment_id,
-                    AssignmentSubmission.status == AssignmentSubmissionStatus.graded,
-                    AssignmentSubmission.deleted_at.is_(None),
-                )
-            ).scalar_one()
-        )
+        return self.assignment_submission_repo.count_graded_by_assignment_id(assignment_id)
 
     def get_my_assignments(
         self,
@@ -281,26 +272,13 @@ class AssignmentService(AssignmentAccessMixin):
         student = self.get_student_profile_by_user(str(current_user.id))
         if not student:
             raise HTTPException(status_code=404, detail="Student profile not found")
-        stmt = (
-            select(Assignment)
-            .join(ClassStudent, ClassStudent.class_id == Assignment.class_id)
-            .where(
-                ClassStudent.student_id == student.id,
-                ClassStudent.deleted_at.is_(None),
-                Assignment.deleted_at.is_(None),
-                Assignment.status == AssignmentStatus.published,
-            )
+        assignments = self.assignment_repo.list_my_published_assignments(
+            student_id=str(student.id),
+            query=query,
+            status=_enum_required(AssignmentStatus, status, "assignment status") if status else None,
+            assignment_type=_enum_required(AssignmentType, assignment_type, "assignment type") if assignment_type else None,
+            class_id=class_id,
         )
-        if class_id:
-            stmt = stmt.where(Assignment.class_id == class_id)
-        if status:
-            stmt = stmt.where(Assignment.status == _enum(AssignmentStatus, status, "assignment status"))
-        if assignment_type:
-            stmt = stmt.where(Assignment.assignment_type == _enum(AssignmentType, assignment_type, "assignment type"))
-        if query.search:
-            term = f"%{query.search}%"
-            stmt = stmt.where(or_(Assignment.title.ilike(term), Assignment.description.ilike(term)))
-        assignments = list(self.db.execute(stmt.order_by(Assignment.due_at.asc().nullslast(), Assignment.created_at.desc())).scalars().all())
         if submitted_status:
             filtered: list[Assignment] = []
             for assignment in assignments:
@@ -316,8 +294,8 @@ class AssignmentService(AssignmentAccessMixin):
 
     def assignment_dict(self, assignment: Assignment, current_user: User | None = None, detail: bool = False) -> dict[str, Any]:
         class_obj = ClassService(self.db).get_class_by_id(str(assignment.class_id))
-        session = self.db.execute(select(ClassSession).where(ClassSession.id == assignment.session_id)).scalar_one_or_none() if assignment.session_id else None
-        lesson = self.db.execute(select(Lesson).where(Lesson.id == assignment.lesson_id)).scalar_one_or_none() if assignment.lesson_id else None
+        session = self.class_session_repo.get_active_by_id(str(assignment.session_id)) if assignment.session_id else None
+        lesson = self.lesson_repo.get_active_by_id(str(assignment.lesson_id)) if assignment.lesson_id else None
         data = {
             "id": str(assignment.id),
             "class_id": str(assignment.class_id),
@@ -364,10 +342,10 @@ class AssignmentAttachmentService(AssignmentAccessMixin):
     def create_attachment(self, assignment_id: str, payload: AssignmentAttachmentCreate, current_user: User) -> AssignmentAttachment:
         assignment = AssignmentService(self.db).get_assignment_by_id(assignment_id)
         self.assert_can_manage_assignment(assignment, current_user)
-        attachment_type = _enum(AssignmentAttachmentType, payload.attachment_type, "attachment type")
+        attachment_type = _enum_required(AssignmentAttachmentType, payload.attachment_type, "attachment type")
         self._validate_attachment(attachment_type, payload.file_bucket, payload.file_object_name, payload.external_url)
         item = AssignmentAttachment(
-            assignment_id=assignment.id,
+            assignment_id=str(assignment.id),
             title=payload.title,
             description=payload.description,
             file_bucket=payload.file_bucket,
@@ -377,25 +355,18 @@ class AssignmentAttachmentService(AssignmentAccessMixin):
             file_size=payload.file_size,
             attachment_type=attachment_type,
             order_index=payload.order_index,
-            uploaded_by=current_user.id,
+            uploaded_by=str(current_user.id),
         )
-        self.db.add(item)
+        created = self.assignment_attachment_repo.create(item)
         self.db.commit()
-        self.db.refresh(item)
-        return item
+        return created
 
     def get_attachments_by_assignment(self, assignment_id: str) -> list[AssignmentAttachment]:
         AssignmentService(self.db).get_assignment_by_id(assignment_id)
-        return list(
-            self.db.execute(
-                select(AssignmentAttachment)
-                .where(AssignmentAttachment.assignment_id == assignment_id, AssignmentAttachment.deleted_at.is_(None))
-                .order_by(AssignmentAttachment.order_index.asc(), AssignmentAttachment.created_at.asc())
-            ).scalars().all()
-        )
+        return self.assignment_attachment_repo.list_by_assignment_id(assignment_id)
 
     def get_attachment_by_id(self, attachment_id: str) -> AssignmentAttachment:
-        item = self.db.execute(select(AssignmentAttachment).where(AssignmentAttachment.id == attachment_id, AssignmentAttachment.deleted_at.is_(None))).scalar_one_or_none()
+        item = self.assignment_attachment_repo.get_active_by_id(attachment_id)
         if not item:
             raise HTTPException(status_code=404, detail="Assignment attachment not found")
         return item
@@ -404,22 +375,22 @@ class AssignmentAttachmentService(AssignmentAccessMixin):
         item = self.get_attachment_by_id(attachment_id)
         assignment = AssignmentService(self.db).get_assignment_by_id(str(item.assignment_id))
         self.assert_can_manage_assignment(assignment, current_user)
-        attachment_type = _enum(AssignmentAttachmentType, payload.attachment_type, "attachment type") if payload.attachment_type else item.attachment_type
+        attachment_type = _enum_required(AssignmentAttachmentType, payload.attachment_type, "attachment type") if payload.attachment_type else item.attachment_type
         for field in ["title", "description", "file_bucket", "file_object_name", "external_url", "content_type", "file_size", "order_index"]:
             value = getattr(payload, field)
             if value is not None:
                 setattr(item, field, value)
         item.attachment_type = attachment_type
         self._validate_attachment(item.attachment_type, item.file_bucket, item.file_object_name, item.external_url)
+        updated = self.assignment_attachment_repo.update(item)
         self.db.commit()
-        self.db.refresh(item)
-        return item
+        return updated
 
     def soft_delete_attachment(self, attachment_id: str, current_user: User) -> None:
         item = self.get_attachment_by_id(attachment_id)
         assignment = AssignmentService(self.db).get_assignment_by_id(str(item.assignment_id))
         self.assert_can_manage_assignment(assignment, current_user)
-        item.deleted_at = _now()
+        self.assignment_attachment_repo.soft_delete(item)
         self.db.commit()
 
     def attachment_dict(self, item: AssignmentAttachment) -> dict[str, Any]:
@@ -441,16 +412,10 @@ class AssignmentAttachmentService(AssignmentAccessMixin):
 
 class AssignmentSubmissionService(AssignmentAccessMixin):
     def get_student_submission(self, assignment_id: str, student_id: str) -> AssignmentSubmission | None:
-        return self.db.execute(
-            select(AssignmentSubmission).where(
-                AssignmentSubmission.assignment_id == assignment_id,
-                AssignmentSubmission.student_id == student_id,
-                AssignmentSubmission.deleted_at.is_(None),
-            ).order_by(AssignmentSubmission.attempt_number.desc())
-        ).scalars().first()
+        return self.assignment_submission_repo.get_latest_attempt(assignment_id, student_id)
 
     def _calculate_submit_status(self, assignment: Assignment, requested_status: str) -> tuple[AssignmentSubmissionStatus, bool, datetime | None]:
-        status = _enum(AssignmentSubmissionStatus, requested_status, "submission status")
+        status = _enum_required(AssignmentSubmissionStatus, requested_status, "submission status")
         if status not in {AssignmentSubmissionStatus.draft, AssignmentSubmissionStatus.submitted}:
             raise HTTPException(status_code=400, detail="Submission status must be draft or submitted")
         if status == AssignmentSubmissionStatus.draft:
@@ -481,39 +446,38 @@ class AssignmentSubmissionService(AssignmentAccessMixin):
                 raise HTTPException(status_code=400, detail="Graded submission cannot be updated")
             if not submission:
                 submission = AssignmentSubmission(
-                    assignment_id=assignment.id,
-                    student_id=student.id,
-                    user_id=current_user.id,
+                    assignment_id=str(assignment.id),
+                    student_id=str(student.id),
+                    user_id=str(current_user.id),
                     attempt_number=1,
                 )
-                self.db.add(submission)
-                self.db.flush()
+                submission = self.assignment_submission_repo.create(submission)
             submission.content = payload.content
             submission.status = status
             submission.is_late = is_late
             submission.submitted_at = submitted_at or submission.submitted_at
             for attachment in payload.attachments or []:
-                self.db.add(
+                self.submission_attachment_repo.create(
                     SubmissionAttachment(
-                        submission_id=submission.id,
+                        submission_id=str(submission.id),
                         title=attachment.title,
                         file_bucket=attachment.file_bucket,
                         file_object_name=attachment.file_object_name,
                         original_filename=attachment.original_filename,
                         content_type=attachment.content_type,
                         file_size=attachment.file_size,
-                        uploaded_by=current_user.id,
+                        uploaded_by=str(current_user.id),
                     )
                 )
+            updated = self.assignment_submission_repo.update(submission)
             self.db.commit()
-            self.db.refresh(submission)
-            return submission
+            return updated
         except Exception:
             self.db.rollback()
             raise
 
     def get_submission_by_id(self, submission_id: str) -> AssignmentSubmission:
-        submission = self.db.execute(select(AssignmentSubmission).where(AssignmentSubmission.id == submission_id, AssignmentSubmission.deleted_at.is_(None))).scalar_one_or_none()
+        submission = self.assignment_submission_repo.get_active_by_id(submission_id)
         if not submission:
             raise HTTPException(status_code=404, detail="Submission not found")
         return submission
@@ -529,24 +493,13 @@ class AssignmentSubmissionService(AssignmentAccessMixin):
     ) -> tuple[list[AssignmentSubmission], int]:
         assignment = AssignmentService(self.db).get_assignment_by_id(assignment_id)
         self.assert_can_manage_assignment(assignment, current_user)
-        stmt = (
-            select(AssignmentSubmission)
-            .join(Student, Student.id == AssignmentSubmission.student_id)
-            .join(User, User.id == Student.user_id)
-            .where(AssignmentSubmission.assignment_id == assignment_id, AssignmentSubmission.deleted_at.is_(None))
+        return self.assignment_submission_repo.list_filtered_by_assignment(
+            assignment_id=assignment_id,
+            query=query,
+            status=_enum_required(AssignmentSubmissionStatus, status, "submission status") if status else None,
+            is_late=is_late,
+            graded=graded,
         )
-        if status:
-            stmt = stmt.where(AssignmentSubmission.status == _enum(AssignmentSubmissionStatus, status, "submission status"))
-        if is_late is not None:
-            stmt = stmt.where(AssignmentSubmission.is_late == is_late)
-        if graded is not None:
-            stmt = stmt.where(AssignmentSubmission.status == AssignmentSubmissionStatus.graded if graded else AssignmentSubmission.status != AssignmentSubmissionStatus.graded)
-        if query.search:
-            term = f"%{query.search}%"
-            stmt = stmt.where(or_(User.full_name.ilike(term), User.email.ilike(term)))
-        total = self.db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
-        stmt = stmt.order_by(AssignmentSubmission.created_at.desc()).offset((query.page - 1) * query.page_size).limit(query.page_size)
-        return list(self.db.execute(stmt).scalars().all()), int(total)
 
     def update_submission(self, submission_id: str, payload: AssignmentSubmissionUpdate, current_user: User) -> AssignmentSubmission:
         submission = self.get_submission_by_id(submission_id)
@@ -564,9 +517,9 @@ class AssignmentSubmissionService(AssignmentAccessMixin):
             submission.submitted_at = submitted_at or submission.submitted_at
         if payload.content is not None:
             submission.content = payload.content
+        updated = self.assignment_submission_repo.update(submission)
         self.db.commit()
-        self.db.refresh(submission)
-        return submission
+        return updated
 
     def soft_delete_submission(self, submission_id: str, current_user: User) -> None:
         submission = self.get_submission_by_id(submission_id)
@@ -577,7 +530,7 @@ class AssignmentSubmissionService(AssignmentAccessMixin):
         else:
             self.assert_can_manage_assignment(assignment, current_user)
         submission.status = AssignmentSubmissionStatus.cancelled
-        submission.deleted_at = _now()
+        self.assignment_submission_repo.soft_delete(submission)
         self.db.commit()
 
     def get_my_submissions(
@@ -592,27 +545,21 @@ class AssignmentSubmissionService(AssignmentAccessMixin):
         student = self.get_student_profile_by_user(str(current_user.id))
         if not student:
             raise HTTPException(status_code=404, detail="Student profile not found")
-        stmt = select(AssignmentSubmission).join(Assignment, Assignment.id == AssignmentSubmission.assignment_id).where(
-            AssignmentSubmission.student_id == student.id,
-            AssignmentSubmission.deleted_at.is_(None),
-            Assignment.deleted_at.is_(None),
+        return self.assignment_submission_repo.list_my_submissions(
+            student_id=str(student.id),
+            query=query,
+            class_id=class_id,
+            assignment_id=assignment_id,
+            status=_enum_required(AssignmentSubmissionStatus, status, "submission status") if status else None,
+            graded=graded,
         )
-        if class_id:
-            stmt = stmt.where(Assignment.class_id == class_id)
-        if assignment_id:
-            stmt = stmt.where(AssignmentSubmission.assignment_id == assignment_id)
-        if status:
-            stmt = stmt.where(AssignmentSubmission.status == _enum(AssignmentSubmissionStatus, status, "submission status"))
-        if graded is not None:
-            stmt = stmt.where(AssignmentSubmission.status == AssignmentSubmissionStatus.graded if graded else AssignmentSubmission.status != AssignmentSubmissionStatus.graded)
-        total = self.db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
-        stmt = stmt.order_by(AssignmentSubmission.created_at.desc()).offset((query.page - 1) * query.page_size).limit(query.page_size)
-        return list(self.db.execute(stmt).scalars().all()), int(total)
 
     def submission_dict(self, submission: AssignmentSubmission, current_user: User | None = None) -> dict[str, Any]:
         assignment = AssignmentService(self.db).get_assignment_by_id(str(submission.assignment_id))
         student = self._get_student(str(submission.student_id))
-        user = self.db.execute(select(User).where(User.id == student.user_id, User.deleted_at.is_(None))).scalar_one()
+        user = self.user_repo.get(str(student.user_id))
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
         grade = AssignmentGradeService(self.db).get_grade_by_submission(str(submission.id), raise_not_found=False)
         return {
             "id": str(submission.id),
@@ -624,7 +571,14 @@ class AssignmentSubmissionService(AssignmentAccessMixin):
             "submitted_at": submission.submitted_at,
             "is_late": submission.is_late,
             "attempt_number": submission.attempt_number,
-            "student": user_to_dict(user, include_meta=False),
+            "student": {
+                "id": str(user.id),
+                "full_name": user.full_name,
+                "email": user.email,
+                "avatar_url": getattr(user, "avatar_url", None),
+                "status": user.status.value if getattr(user, "status", None) else None,
+                "is_verified": getattr(user, "is_verified", None),
+            },
             "assignment": {"id": str(assignment.id), "title": assignment.title, "max_score": float(assignment.max_score)},
             "attachments": [SubmissionAttachmentService(self.db).attachment_dict(item) for item in SubmissionAttachmentService(self.db).get_attachments_by_submission(str(submission.id))],
             "grade": AssignmentGradeService(self.db).grade_dict(grade) if grade else None,
@@ -639,32 +593,25 @@ class SubmissionAttachmentService(AssignmentAccessMixin):
         if submission.status == AssignmentSubmissionStatus.graded:
             raise HTTPException(status_code=400, detail="Cannot add attachment to graded submission")
         item = SubmissionAttachment(
-            submission_id=submission.id,
+            submission_id=str(submission.id),
             title=payload.title,
             file_bucket=payload.file_bucket,
             file_object_name=payload.file_object_name,
             original_filename=payload.original_filename,
             content_type=payload.content_type,
             file_size=payload.file_size,
-            uploaded_by=current_user.id,
+            uploaded_by=str(current_user.id),
         )
-        self.db.add(item)
+        created = self.submission_attachment_repo.create(item)
         self.db.commit()
-        self.db.refresh(item)
-        return item
+        return created
 
     def get_attachments_by_submission(self, submission_id: str) -> list[SubmissionAttachment]:
         AssignmentSubmissionService(self.db).get_submission_by_id(submission_id)
-        return list(
-            self.db.execute(
-                select(SubmissionAttachment)
-                .where(SubmissionAttachment.submission_id == submission_id, SubmissionAttachment.deleted_at.is_(None))
-                .order_by(SubmissionAttachment.created_at.asc())
-            ).scalars().all()
-        )
+        return self.submission_attachment_repo.list_by_submission_id(submission_id)
 
     def get_attachment_by_id(self, attachment_id: str) -> SubmissionAttachment:
-        item = self.db.execute(select(SubmissionAttachment).where(SubmissionAttachment.id == attachment_id, SubmissionAttachment.deleted_at.is_(None))).scalar_one_or_none()
+        item = self.submission_attachment_repo.get_active_by_id(attachment_id)
         if not item:
             raise HTTPException(status_code=404, detail="Submission attachment not found")
         return item
@@ -677,7 +624,7 @@ class SubmissionAttachmentService(AssignmentAccessMixin):
             self.assert_can_manage_assignment(assignment, current_user)
         elif submission.status == AssignmentSubmissionStatus.graded:
             raise HTTPException(status_code=400, detail="Cannot delete attachment from graded submission")
-        item.deleted_at = _now()
+        self.submission_attachment_repo.soft_delete(item)
         self.db.commit()
 
     def attachment_dict(self, item: SubmissionAttachment) -> dict[str, Any]:
@@ -708,36 +655,35 @@ class AssignmentGradeService(AssignmentAccessMixin):
             grade = self.get_grade_by_submission(submission_id, raise_not_found=False)
             if not grade:
                 grade = AssignmentGrade(
-                    submission_id=submission.id,
-                    assignment_id=assignment.id,
-                    student_id=submission.student_id,
+                    submission_id=str(submission.id),
+                    assignment_id=str(assignment.id),
+                    student_id=str(submission.student_id),
                     max_score=assignment.max_score,
                 )
-                self.db.add(grade)
+                grade = self.assignment_grade_repo.create(grade)
             grade.score = payload.score
             grade.feedback = payload.feedback
             grade.rubric = payload.rubric
-            grade.grading_method = _enum(AssignmentGradingMethod, payload.grading_method, "grading method")
-            grade.graded_by = current_user.id
+            grade.grading_method = _enum_required(AssignmentGradingMethod, payload.grading_method, "grading method")
+            grade.graded_by = str(current_user.id)
             grade.graded_at = _now()
             submission.status = AssignmentSubmissionStatus.graded
+            updated = self.assignment_grade_repo.update(grade)
+            self.assignment_submission_repo.update(submission)
             self.db.commit()
-            self.db.refresh(grade)
-            return grade
+            return updated
         except Exception:
             self.db.rollback()
             raise
 
     def get_grade_by_submission(self, submission_id: str, raise_not_found: bool = True) -> AssignmentGrade | None:
-        grade = self.db.execute(
-            select(AssignmentGrade).where(AssignmentGrade.submission_id == submission_id, AssignmentGrade.deleted_at.is_(None))
-        ).scalar_one_or_none()
+        grade = self.assignment_grade_repo.get_by_submission_id(submission_id)
         if not grade and raise_not_found:
             raise HTTPException(status_code=404, detail="Assignment grade not found")
         return grade
 
     def get_grade_by_id(self, grade_id: str) -> AssignmentGrade:
-        grade = self.db.execute(select(AssignmentGrade).where(AssignmentGrade.id == grade_id, AssignmentGrade.deleted_at.is_(None))).scalar_one_or_none()
+        grade = self.assignment_grade_repo.get_active_by_id(grade_id)
         if not grade:
             raise HTTPException(status_code=404, detail="Assignment grade not found")
         return grade
@@ -755,20 +701,21 @@ class AssignmentGradeService(AssignmentAccessMixin):
         if payload.rubric is not None:
             grade.rubric = payload.rubric
         if payload.grading_method is not None:
-            grade.grading_method = _enum(AssignmentGradingMethod, payload.grading_method, "grading method")
-        grade.graded_by = current_user.id
+            grade.grading_method = _enum_required(AssignmentGradingMethod, payload.grading_method, "grading method")
+        grade.graded_by = str(current_user.id)
         grade.graded_at = _now()
+        updated = self.assignment_grade_repo.update(grade)
         self.db.commit()
-        self.db.refresh(grade)
-        return grade
+        return updated
 
     def soft_delete_grade(self, grade_id: str, current_user: User) -> None:
         grade = self.get_grade_by_id(grade_id)
         assignment = AssignmentService(self.db).get_assignment_by_id(str(grade.assignment_id))
         self.assert_can_manage_assignment(assignment, current_user)
-        grade.deleted_at = _now()
+        self.assignment_grade_repo.soft_delete(grade)
         submission = AssignmentSubmissionService(self.db).get_submission_by_id(str(grade.submission_id))
         submission.status = AssignmentSubmissionStatus.submitted
+        self.assignment_submission_repo.update(submission)
         self.db.commit()
 
     def get_student_grades(
@@ -785,31 +732,14 @@ class AssignmentGradeService(AssignmentAccessMixin):
             teacher = self.get_teacher_profile_by_user(str(current_user.id))
             if not teacher:
                 raise
-            owns = self.db.execute(
-                select(ClassStudent)
-                .join(CourseClass, CourseClass.id == ClassStudent.class_id)
-                .where(
-                    ClassStudent.student_id == student_id,
-                    CourseClass.teacher_id == teacher.id,
-                    ClassStudent.deleted_at.is_(None),
-                    CourseClass.deleted_at.is_(None),
-                )
-            ).scalar_one_or_none()
-            if not owns:
+            if not self.assignment_grade_repo.teacher_owns_student(str(teacher.id), student_id):
                 raise
-        stmt = select(AssignmentGrade).join(Assignment, Assignment.id == AssignmentGrade.assignment_id).where(
-            AssignmentGrade.student_id == student_id,
-            AssignmentGrade.deleted_at.is_(None),
-            Assignment.deleted_at.is_(None),
+        return self.assignment_grade_repo.list_student_grades(
+            student_id=student_id,
+            query=query,
+            class_id=class_id,
+            assignment_type=_enum_required(AssignmentType, assignment_type, "assignment type") if assignment_type else None,
         )
-        if class_id:
-            stmt = stmt.where(Assignment.class_id == class_id)
-        if assignment_type:
-            stmt = stmt.where(Assignment.assignment_type == _enum(AssignmentType, assignment_type, "assignment type"))
-        total = self.db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
-        stmt = stmt.order_by(AssignmentGrade.graded_at.desc().nullslast(), AssignmentGrade.created_at.desc())
-        stmt = stmt.offset((query.page - 1) * query.page_size).limit(query.page_size)
-        return list(self.db.execute(stmt).scalars().all()), int(total)
 
     def grade_dict(self, grade: AssignmentGrade) -> dict[str, Any]:
         return {

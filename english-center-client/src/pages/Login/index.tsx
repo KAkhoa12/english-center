@@ -26,9 +26,13 @@ export const LoginPage = () => {
     event.preventDefault();
 
     try {
-      await login({ email, password });
-      toast.success("Đăng nhập thành công");
-      navigate("/", { replace: true });
+      const result = await login({ email, password });
+      if (result.success) {
+        toast.success(result.message || "Đăng nhập thành công");
+        navigate("/", { replace: true });
+      } else {
+        toast.error(result.message || "Đăng nhập thất bại");
+      }
     } catch (error) {
       const fallbackMessage = storeError || "Đăng nhập thất bại";
       const message =

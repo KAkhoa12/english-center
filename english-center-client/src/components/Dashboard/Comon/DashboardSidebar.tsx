@@ -43,6 +43,7 @@ const navItems: NavItem[] = [
     icon: Users,
     children: [
       { label: "Danh sách khóa học", href: PRIVATE_ROUTES.DASHBOARD_COURSES },
+      { label: "Quản lý lớp học", href: PRIVATE_ROUTES.DASHBOARD_CLASSES },
       { label: "Danh sách loại khóa học", href: PRIVATE_ROUTES.DASHBOARD_COURSE_CATEGORIES },
       { label: "Danh sách tag khóa học", href: PRIVATE_ROUTES.DASHBOARD_COURSE_TAGS },
     ],
@@ -51,9 +52,14 @@ const navItems: NavItem[] = [
     label: "Tài chính",
     icon: CircleDollarSign,
     children: [
-      { label: "Thu chi", href: "#" },
-      { label: "Hóa đơn", href: "#" },
+      { label: "Thu chi", href: PRIVATE_ROUTES.DASHBOARD_FINANCE_CASHFLOW },
+      { label: "Hóa đơn", href: PRIVATE_ROUTES.DASHBOARD_FINANCE_INVOICES },
     ],
+  },
+  {
+    label: "Tài nguyên",
+    icon: FileText,
+    children: [{ label: "Quản lý tài liệu", href: PRIVATE_ROUTES.DASHBOARD_DOCUMENTS }],
   },
   {
     label: "Nhân viên",

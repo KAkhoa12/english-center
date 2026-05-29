@@ -1,4 +1,4 @@
-import type { ApiResponse, SortOrder, UserRef } from "../common/common.type";
+import type { SortOrder, UserRef } from "@/shared/types/response";
 
 export type AssignmentStatus = string;
 export type AssignmentType = string;
@@ -168,22 +168,3 @@ export type ListSubmissionsQuery = {
   is_late?: boolean;
   graded?: boolean;
 };
-
-export type CreateAssignmentResponse = ApiResponse<Assignment>;
-export type ListAssignmentsResponse = ApiResponse<Assignment[]>;
-export type GetAssignmentResponse = ApiResponse<Assignment>;
-export type UpdateAssignmentResponse = ApiResponse<Assignment>;
-export type DeleteAssignmentResponse = ApiResponse<null>;
-export type CreateAssignmentAttachmentResponse = ApiResponse<AssignmentAttachment>;
-export type ListAssignmentAttachmentsResponse = ApiResponse<AssignmentAttachment[]>;
-export type UpdateAssignmentAttachmentResponse = ApiResponse<AssignmentAttachment>;
-export type DeleteAssignmentAttachmentResponse = ApiResponse<null>;
-export type SubmitAssignmentResponse = ApiResponse<AssignmentSubmission>;
-export type ListSubmissionsResponse = ApiResponse<AssignmentSubmission[]>;
-export type GetSubmissionResponse = ApiResponse<AssignmentSubmission>;
-export type UpdateSubmissionResponse = ApiResponse<AssignmentSubmission>;
-export type DeleteSubmissionResponse = ApiResponse<null>;
-export type GradeSubmissionResponse = ApiResponse<AssignmentGrade>;
-export type GetSubmissionGradeResponse = ApiResponse<AssignmentGrade>;
-export type UpdateGradeResponse = ApiResponse<AssignmentGrade>;
-export type DeleteGradeResponse = ApiResponse<null>;

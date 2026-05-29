@@ -31,8 +31,6 @@ def upgrade() -> None:
     session_mode = sa.Enum("online", "offline", name="session_mode")
     session_status = sa.Enum("scheduled", "completed", "cancelled", name="session_status")
     attendance_status = sa.Enum("present", "absent", "late", "excused", "not_marked", name="attendance_status")
-    for enum in [room_status, class_type, class_status, class_enrollment_status, session_mode, session_status, attendance_status]:
-        enum.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
         "rooms",

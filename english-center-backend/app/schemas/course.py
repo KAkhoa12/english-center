@@ -48,13 +48,14 @@ class CourseCreate(BaseModel):
     code: str
     slug: str | None = None
     description: str | None = None
+    category_id: str
+    mode: str = "center"
     target_level: str | None = None
     output_goal: str | None = None
     duration_weeks: int | None = Field(default=None, ge=0)
     total_sessions: int | None = Field(default=None, ge=0)
     price: Decimal = Field(default=0, ge=0)
     status: str = "active"
-    category_ids: list[str] | None = None
     tag_ids: list[str] | None = None
     requirements: list[str] | None = None
     outcomes: list[str] | None = None
@@ -71,13 +72,14 @@ class CourseUpdate(BaseModel):
     code: str | None = None
     slug: str | None = None
     description: str | None = None
+    category_id: str | None = None
+    mode: str | None = None
     target_level: str | None = None
     output_goal: str | None = None
     duration_weeks: int | None = Field(default=None, ge=0)
     total_sessions: int | None = Field(default=None, ge=0)
     price: Decimal | None = Field(default=None, ge=0)
     status: str | None = None
-    category_ids: list[str] | None = None
     tag_ids: list[str] | None = None
 
 
@@ -114,6 +116,7 @@ class CourseOutcomeUpdate(BaseModel):
 class CourseModuleCreate(BaseModel):
     title: str
     description: str | None = None
+    media_id: str | None = None
     order_index: int = Field(default=0, ge=0)
     status: str = "active"
 
@@ -126,12 +129,27 @@ class CourseModuleCreate(BaseModel):
 class CourseModuleUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
+    media_id: str | None = None
     order_index: int | None = Field(default=None, ge=0)
     status: str | None = None
 
 
+class CourseMediaCreate(BaseModel):
+    media_id: str
+    media_type: str | None = None
+    order_index: int = Field(default=0, ge=0)
+    is_primary: bool = False
+
+
+class CourseMediaUpdate(BaseModel):
+    media_type: str | None = None
+    order_index: int | None = Field(default=None, ge=0)
+    is_primary: bool | None = None
+
+
 class LessonCreate(BaseModel):
     module_id: str | None = None
+    media_id: str | None = None
     title: str
     description: str | None = None
     content: str | None = None
@@ -147,6 +165,7 @@ class LessonCreate(BaseModel):
 
 class LessonUpdate(BaseModel):
     module_id: str | None = None
+    media_id: str | None = None
     title: str | None = None
     description: str | None = None
     content: str | None = None
@@ -158,9 +177,7 @@ class LessonUpdate(BaseModel):
 class LessonMaterialCreate(BaseModel):
     title: str
     description: str | None = None
-    material_type: str
-    file_bucket: str | None = None
-    file_object_name: str | None = None
+    media_id: str | None = None
     external_url: str | None = None
     order_index: int = Field(default=0, ge=0)
     is_downloadable: bool = True
@@ -174,9 +191,11 @@ class LessonMaterialCreate(BaseModel):
 class LessonMaterialUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
-    material_type: str | None = None
-    file_bucket: str | None = None
-    file_object_name: str | None = None
+    media_id: str | None = None
     external_url: str | None = None
     order_index: int | None = Field(default=None, ge=0)
     is_downloadable: bool | None = None
+
+
+class LessonThumbnailUpdate(BaseModel):
+    media_id: str

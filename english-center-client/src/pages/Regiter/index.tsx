@@ -1,5 +1,9 @@
 import { LockKeyhole, Mail, Phone, UserRound } from "lucide-react";
+import { useState } from "react";
+import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import {
   AuthCard,
   AuthDivider,
@@ -7,19 +11,65 @@ import {
   AuthSubmitButton,
   SocialAuthButton,
 } from "@/components/Auth";
+import { useAuthStore } from "@/services/auth/auth.store";
 
 export const RegisterPage = () => {
+  const navigate = useNavigate();
+  const register = useAuthStore((state) => state.register);
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const storeError = useAuthStore((state) => state.error);
+
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    try {
+      const result = await register({
+        full_name: fullName.trim(),
+        email: email.trim(),
+        phone: phone.trim() || null,
+        password,
+        avatar_url: null,
+        date_of_birth: null,
+        gender: null,
+        address: null,
+        level: null,
+        learning_goal: null,
+        parent_name: null,
+        parent_phone: null,
+      });
+
+      if (result.success) {
+        toast.success(result.message || "Đăng ký thành công");
+        navigate("/", { replace: true });
+      } else {
+        toast.error(result.message || "Đăng ký thất bại");
+      }
+    } catch (error) {
+      const fallbackMessage = storeError || "Đăng ký thất bại";
+      const message =
+        error instanceof Error && error.message ? error.message : fallbackMessage;
+      toast.error(message);
+    }
+  };
+
   return (
     <AuthCard
       eyebrow="Đăng ký"
       title="Tạo tài khoản học viên"
       description="Bắt đầu lộ trình học tiếng Anh cá nhân hóa cùng StarEnglish trong vài phút."
     >
-      <form className="space-y-5">
+      <form className="space-y-5" onSubmit={handleSubmit}>
         <AuthInput
           label="Họ và tên"
           Icon={UserRound}
           type="text"
+          value={fullName}
+          onChange={(event) => setFullName(event.target.value)}
           placeholder="Nguyễn Minh Anh"
           autoComplete="name"
           required
@@ -28,6 +78,8 @@ export const RegisterPage = () => {
           label="Email"
           Icon={Mail}
           type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
           placeholder="email@example.com"
           autoComplete="email"
           required
@@ -36,6 +88,8 @@ export const RegisterPage = () => {
           label="Số điện thoại"
           Icon={Phone}
           type="tel"
+          value={phone}
+          onChange={(event) => setPhone(event.target.value)}
           placeholder="0912 345 678"
           autoComplete="tel"
           required
@@ -44,6 +98,8 @@ export const RegisterPage = () => {
           label="Mật khẩu"
           Icon={LockKeyhole}
           type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
           placeholder="Tối thiểu 8 ký tự"
           autoComplete="new-password"
           minLength={8}
@@ -69,7 +125,9 @@ export const RegisterPage = () => {
           </span>
         </label>
 
-        <AuthSubmitButton>Tạo tài khoản</AuthSubmitButton>
+        <AuthSubmitButton disabled={isLoading}>
+          {isLoading ? "Đang tạo tài khoản..." : "Tạo tài khoản"}
+        </AuthSubmitButton>
       </form>
 
       <AuthDivider />

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.response import api_response, build_pagination
 from app.db.session import get_db
 from app.dependencies.permissions import require_permission
-from app.models.user import User
+from app.models.rbac.user import User
 from app.schemas.commerce import WishlistCreate
 from app.schemas.common import PaginationParams
 from app.services.commerce_service import WishlistService
@@ -41,4 +41,3 @@ def remove_wishlist(course_id: str, db: Annotated[Session, Depends(get_db)], cur
 @router.get("/courses/{course_id}/wishlist-status")
 def wishlist_status(course_id: str, db: Annotated[Session, Depends(get_db)], current_user: User = Depends(require_permission("wishlist.read"))):
     return api_response(True, "Wishlist status retrieved successfully", {"is_favorited": WishlistService(db).is_favorited(str(current_user.id), course_id)}, None)
-

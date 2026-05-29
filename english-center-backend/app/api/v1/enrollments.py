@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.response import api_response, build_pagination
 from app.db.session import get_db
 from app.dependencies.permissions import require_permission
-from app.models.user import User
+from app.models.rbac.user import User
 from app.schemas.common import PaginationParams
 from app.services.commerce_service import EnrollmentService
 
@@ -27,4 +27,3 @@ def list_enrollments(db: Annotated[Session, Depends(get_db)], current_user: User
     service = EnrollmentService(db)
     items, total = service.get_enrollments(query, current_user)
     return api_response(True, "Enrollments retrieved successfully", [service.enrollment_dict(item) for item in items], build_pagination(page, page_size, total))
-

@@ -9,13 +9,15 @@ from app.dependencies.permissions import require_permission
 from app.schemas.common import PaginationParams
 from app.schemas.course import (
     CourseCreate,
+    CourseMediaCreate,
+    CourseMediaUpdate,
     CourseOutcomeCreate,
     CourseOutcomeUpdate,
     CourseRequirementCreate,
     CourseRequirementUpdate,
     CourseUpdate,
 )
-from app.services.course_service import CourseOutcomeService, CourseRequirementService, CourseService
+from app.services.course_service import CourseMediaService, CourseOutcomeService, CourseRequirementService, CourseService
 from app.utils.file import get_upload_file_size, validate_file_extension, validate_file_size
 
 router = APIRouter(tags=["courses"])
@@ -28,7 +30,7 @@ def create_course(payload: CourseCreate, db: Annotated[Session, Depends(get_db)]
     return api_response(True, "Course created successfully", service.course_detail_dict(course), None)
 
 
-@router.get("/courses", dependencies=[Depends(require_permission("course.read"))])
+@router.get("/courses")
 def list_courses(
     db: Annotated[Session, Depends(get_db)],
     page: int = Query(1),
@@ -48,7 +50,7 @@ def list_courses(
     return api_response(True, "Courses retrieved successfully", items, build_pagination(page, page_size, total))
 
 
-@router.get("/courses/{course_id}", dependencies=[Depends(require_permission("course.read"))])
+@router.get("/courses/{course_id}")
 def get_course(course_id: str, db: Annotated[Session, Depends(get_db)]):
     service = CourseService(db)
     course = service.get_course_by_id(course_id)
@@ -71,6 +73,39 @@ def upload_course_thumbnail(course_id: str, db: Annotated[Session, Depends(get_d
     return api_response(True, "Course thumbnail uploaded successfully", payload, None)
 
 
+@router.post("/courses/{course_id}/media", dependencies=[Depends(require_permission("course.update"))])
+def attach_course_media(course_id: str, payload: CourseMediaCreate, db: Annotated[Session, Depends(get_db)]):
+    item = CourseMediaService(db).attach_media(course_id, payload)
+    return api_response(True, "Course media attached successfully", item, None)
+
+
+@router.get("/courses/{course_id}/media")
+def list_course_media(course_id: str, db: Annotated[Session, Depends(get_db)]):
+    items = CourseMediaService(db).list_media(course_id)
+    return api_response(True, "Course media retrieved successfully", items, None)
+
+
+@router.post("/courses/{course_id}/media/upload", dependencies=[Depends(require_permission("course.update"))])
+def upload_course_media(course_id: str, db: Annotated[Session, Depends(get_db)], file: UploadFile = File(...)):
+    size = get_upload_file_size(file)
+    validate_file_extension(file.filename or "file", "avatar")
+    validate_file_size(size, "avatar")
+    item = CourseMediaService(db).upload_and_attach_media(course_id, file=file, file_size=size, media_type="thumbnail", is_primary=True)
+    return api_response(True, "Course media uploaded successfully", item, None)
+
+
+@router.patch("/course-media/{course_media_id}", dependencies=[Depends(require_permission("course.update"))])
+def update_course_media(course_media_id: str, payload: CourseMediaUpdate, db: Annotated[Session, Depends(get_db)]):
+    item = CourseMediaService(db).update_media(course_media_id, payload)
+    return api_response(True, "Course media updated successfully", item, None)
+
+
+@router.delete("/course-media/{course_media_id}", dependencies=[Depends(require_permission("course.update"))])
+def delete_course_media(course_media_id: str, db: Annotated[Session, Depends(get_db)]):
+    CourseMediaService(db).delete_media(course_media_id)
+    return api_response(True, "Course media deleted successfully", None, None)
+
+
 @router.delete("/courses/{course_id}", dependencies=[Depends(require_permission("course.delete"))])
 def delete_course(course_id: str, db: Annotated[Session, Depends(get_db)]):
     CourseService(db).soft_delete_course(course_id)
@@ -84,7 +119,7 @@ def create_requirement(course_id: str, payload: CourseRequirementCreate, db: Ann
     return api_response(True, "Course requirement created successfully", service._requirement_dict(item), None)
 
 
-@router.get("/courses/{course_id}/requirements", dependencies=[Depends(require_permission("course_requirement.read"))])
+@router.get("/courses/{course_id}/requirements")
 def list_requirements(course_id: str, db: Annotated[Session, Depends(get_db)]):
     service = CourseRequirementService(db)
     items = service.get_requirements_by_course(course_id)
@@ -111,7 +146,7 @@ def create_outcome(course_id: str, payload: CourseOutcomeCreate, db: Annotated[S
     return api_response(True, "Course outcome created successfully", service._outcome_dict(item), None)
 
 
-@router.get("/courses/{course_id}/outcomes", dependencies=[Depends(require_permission("course_outcome.read"))])
+@router.get("/courses/{course_id}/outcomes")
 def list_outcomes(course_id: str, db: Annotated[Session, Depends(get_db)]):
     service = CourseOutcomeService(db)
     items = service.get_outcomes_by_course(course_id)
@@ -129,4 +164,3 @@ def update_outcome(outcome_id: str, payload: CourseOutcomeUpdate, db: Annotated[
 def delete_outcome(outcome_id: str, db: Annotated[Session, Depends(get_db)]):
     CourseOutcomeService(db).soft_delete_outcome(outcome_id)
     return api_response(True, "Course outcome deleted successfully", None, None)
-

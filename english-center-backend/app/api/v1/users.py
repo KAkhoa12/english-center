@@ -71,4 +71,3 @@ def assign_user_roles(user_id: str, payload: AssignRolesRequest, db: Annotated[S
 def remove_user_role(user_id: str, role_id: str, db: Annotated[Session, Depends(get_db)]):
     UserService(db).remove_role(user_id, role_id)
     return api_response(True, "Role removed successfully", None, None)
-
