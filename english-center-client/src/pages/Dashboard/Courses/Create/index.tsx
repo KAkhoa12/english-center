@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -14,27 +14,35 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useCoursesStore } from "@/services/courses/courses.store";
+import { useCoursesCategoryStore } from "@/services/coursesCategory/coursesCategory.store";
 import { PRIVATE_ROUTES } from "@/shared/routes";
 
 export const DashboardCourseCreatePage = () => {
   const navigate = useNavigate();
   const { createCourse, uploadCourseThumbnail, isLoading } = useCoursesStore();
+  const { categories, listCategories } = useCoursesCategoryStore();
 
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [slug, setSlug] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [mode, setMode] = useState<"center" | "template">("center");
   const [targetLevel, setTargetLevel] = useState("A1");
   const [durationWeeks, setDurationWeeks] = useState("");
   const [totalSessions, setTotalSessions] = useState("");
   const [price, setPrice] = useState("");
-  const [status, setStatus] = useState("draft");
+  const [status, setStatus] = useState("active");
   const [description, setDescription] = useState("");
   const [outputGoal, setOutputGoal] = useState("");
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
 
+  useEffect(() => {
+    void listCategories({ page: 1, page_size: 100, status: "active", sort_by: "name", sort_order: "asc" });
+  }, [listCategories]);
+
   const handleCreate = async () => {
-    if (!name.trim() || !code.trim()) {
-      toast.error("Vui lòng nhập tên và mã khóa học");
+    if (!name.trim() || !code.trim() || !categoryId) {
+      toast.error("Vui lòng nhập tên, mã và loại khóa học");
       return;
     }
 
@@ -43,6 +51,8 @@ export const DashboardCourseCreatePage = () => {
         name: name.trim(),
         code: code.trim(),
         slug: slug.trim() || null,
+        category_id: categoryId,
+        mode,
         target_level: targetLevel || null,
         duration_weeks: durationWeeks.trim() ? Number(durationWeeks) : null,
         total_sessions: totalSessions.trim() ? Number(totalSessions) : null,
@@ -82,6 +92,29 @@ export const DashboardCourseCreatePage = () => {
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tên khóa học" />
             <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Mã khóa học" />
             <Input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="Slug" />
+
+            <Select value={categoryId} onValueChange={setCategoryId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Loại khóa học" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={mode} onValueChange={(value: "center" | "template") => setMode(value)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Mode khóa học" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="center">Center - bán theo lớp học</SelectItem>
+                <SelectItem value="template">Template - học theo module/bài học</SelectItem>
+              </SelectContent>
+            </Select>
 
             <Select value={targetLevel} onValueChange={setTargetLevel}>
               <SelectTrigger className="w-full">
@@ -123,8 +156,8 @@ export const DashboardCourseCreatePage = () => {
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="draft">draft</SelectItem>
                 <SelectItem value="active">active</SelectItem>
+                <SelectItem value="inactive">inactive</SelectItem>
                 <SelectItem value="archived">archived</SelectItem>
               </SelectContent>
             </Select>

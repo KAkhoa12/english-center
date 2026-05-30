@@ -7,6 +7,8 @@ export const PUBLIC_ROUTES = {
   COURSE: "/courses",
   COURSE_DETAIL: "/course/:id",
   PAYMENT: "/payment",
+  MY_COURSES: "/my-courses",
+  MY_INVOICES: "/my-invoices",
 };
 
 
@@ -17,6 +19,7 @@ export const PRIVATE_ROUTES = {
   DASHBOARD_COURSES_EDIT: "/dashboard/courses/:courseId/edit",
   DASHBOARD_COURSE_CATEGORIES: "/dashboard/course-categories",
   DASHBOARD_COURSE_TAGS: "/dashboard/course-tags",
+  DASHBOARD_ASSIGNMENT_TYPES: "/dashboard/assignment-types",
   DASHBOARD_STAFF: "/dashboard/staff",
   DASHBOARD_STAFF_CREATE: "/dashboard/staff/create",
   DASHBOARD_STAFF_EDIT: "/dashboard/staff/:staffId/edit",
@@ -31,6 +34,10 @@ export const PRIVATE_ROUTES = {
   DASHBOARD_STUDENTS_EDIT: "/dashboard/students/:studentId/edit",
   DASHBOARD_ATTENDANCE: "/dashboard/attendance",
   DASHBOARD_ASSIGNMENTS: "/dashboard/assignments",
+  DASHBOARD_SCHEDULE: "/dashboard/schedule",
+  DASHBOARD_RESULTS: "/dashboard/results",
+  DASHBOARD_CERTIFICATES: "/dashboard/certificates",
+  DASHBOARD_MESSAGES: "/dashboard/messages",
   DASHBOARD_TEACHERS: "/dashboard/teachers",
   DASHBOARD_TEACHERS_CREATE: "/dashboard/teachers/create",
   DASHBOARD_TEACHERS_EDIT: "/dashboard/teachers/:teacherId/edit",

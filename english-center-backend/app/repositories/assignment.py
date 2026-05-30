@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models.assignment import Assignment, AssignmentStatus, AssignmentType
+from app.models.assignment import Assignment, AssignmentStatus
 from app.models.class_student import ClassStudent
 from app.repositories.base import BaseRepository
 from app.schemas.common import PaginationParams
@@ -39,7 +39,7 @@ class AssignmentRepository(BaseRepository[Assignment]):
         class_id: str,
         query: PaginationParams,
         status: AssignmentStatus | None = None,
-        assignment_type: AssignmentType | None = None,
+        assignment_type_id: str | None = None,
         session_id: str | None = None,
         lesson_id: str | None = None,
         due_from: datetime | None = None,
@@ -51,8 +51,8 @@ class AssignmentRepository(BaseRepository[Assignment]):
             filters.append(Assignment.status == AssignmentStatus.published)
         if status:
             filters.append(Assignment.status == status)
-        if assignment_type:
-            filters.append(Assignment.assignment_type == assignment_type)
+        if assignment_type_id:
+            filters.append(Assignment.assignment_type_id == assignment_type_id)
         if session_id:
             filters.append(Assignment.session_id == session_id)
         if lesson_id:
@@ -77,7 +77,7 @@ class AssignmentRepository(BaseRepository[Assignment]):
         student_id: str,
         query: PaginationParams,
         status: AssignmentStatus | None = None,
-        assignment_type: AssignmentType | None = None,
+        assignment_type_id: str | None = None,
         class_id: str | None = None,
     ) -> list[Assignment]:
         stmt = (
@@ -94,8 +94,8 @@ class AssignmentRepository(BaseRepository[Assignment]):
             stmt = stmt.where(Assignment.class_id == class_id)
         if status:
             stmt = stmt.where(Assignment.status == status)
-        if assignment_type:
-            stmt = stmt.where(Assignment.assignment_type == assignment_type)
+        if assignment_type_id:
+            stmt = stmt.where(Assignment.assignment_type_id == assignment_type_id)
         if query.search:
             term = f"%{query.search}%"
             stmt = stmt.where(or_(Assignment.title.ilike(term), Assignment.description.ilike(term)))

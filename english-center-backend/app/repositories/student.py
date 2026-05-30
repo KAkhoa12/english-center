@@ -52,3 +52,6 @@ class StudentRepository(BaseRepository[Student]):
             )
         ).first()
         return None if row is None else (row[0], row[1])
+
+    def get_active_with_user_by_id(self, student_id: str) -> tuple[Student, User] | None:
+        return self.get_with_user_by_id(student_id)

@@ -81,6 +81,7 @@ class CartItem(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     cart_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("carts.id"), nullable=False, index=True)
     course_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("courses.id"), nullable=False, index=True)
+    class_id: Mapped[str | None] = mapped_column(UUID(as_uuid=True), ForeignKey("classes.id"), nullable=True, index=True)
     course_name: Mapped[str] = mapped_column(String(255), nullable=False)
     course_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
@@ -121,6 +122,7 @@ class OrderItem(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     order_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=False)
     course_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("courses.id"), nullable=False)
+    class_id: Mapped[str | None] = mapped_column(UUID(as_uuid=True), ForeignKey("classes.id"), nullable=True, index=True)
     course_name: Mapped[str] = mapped_column(String(255), nullable=False)
     course_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
@@ -153,6 +155,7 @@ class InvoiceItem(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     invoice_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("invoices.id"), nullable=False)
     course_id: Mapped[str | None] = mapped_column(UUID(as_uuid=True), ForeignKey("courses.id"), nullable=True)
+    class_id: Mapped[str | None] = mapped_column(UUID(as_uuid=True), ForeignKey("classes.id"), nullable=True, index=True)
     item_name: Mapped[str] = mapped_column(String(255), nullable=False)
     item_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)

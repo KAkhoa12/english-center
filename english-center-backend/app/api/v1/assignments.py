@@ -38,7 +38,7 @@ def list_class_assignments(
     sort_by: str | None = None,
     sort_order: str = Query("desc", pattern="^(asc|desc)$"),
     status: str | None = None,
-    assignment_type: str | None = None,
+    assignment_type_id: str | None = None,
     session_id: str | None = None,
     lesson_id: str | None = None,
     due_from: datetime | None = None,
@@ -46,7 +46,7 @@ def list_class_assignments(
 ):
     query = PaginationParams(page=page, page_size=page_size, search=search, sort_by=sort_by, sort_order=sort_order)
     service = AssignmentService(db)
-    items, total = service.get_assignments_by_class(class_id, query, current_user, status, assignment_type, session_id, lesson_id, due_from, due_to)
+    items, total = service.get_assignments_by_class(class_id, query, current_user, status, assignment_type_id, session_id, lesson_id, due_from, due_to)
     return api_response(True, "Assignments retrieved successfully", [service.assignment_dict(item, current_user) for item in items], build_pagination(page, page_size, total))
 
 
@@ -114,11 +114,11 @@ def my_assignments(
     page_size: int = Query(10, ge=1, le=100),
     search: str | None = None,
     status: str | None = None,
-    assignment_type: str | None = None,
+    assignment_type_id: str | None = None,
     class_id: str | None = None,
     submitted_status: str | None = None,
 ):
     query = PaginationParams(page=page, page_size=page_size, search=search)
     service = AssignmentService(db)
-    items, total = service.get_my_assignments(current_user, query, status, assignment_type, class_id, submitted_status)
+    items, total = service.get_my_assignments(current_user, query, status, assignment_type_id, class_id, submitted_status)
     return api_response(True, "My assignments retrieved successfully", [service.assignment_dict(item, current_user) for item in items], build_pagination(page, page_size, total))

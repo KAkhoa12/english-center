@@ -1,6 +1,7 @@
 import {
   Award,
   BarChart3,
+  BookOpen,
   CalendarDays,
   ChevronDown,
   ChevronLeft,
@@ -10,13 +11,15 @@ import {
   GraduationCap,
   LayoutDashboard,
   MessageCircle,
+  PackageOpen,
   Settings,
   ShieldCheck,
-  Users,
   UserSquare2,
 } from "lucide-react";
 import { type ComponentType, useState } from "react";
 import { NavLink } from "react-router-dom";
+import { useAuthStore } from "@/services/auth/auth.store";
+import { canAccess, type AccessRule } from "@/shared/auth/rbac";
 import { PRIVATE_ROUTES } from "@/shared/routes";
 import { DashboardBrand } from "./DashboardBrand";
 
@@ -24,12 +27,12 @@ type DashboardSidebarProps = {
   className?: string;
 };
 
-type NavChildItem = {
+type NavChildItem = AccessRule & {
   label: string;
   href: string;
 };
 
-type NavItem = {
+type NavItem = AccessRule & {
   label: string;
   icon: ComponentType<{ className?: string }>;
   href?: string;
@@ -37,67 +40,199 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { label: "Tổng quan", icon: LayoutDashboard, href: PRIVATE_ROUTES.DASHBOARD },
   {
-    label: "Lớp học",
-    icon: Users,
+    label: "Tổng quan",
+    icon: LayoutDashboard,
+    href: PRIVATE_ROUTES.DASHBOARD,
+    allowedRoles: ["admin", "staff", "teacher", "student"],
+  },
+  {
+    label: "Khóa học",
+    icon: BookOpen,
+    allowedRoles: ["admin", "staff", "teacher"],
     children: [
-      { label: "Danh sách khóa học", href: PRIVATE_ROUTES.DASHBOARD_COURSES },
-      { label: "Quản lý lớp học", href: PRIVATE_ROUTES.DASHBOARD_CLASSES },
-      { label: "Danh sách loại khóa học", href: PRIVATE_ROUTES.DASHBOARD_COURSE_CATEGORIES },
-      { label: "Danh sách tag khóa học", href: PRIVATE_ROUTES.DASHBOARD_COURSE_TAGS },
+      {
+        label: "Danh sách khóa học",
+        href: PRIVATE_ROUTES.DASHBOARD_COURSES,
+        allowedRoles: ["admin", "staff"],
+        requiredPermissions: ["course.create", "course.update", "course.delete"],
+      },
+      {
+        label: "Danh sách lớp học",
+        href: PRIVATE_ROUTES.DASHBOARD_CLASSES,
+        allowedRoles: ["admin", "staff", "teacher"],
+        requiredPermissions: ["class.read"],
+      },
+    ],
+  },
+  {
+    label: "Quản lý chung",
+    icon: PackageOpen,
+    allowedRoles: ["admin", "staff"],
+    children: [
+      {
+        label: "Quản lý loại khóa học",
+        href: PRIVATE_ROUTES.DASHBOARD_COURSE_CATEGORIES,
+        allowedRoles: ["admin", "staff"],
+        requiredPermissions: ["course_category.read"],
+      },
+      {
+        label: "Quản lý tag khóa học",
+        href: PRIVATE_ROUTES.DASHBOARD_COURSE_TAGS,
+        allowedRoles: ["admin", "staff"],
+        requiredPermissions: ["course_tag.read"],
+      },
+      {
+        label: "Quản lý loại bài tập",
+        href: PRIVATE_ROUTES.DASHBOARD_ASSIGNMENT_TYPES,
+        allowedRoles: ["admin", "staff"],
+        requiredPermissions: ["assignment_type.read"],
+      },
     ],
   },
   {
     label: "Tài chính",
     icon: CircleDollarSign,
+    allowedRoles: ["admin", "staff"],
     children: [
-      { label: "Thu chi", href: PRIVATE_ROUTES.DASHBOARD_FINANCE_CASHFLOW },
-      { label: "Hóa đơn", href: PRIVATE_ROUTES.DASHBOARD_FINANCE_INVOICES },
+      {
+        label: "Thu chi",
+        href: PRIVATE_ROUTES.DASHBOARD_FINANCE_CASHFLOW,
+        allowedRoles: ["admin", "staff"],
+        requiredPermissions: ["order.read", "payment.read"],
+      },
+      {
+        label: "Hóa đơn",
+        href: PRIVATE_ROUTES.DASHBOARD_FINANCE_INVOICES,
+        allowedRoles: ["admin", "staff"],
+        requiredPermissions: ["invoice.read", "order.read"],
+      },
     ],
   },
   {
     label: "Tài nguyên",
     icon: FileText,
-    children: [{ label: "Quản lý tài liệu", href: PRIVATE_ROUTES.DASHBOARD_DOCUMENTS }],
+    allowedRoles: ["admin", "staff", "teacher"],
+    children: [
+      {
+        label: "Quản lý tài liệu",
+        href: PRIVATE_ROUTES.DASHBOARD_DOCUMENTS,
+        allowedRoles: ["admin", "staff", "teacher"],
+      },
+    ],
   },
   {
     label: "Nhân viên",
     icon: ShieldCheck,
+    allowedRoles: ["admin", "staff"],
     children: [
-      { label: "Quản lý nhân viên", href: PRIVATE_ROUTES.DASHBOARD_STAFF },
-      { label: "Quản lý quyền", href: PRIVATE_ROUTES.DASHBOARD_PERMISSIONS },
-      { label: "Quản lý vai trò", href: PRIVATE_ROUTES.DASHBOARD_ROLES },
+      {
+        label: "Quản lý nhân viên",
+        href: PRIVATE_ROUTES.DASHBOARD_STAFF,
+        allowedRoles: ["admin", "staff"],
+        requiredPermissions: ["staff.read"],
+      },
+      {
+        label: "Quản lý quyền",
+        href: PRIVATE_ROUTES.DASHBOARD_PERMISSIONS,
+        allowedRoles: ["admin", "staff"],
+        requiredPermissions: ["permission.read"],
+      },
+      {
+        label: "Quản lý vai trò",
+        href: PRIVATE_ROUTES.DASHBOARD_ROLES,
+        allowedRoles: ["admin", "staff"],
+        requiredPermissions: ["role.read"],
+      },
     ],
   },
   {
     label: "Học viên",
     icon: UserSquare2,
+    allowedRoles: ["admin", "staff", "teacher"],
     children: [
-      { label: "Danh sách học viên", href: PRIVATE_ROUTES.DASHBOARD_STUDENTS },
-      { label: "Điểm danh", href: PRIVATE_ROUTES.DASHBOARD_ATTENDANCE },
-      { label: "Bài tập", href: PRIVATE_ROUTES.DASHBOARD_ASSIGNMENTS },
+      {
+        label: "Danh sách học viên",
+        href: PRIVATE_ROUTES.DASHBOARD_STUDENTS,
+        allowedRoles: ["admin", "staff", "teacher"],
+        requiredPermissions: ["student.read"],
+      },
+      {
+        label: "Điểm danh",
+        href: PRIVATE_ROUTES.DASHBOARD_ATTENDANCE,
+        allowedRoles: ["admin", "staff", "teacher"],
+        requiredPermissions: ["attendance.read"],
+      },
+      {
+        label: "Bài tập",
+        href: PRIVATE_ROUTES.DASHBOARD_ASSIGNMENTS,
+        allowedRoles: ["admin", "staff", "teacher"],
+        requiredPermissions: ["assignment.read"],
+      },
     ],
   },
   {
     label: "Giảng viên",
     icon: GraduationCap,
+    allowedRoles: ["admin", "staff", "teacher"],
     children: [
-      { label: "Danh sách giảng viên", href: PRIVATE_ROUTES.DASHBOARD_TEACHERS },
-      { label: "Lịch giảng dạy", href: PRIVATE_ROUTES.DASHBOARD_TEACHING_SCHEDULE },
+      {
+        label: "Danh sách giảng viên",
+        href: PRIVATE_ROUTES.DASHBOARD_TEACHERS,
+        allowedRoles: ["admin", "staff"],
+        requiredPermissions: ["teacher.read"],
+      },
+      {
+        label: "Lịch giảng dạy",
+        href: PRIVATE_ROUTES.DASHBOARD_TEACHING_SCHEDULE,
+        allowedRoles: ["admin", "staff", "teacher"],
+        requiredPermissions: ["class_session.read"],
+      },
     ],
   },
-  { label: "Lịch học", icon: CalendarDays },
-  { label: "Bài tập", icon: FileText },
-  { label: "Kết quả", icon: BarChart3 },
-  { label: "Chứng chỉ", icon: Award },
-  { label: "Tin nhắn", icon: MessageCircle },
+  {
+    label: "Lịch học",
+    icon: CalendarDays,
+    href: PRIVATE_ROUTES.DASHBOARD_SCHEDULE,
+    allowedRoles: ["student"],
+  },
+  {
+    label: "Bài tập",
+    icon: FileText,
+    href: PRIVATE_ROUTES.DASHBOARD_ASSIGNMENTS,
+    allowedRoles: ["student"],
+  },
+  {
+    label: "Kết quả",
+    icon: BarChart3,
+    href: PRIVATE_ROUTES.DASHBOARD_RESULTS,
+    allowedRoles: ["student"],
+  },
+  {
+    label: "Chứng chỉ",
+    icon: Award,
+    href: PRIVATE_ROUTES.DASHBOARD_CERTIFICATES,
+    allowedRoles: ["student"],
+  },
+  {
+    label: "Tin nhắn",
+    icon: MessageCircle,
+    href: PRIVATE_ROUTES.DASHBOARD_MESSAGES,
+    allowedRoles: ["admin", "staff", "teacher", "student"],
+  },
 ];
 
 export const DashboardSidebar = ({
   className = "hidden lg:block",
 }: DashboardSidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
+  const me = useAuthStore((state) => state.me);
+  const visibleNavItems = navItems
+    .map((item) => ({
+      ...item,
+      children: item.children?.filter((child) => canAccess(me, child)),
+    }))
+    .filter((item) => canAccess(me, item) && (!item.children || item.children.length > 0));
 
   return (
     <aside
@@ -122,7 +257,7 @@ export const DashboardSidebar = ({
       </div>
 
       <nav className="mt-10 space-y-1">
-        {navItems.map(({ label, icon: Icon, href, children }) =>
+        {visibleNavItems.map(({ label, icon: Icon, href, children }) =>
           children ? (
             <details key={label} className="group" open>
               <summary

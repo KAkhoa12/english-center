@@ -2,6 +2,8 @@ from app.repositories.assignment import AssignmentRepository
 from app.repositories.assignment_attachment import AssignmentAttachmentRepository
 from app.repositories.assignment_grade import AssignmentGradeRepository
 from app.repositories.assignment_submission import AssignmentSubmissionRepository
+from app.repositories.assignment_type import AssignmentTypeRepository
+from app.repositories.assignment_question import AssignmentQuestionRepository, AssignmentQuestionOptionRepository
 from app.repositories.attendance import AttendanceRepository
 from app.repositories.base import BaseRepository
 from app.repositories.cart import CartItemRepository, CartRepository, CourseWishlistRepository
@@ -28,6 +30,7 @@ from app.repositories.room import RoomRepository
 from app.repositories.staff import StaffRepository
 from app.repositories.student import StudentRepository
 from app.repositories.submission_attachment import SubmissionAttachmentRepository
+from app.repositories.submission_answer import SubmissionAnswerRepository, SubmissionAnswerMediaRepository
 from app.repositories.teacher import TeacherRepository
 from app.repositories.user import UserRepository
 from app.repositories.role import RoleRepository
@@ -40,6 +43,9 @@ __all__ = [
     "AssignmentGradeRepository",
     "AssignmentRepository",
     "AssignmentSubmissionRepository",
+    "AssignmentTypeRepository",
+    "AssignmentQuestionRepository",
+    "AssignmentQuestionOptionRepository",
     "AttendanceRepository",
     "BaseRepository",
     "CartItemRepository",
@@ -71,6 +77,8 @@ __all__ = [
     "StaffRepository",
     "StudentRepository",
     "SubmissionAttachmentRepository",
+    "SubmissionAnswerRepository",
+    "SubmissionAnswerMediaRepository",
     "TeacherRepository",
     "UserRepository",
     "RoleRepository",

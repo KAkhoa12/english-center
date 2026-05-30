@@ -28,7 +28,7 @@ export const authApi = {
 
   refreshToken: (data: RefreshTokenRequest) =>
     apiClient.post<RefreshTokenResponse, RefreshTokenRequest>(
-      "/auth/refresh-token",
+      "/auth/refresh",
       data
     ),
 };

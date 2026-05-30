@@ -7,6 +7,9 @@ from app.models.assignment import (
     AssignmentSubmission,
     SubmissionAttachment,
 )
+from app.models.assignment_type import AssignmentType
+from app.models.assignment_question import AssignmentQuestion, AssignmentQuestionOption
+from app.models.submission_answer import SubmissionAnswer, SubmissionAnswerMedia
 from app.models.class_model import CourseClass
 from app.models.class_session import ClassSession
 from app.models.class_student import ClassStudent
@@ -68,8 +71,13 @@ __all__ = [
     "ClassSession",
     "Attendance",
     "Assignment",
+    "AssignmentType",
+    "AssignmentQuestion",
+    "AssignmentQuestionOption",
     "AssignmentAttachment",
     "AssignmentSubmission",
+    "SubmissionAnswer",
+    "SubmissionAnswerMedia",
     "SubmissionAttachment",
     "AssignmentGrade",
     "Cart",

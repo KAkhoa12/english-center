@@ -14,23 +14,29 @@ from app.models.assignment import (
     AssignmentStatus,
     AssignmentSubmission,
     AssignmentSubmissionStatus,
-    AssignmentType,
     SubmissionAttachment,
 )
+from app.models.assignment_question import AssignmentQuestion, AssignmentQuestionOption, AssignmentQuestionType
+from app.models.assignment_type import AssignmentType
 from app.models.class_model import CourseClass
 from app.models.class_session import ClassSession
 from app.models.class_student import ClassEnrollmentStatus
 from app.models.course import Lesson
 from app.models.student import Student
+from app.models.submission_answer import SubmissionAnswer, SubmissionAnswerMedia
 from app.models.rbac.user import User
 from app.repositories.assignment import AssignmentRepository
 from app.repositories.assignment_attachment import AssignmentAttachmentRepository
 from app.repositories.assignment_grade import AssignmentGradeRepository
 from app.repositories.assignment_submission import AssignmentSubmissionRepository
+from app.repositories.assignment_question import AssignmentQuestionOptionRepository, AssignmentQuestionRepository
+from app.repositories.assignment_type import AssignmentTypeRepository
 from app.repositories.class_session import ClassSessionRepository
 from app.repositories.class_student import ClassStudentRepository
 from app.repositories.lesson import LessonRepository
+from app.repositories.media import MediaRepository
 from app.repositories.student import StudentRepository
+from app.repositories.submission_answer import SubmissionAnswerMediaRepository, SubmissionAnswerRepository
 from app.repositories.submission_attachment import SubmissionAttachmentRepository
 from app.repositories.user import UserRepository
 from app.schemas.assignment import (
@@ -42,6 +48,12 @@ from app.schemas.assignment import (
     AssignmentGradeUpdate,
     AssignmentSubmissionCreate,
     AssignmentSubmissionUpdate,
+    AssignmentQuestionCreate,
+    AssignmentQuestionOptionCreate,
+    AssignmentQuestionOptionUpdate,
+    AssignmentQuestionUpdate,
+    SubmissionAnswerCreate,
+    SubmissionAnswerUpdate,
     SubmissionAttachmentCreate,
 )
 from app.schemas.common import PaginationParams
@@ -61,11 +73,17 @@ class AssignmentAccessMixin(AcademicAccessMixin):
         self.assignment_submission_repo = AssignmentSubmissionRepository(db)
         self.submission_attachment_repo = SubmissionAttachmentRepository(db)
         self.assignment_grade_repo = AssignmentGradeRepository(db)
+        self.assignment_type_repo = AssignmentTypeRepository(db)
+        self.assignment_question_repo = AssignmentQuestionRepository(db)
+        self.assignment_question_option_repo = AssignmentQuestionOptionRepository(db)
+        self.submission_answer_repo = SubmissionAnswerRepository(db)
+        self.submission_answer_media_repo = SubmissionAnswerMediaRepository(db)
         self.class_student_repo = ClassStudentRepository(db)
         self.class_session_repo = ClassSessionRepository(db)
         self.lesson_repo = LessonRepository(db)
         self.student_repo = StudentRepository(db)
         self.user_repo = UserRepository(db)
+        self.media_repo = MediaRepository(db)
 
     def _get_student(self, student_id: str) -> Student:
         student = self.student_repo.get_active_by_id(student_id)
@@ -122,6 +140,12 @@ class AssignmentAccessMixin(AcademicAccessMixin):
 
 
 class AssignmentService(AssignmentAccessMixin):
+    def _get_assignment_type(self, assignment_type_id: str) -> AssignmentType:
+        item = self.assignment_type_repo.get_active_by_id(assignment_type_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Assignment type not found")
+        return item
+
     def _validate_class_links(self, class_obj: CourseClass, session_id: str | None, lesson_id: str | None) -> tuple[ClassSession | None, Lesson | None]:
         session = None
         if session_id:
@@ -144,6 +168,7 @@ class AssignmentService(AssignmentAccessMixin):
         fake_assignment = Assignment(class_id=class_obj.id, title=payload.title, max_score=payload.max_score, created_by=str(current_user.id))
         self.assert_can_manage_assignment(fake_assignment, current_user)
         self._validate_class_links(class_obj, payload.session_id, payload.lesson_id)
+        self._get_assignment_type(payload.assignment_type_id)
         assignment = Assignment(
             class_id=str(class_obj.id),
             session_id=payload.session_id,
@@ -151,7 +176,7 @@ class AssignmentService(AssignmentAccessMixin):
             title=payload.title.strip(),
             description=payload.description,
             instruction=payload.instruction,
-            assignment_type=_enum_required(AssignmentType, payload.assignment_type, "assignment type"),
+            assignment_type_id=payload.assignment_type_id,
             status=_enum_required(AssignmentStatus, payload.status, "assignment status"),
             max_score=payload.max_score,
             due_at=payload.due_at,
@@ -174,7 +199,7 @@ class AssignmentService(AssignmentAccessMixin):
         query: PaginationParams,
         current_user: User,
         status: str | None = None,
-        assignment_type: str | None = None,
+        assignment_type_id: str | None = None,
         session_id: str | None = None,
         lesson_id: str | None = None,
         due_from: datetime | None = None,
@@ -194,7 +219,7 @@ class AssignmentService(AssignmentAccessMixin):
             class_id=str(class_obj.id),
             query=query,
             status=_enum_required(AssignmentStatus, status, "assignment status") if status else None,
-            assignment_type=_enum_required(AssignmentType, assignment_type, "assignment type") if assignment_type else None,
+            assignment_type_id=assignment_type_id,
             session_id=session_id,
             lesson_id=lesson_id,
             due_from=due_from,
@@ -221,8 +246,9 @@ class AssignmentService(AssignmentAccessMixin):
             assignment.session_id = payload.session_id
         if payload.lesson_id is not None:
             assignment.lesson_id = payload.lesson_id
-        if payload.assignment_type is not None:
-            assignment.assignment_type = _enum_required(AssignmentType, payload.assignment_type, "assignment type")
+        if payload.assignment_type_id is not None:
+            self._get_assignment_type(payload.assignment_type_id)
+            assignment.assignment_type_id = payload.assignment_type_id
         if payload.status is not None:
             assignment.status = _enum_required(AssignmentStatus, payload.status, "assignment status")
         if payload.max_score is not None:
@@ -265,7 +291,7 @@ class AssignmentService(AssignmentAccessMixin):
         current_user: User,
         query: PaginationParams,
         status: str | None = None,
-        assignment_type: str | None = None,
+        assignment_type_id: str | None = None,
         class_id: str | None = None,
         submitted_status: str | None = None,
     ) -> tuple[list[Assignment], int]:
@@ -276,7 +302,7 @@ class AssignmentService(AssignmentAccessMixin):
             student_id=str(student.id),
             query=query,
             status=_enum_required(AssignmentStatus, status, "assignment status") if status else None,
-            assignment_type=_enum_required(AssignmentType, assignment_type, "assignment type") if assignment_type else None,
+            assignment_type_id=assignment_type_id,
             class_id=class_id,
         )
         if submitted_status:
@@ -296,6 +322,7 @@ class AssignmentService(AssignmentAccessMixin):
         class_obj = ClassService(self.db).get_class_by_id(str(assignment.class_id))
         session = self.class_session_repo.get_active_by_id(str(assignment.session_id)) if assignment.session_id else None
         lesson = self.lesson_repo.get_active_by_id(str(assignment.lesson_id)) if assignment.lesson_id else None
+        assignment_type = self.assignment_type_repo.get(str(assignment.assignment_type_id))
         data = {
             "id": str(assignment.id),
             "class_id": str(assignment.class_id),
@@ -304,7 +331,12 @@ class AssignmentService(AssignmentAccessMixin):
             "title": assignment.title,
             "description": assignment.description,
             "instruction": assignment.instruction,
-            "assignment_type": assignment.assignment_type.value,
+            "assignment_type_id": str(assignment.assignment_type_id),
+            "assignment_type": {
+                "id": str(assignment_type.id),
+                "code": assignment_type.code,
+                "name": assignment_type.name,
+            } if assignment_type else None,
             "status": assignment.status.value,
             "max_score": float(assignment.max_score),
             "due_at": assignment.due_at,
@@ -585,6 +617,232 @@ class AssignmentSubmissionService(AssignmentAccessMixin):
         }
 
 
+class AssignmentQuestionService(AssignmentAccessMixin):
+    def _get_question(self, question_id: str) -> AssignmentQuestion:
+        item = self.assignment_question_repo.get(question_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Assignment question not found")
+        return item
+
+    def _question_dict(self, item: AssignmentQuestion) -> dict[str, Any]:
+        return {
+            "id": str(item.id),
+            "assignment_id": str(item.assignment_id),
+            "question_type": item.question_type.value,
+            "question_text": item.question_text,
+            "score": float(item.score),
+            "order_index": item.order_index,
+            "is_required": item.is_required,
+            "options": [
+                AssignmentQuestionOptionService(self.db).option_dict(opt)
+                for opt in self.assignment_question_option_repo.list_by_question_id(str(item.id))
+            ],
+        }
+
+    def create_question(self, assignment_id: str, payload: AssignmentQuestionCreate, current_user: User) -> AssignmentQuestion:
+        assignment = AssignmentService(self.db).get_assignment_by_id(assignment_id)
+        self.assert_can_manage_assignment(assignment, current_user)
+        item = AssignmentQuestion(
+            assignment_id=assignment.id,
+            question_type=_enum_required(AssignmentQuestionType, payload.question_type, "question type"),
+            question_text=payload.question_text.strip(),
+            score=payload.score,
+            order_index=payload.order_index,
+            is_required=payload.is_required,
+        )
+        created = self.assignment_question_repo.create(item)
+        self.db.commit()
+        return created
+
+    def list_questions(self, assignment_id: str, current_user: User) -> list[AssignmentQuestion]:
+        assignment = AssignmentService(self.db).get_assignment_by_id(assignment_id)
+        self.assert_can_read_assignment(assignment, current_user)
+        return self.assignment_question_repo.list_by_assignment_id(assignment_id)
+
+    def update_question(self, question_id: str, payload: AssignmentQuestionUpdate, current_user: User) -> AssignmentQuestion:
+        item = self._get_question(question_id)
+        assignment = AssignmentService(self.db).get_assignment_by_id(str(item.assignment_id))
+        self.assert_can_manage_assignment(assignment, current_user)
+        if payload.question_type is not None:
+            item.question_type = _enum_required(AssignmentQuestionType, payload.question_type, "question type")
+        for field in ["question_text", "score", "order_index", "is_required"]:
+            value = getattr(payload, field)
+            if value is not None:
+                setattr(item, field, value.strip() if field == "question_text" and isinstance(value, str) else value)
+        updated = self.assignment_question_repo.update(item)
+        self.db.commit()
+        return updated
+
+    def soft_delete_question(self, question_id: str, current_user: User) -> None:
+        item = self._get_question(question_id)
+        assignment = AssignmentService(self.db).get_assignment_by_id(str(item.assignment_id))
+        self.assert_can_manage_assignment(assignment, current_user)
+        self.assignment_question_repo.soft_delete(item)
+        self.db.commit()
+
+
+class AssignmentQuestionOptionService(AssignmentAccessMixin):
+    def _get_option(self, option_id: str) -> AssignmentQuestionOption:
+        item = self.assignment_question_option_repo.get(option_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Question option not found")
+        return item
+
+    def option_dict(self, item: AssignmentQuestionOption) -> dict[str, Any]:
+        return {
+            "id": str(item.id),
+            "question_id": str(item.question_id),
+            "option_text": item.option_text,
+            "is_correct": item.is_correct,
+            "order_index": item.order_index,
+        }
+
+    def create_option(self, question_id: str, payload: AssignmentQuestionOptionCreate, current_user: User) -> AssignmentQuestionOption:
+        question = AssignmentQuestionService(self.db)._get_question(question_id)
+        assignment = AssignmentService(self.db).get_assignment_by_id(str(question.assignment_id))
+        self.assert_can_manage_assignment(assignment, current_user)
+        if question.question_type not in {AssignmentQuestionType.single_choice, AssignmentQuestionType.multiple_choice}:
+            raise HTTPException(status_code=400, detail="Options are only allowed for choice questions")
+        item = AssignmentQuestionOption(
+            question_id=question.id,
+            option_text=payload.option_text.strip(),
+            is_correct=payload.is_correct,
+            order_index=payload.order_index,
+        )
+        created = self.assignment_question_option_repo.create(item)
+        self.db.commit()
+        return created
+
+    def list_options(self, question_id: str, current_user: User) -> list[AssignmentQuestionOption]:
+        question = AssignmentQuestionService(self.db)._get_question(question_id)
+        assignment = AssignmentService(self.db).get_assignment_by_id(str(question.assignment_id))
+        self.assert_can_read_assignment(assignment, current_user)
+        return self.assignment_question_option_repo.list_by_question_id(question_id)
+
+    def update_option(self, option_id: str, payload: AssignmentQuestionOptionUpdate, current_user: User) -> AssignmentQuestionOption:
+        item = self._get_option(option_id)
+        question = AssignmentQuestionService(self.db)._get_question(str(item.question_id))
+        assignment = AssignmentService(self.db).get_assignment_by_id(str(question.assignment_id))
+        self.assert_can_manage_assignment(assignment, current_user)
+        for field in ["option_text", "is_correct", "order_index"]:
+            value = getattr(payload, field)
+            if value is not None:
+                setattr(item, field, value.strip() if field == "option_text" and isinstance(value, str) else value)
+        updated = self.assignment_question_option_repo.update(item)
+        self.db.commit()
+        return updated
+
+    def soft_delete_option(self, option_id: str, current_user: User) -> None:
+        item = self._get_option(option_id)
+        question = AssignmentQuestionService(self.db)._get_question(str(item.question_id))
+        assignment = AssignmentService(self.db).get_assignment_by_id(str(question.assignment_id))
+        self.assert_can_manage_assignment(assignment, current_user)
+        self.assignment_question_option_repo.soft_delete(item)
+        self.db.commit()
+
+
+class SubmissionAnswerService(AssignmentAccessMixin):
+    def _get_submission_answer(self, answer_id: str) -> SubmissionAnswer:
+        item = self.submission_answer_repo.get(answer_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Submission answer not found")
+        return item
+
+    def _validate_media_ids(self, media_ids: list[str] | None) -> list[str]:
+        ids = media_ids or []
+        for media_id in ids:
+            media = self.media_repo.get(media_id)
+            if not media:
+                raise HTTPException(status_code=404, detail=f"Media not found: {media_id}")
+        return ids
+
+    def _sync_media(self, answer: SubmissionAnswer, media_ids: list[str]) -> None:
+        existing = self.submission_answer_media_repo.list_by_submission_answer_id(str(answer.id))
+        existing_ids = {str(item.media_id): item for item in existing}
+        target_ids = set(media_ids)
+        for media_id, item in existing_ids.items():
+            if media_id not in target_ids:
+                self.submission_answer_media_repo.soft_delete(item)
+        for media_id in target_ids:
+            if media_id in existing_ids:
+                continue
+            self.submission_answer_media_repo.create(SubmissionAnswerMedia(submission_answer_id=answer.id, media_id=media_id))
+
+    def answer_dict(self, answer: SubmissionAnswer) -> dict[str, Any]:
+        medias = self.submission_answer_media_repo.list_with_media_by_submission_answer_id(str(answer.id))
+        return {
+            "id": str(answer.id),
+            "submission_id": str(answer.submission_id),
+            "question_id": str(answer.question_id),
+            "answer_text": answer.answer_text,
+            "selected_option_ids": answer.selected_option_ids,
+            "is_correct": answer.is_correct,
+            "score": float(answer.score) if answer.score is not None else None,
+            "media": [
+                {
+                    "id": str(media.id),
+                    "bucket": media.bucket,
+                    "object_name": media.object_name,
+                    "original_filename": media.original_filename,
+                    "content_type": media.content_type,
+                    "size": media.size,
+                }
+                for _, media in medias
+            ],
+        }
+
+    def create_answer(self, submission_id: str, payload: SubmissionAnswerCreate, current_user: User) -> SubmissionAnswer:
+        submission = AssignmentSubmissionService(self.db).get_submission_by_id(submission_id)
+        if str(submission.user_id) != str(current_user.id):
+            assignment = AssignmentService(self.db).get_assignment_by_id(str(submission.assignment_id))
+            self.assert_can_manage_assignment(assignment, current_user)
+        question = AssignmentQuestionService(self.db)._get_question(payload.question_id)
+        if str(question.assignment_id) != str(submission.assignment_id):
+            raise HTTPException(status_code=400, detail="Question does not belong to submission assignment")
+        answer = SubmissionAnswer(
+            submission_id=submission.id,
+            question_id=question.id,
+            answer_text=payload.answer_text,
+            selected_option_ids=payload.selected_option_ids,
+        )
+        created = self.submission_answer_repo.create(answer)
+        media_ids = self._validate_media_ids(payload.media_ids)
+        self._sync_media(created, media_ids)
+        self.db.commit()
+        return created
+
+    def list_answers(self, submission_id: str, current_user: User) -> list[SubmissionAnswer]:
+        submission = AssignmentSubmissionService(self.db).get_submission_by_id(submission_id)
+        AssignmentSubmissionService(self.db).assert_can_read_submission(submission, current_user)
+        return self.submission_answer_repo.list_by_submission_id(submission_id)
+
+    def update_answer(self, answer_id: str, payload: SubmissionAnswerUpdate, current_user: User) -> SubmissionAnswer:
+        answer = self._get_submission_answer(answer_id)
+        submission = AssignmentSubmissionService(self.db).get_submission_by_id(str(answer.submission_id))
+        if str(submission.user_id) != str(current_user.id):
+            assignment = AssignmentService(self.db).get_assignment_by_id(str(submission.assignment_id))
+            self.assert_can_manage_assignment(assignment, current_user)
+        for field in ["answer_text", "selected_option_ids", "is_correct", "score"]:
+            value = getattr(payload, field)
+            if value is not None:
+                setattr(answer, field, value)
+        if payload.media_ids is not None:
+            media_ids = self._validate_media_ids(payload.media_ids)
+            self._sync_media(answer, media_ids)
+        updated = self.submission_answer_repo.update(answer)
+        self.db.commit()
+        return updated
+
+    def soft_delete_answer(self, answer_id: str, current_user: User) -> None:
+        answer = self._get_submission_answer(answer_id)
+        submission = AssignmentSubmissionService(self.db).get_submission_by_id(str(answer.submission_id))
+        if str(submission.user_id) != str(current_user.id):
+            assignment = AssignmentService(self.db).get_assignment_by_id(str(submission.assignment_id))
+            self.assert_can_manage_assignment(assignment, current_user)
+        self.submission_answer_repo.soft_delete(answer)
+        self.db.commit()
+
+
 class SubmissionAttachmentService(AssignmentAccessMixin):
     def create_submission_attachment(self, submission_id: str, payload: SubmissionAttachmentCreate, current_user: User) -> SubmissionAttachment:
         submission = AssignmentSubmissionService(self.db).get_submission_by_id(submission_id)
@@ -724,7 +982,7 @@ class AssignmentGradeService(AssignmentAccessMixin):
         query: PaginationParams,
         current_user: User,
         class_id: str | None = None,
-        assignment_type: str | None = None,
+        assignment_type_id: str | None = None,
     ) -> tuple[list[AssignmentGrade], int]:
         try:
             self.assert_student_self_or_privileged(student_id, current_user, "assignment_grade.all")
@@ -738,7 +996,7 @@ class AssignmentGradeService(AssignmentAccessMixin):
             student_id=student_id,
             query=query,
             class_id=class_id,
-            assignment_type=_enum_required(AssignmentType, assignment_type, "assignment type") if assignment_type else None,
+            assignment_type_id=assignment_type_id,
         )
 
     def grade_dict(self, grade: AssignmentGrade) -> dict[str, Any]:

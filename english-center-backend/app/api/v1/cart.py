@@ -23,7 +23,7 @@ def get_cart(db: Annotated[Session, Depends(get_db)], current_user: User = Depen
 @router.post("/items")
 def add_cart_item(payload: AddCartItemRequest, db: Annotated[Session, Depends(get_db)], current_user: User = Depends(require_permission("cart.create"))):
     service = CartService(db)
-    cart = service.add_course_to_cart(str(current_user.id), payload.course_id)
+    cart = service.add_course_to_cart(str(current_user.id), payload.course_id, payload.class_id)
     return api_response(True, "Course added to cart successfully", service.cart_dict(cart), None)
 
 

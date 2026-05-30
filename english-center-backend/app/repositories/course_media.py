@@ -22,3 +22,14 @@ class CourseMediaRepository(BaseRepository[CourseMedia]):
                 .order_by(CourseMedia.order_index.asc(), CourseMedia.created_at.asc())
             ).scalars().all()
         )
+
+    def get_primary_by_course(self, course_id: str) -> CourseMedia | None:
+        return self.db.execute(
+            select(CourseMedia)
+            .where(
+                CourseMedia.course_id == course_id,
+                CourseMedia.deleted_at.is_(None),
+                CourseMedia.is_primary.is_(True),
+            )
+            .order_by(CourseMedia.order_index.asc(), CourseMedia.created_at.asc())
+        ).scalars().first()

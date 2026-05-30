@@ -39,6 +39,7 @@ def list_courses(
     sort_by: str | None = None,
     sort_order: str = Query("desc", pattern="^(asc|desc)$"),
     status: str | None = None,
+    mode: str | None = None,
     target_level: str | None = None,
     category_id: str | None = None,
     tag_id: str | None = None,
@@ -46,7 +47,16 @@ def list_courses(
     max_price: float | None = None,
 ):
     query = PaginationParams(page=page, page_size=page_size, search=search, sort_by=sort_by, sort_order=sort_order)
-    items, total = CourseService(db).get_courses(query, status, target_level, category_id, tag_id, min_price, max_price)
+    items, total = CourseService(db).get_courses(
+        query,
+        status=status,
+        mode=mode,
+        target_level=target_level,
+        category_id=category_id,
+        tag_id=tag_id,
+        min_price=min_price,
+        max_price=max_price,
+    )
     return api_response(True, "Courses retrieved successfully", items, build_pagination(page, page_size, total))
 
 

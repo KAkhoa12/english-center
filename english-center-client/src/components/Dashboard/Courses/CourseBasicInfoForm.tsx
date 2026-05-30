@@ -3,28 +3,34 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { CourseDetail, UpdateCourseRequest } from "@/services/courses/courses.type";
+import type { CourseDetail, CourseMode, UpdateCourseRequest } from "@/services/courses/courses.type";
+import type { CourseCategory } from "@/services/coursesCategory/coursesCategory.type";
 
 type CourseBasicInfoFormProps = {
   course: CourseDetail | null;
+  categories: CourseCategory[];
   loading?: boolean;
   onSubmit: (payload: UpdateCourseRequest) => Promise<void>;
 };
 
 export default function CourseBasicInfoForm({
   course,
+  categories,
   loading = false,
   onSubmit,
 }: CourseBasicInfoFormProps) {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [slug, setSlug] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [mode, setMode] = useState<CourseMode>("center");
   const [targetLevel, setTargetLevel] = useState("");
   const [durationWeeks, setDurationWeeks] = useState("");
   const [totalSessions, setTotalSessions] = useState("");
   const [price, setPrice] = useState("");
-  const [status, setStatus] = useState("draft");
+  const [status, setStatus] = useState("active");
   const [description, setDescription] = useState("");
   const [outputGoal, setOutputGoal] = useState("");
 
@@ -33,6 +39,8 @@ export default function CourseBasicInfoForm({
     setName(course.name ?? "");
     setCode(course.code ?? "");
     setSlug(course.slug ?? "");
+    setCategoryId(course.category_id ?? course.category?.id ?? "");
+    setMode(course.mode ?? "center");
     setTargetLevel(course.target_level ?? "");
     setDurationWeeks(
       course.duration_weeks === null || course.duration_weeks === undefined
@@ -45,7 +53,7 @@ export default function CourseBasicInfoForm({
         : String(course.total_sessions),
     );
     setPrice(String(course.price ?? 0));
-    setStatus(course.status ?? "draft");
+    setStatus(course.status ?? "active");
     setDescription(course.description ?? "");
     setOutputGoal(course.output_goal ?? "");
   }, [course]);
@@ -56,6 +64,8 @@ export default function CourseBasicInfoForm({
       name: name.trim(),
       code: code.trim(),
       slug: slug.trim() || null,
+      category_id: categoryId || null,
+      mode,
       target_level: targetLevel.trim() || null,
       duration_weeks: durationWeeks.trim() ? Number(durationWeeks) : null,
       total_sessions: totalSessions.trim() ? Number(totalSessions) : null,
@@ -84,6 +94,33 @@ export default function CourseBasicInfoForm({
         <div>
           <label className="mb-1.5 block text-sm font-medium text-gray-700">Slug</label>
           <Input value={slug} onChange={(e) => setSlug(e.target.value)} />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-gray-700">Loại khóa học</label>
+          <Select value={categoryId} onValueChange={setCategoryId}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Chọn loại khóa học" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-gray-700">Mode khóa học</label>
+          <Select value={mode} onValueChange={(value: CourseMode) => setMode(value)}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Mode khóa học" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="center">Center - bán theo lớp học</SelectItem>
+              <SelectItem value="template">Template - module/bài học</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-medium text-gray-700">Trình độ mục tiêu</label>
@@ -118,8 +155,8 @@ export default function CourseBasicInfoForm({
             onChange={(e) => setStatus(e.target.value)}
             className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           >
-            <option value="draft">draft</option>
             <option value="active">active</option>
+            <option value="inactive">inactive</option>
             <option value="archived">archived</option>
           </select>
         </div>
@@ -145,4 +182,3 @@ export default function CourseBasicInfoForm({
     </form>
   );
 }
-

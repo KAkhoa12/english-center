@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCoursesStore } from "@/services/courses/courses.store";
+import type { CourseMode } from "@/services/courses/courses.type";
 import { useCoursesCategoryStore } from "@/services/coursesCategory/coursesCategory.store";
 import { useCoursesTagStore } from "@/services/coursesTag/coursesTag.store";
 import { PRIVATE_ROUTES } from "@/shared/routes";
@@ -24,6 +25,7 @@ export const DashboardCoursesPage = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [status, setStatus] = useState<string>("all");
+  const [mode, setMode] = useState<string>("all");
   const [targetLevel, setTargetLevel] = useState<string>("all");
   const [categoryId, setCategoryId] = useState<string>("all");
   const [tagId, setTagId] = useState<string>("all");
@@ -47,6 +49,7 @@ export const DashboardCoursesPage = () => {
       page_size: pageSize,
       search: searchKeyword.trim() || undefined,
       status: status !== "all" ? status : undefined,
+      mode: mode !== "all" ? (mode as CourseMode) : undefined,
       target_level: targetLevel !== "all" ? targetLevel : undefined,
       category_id: categoryId !== "all" ? categoryId : undefined,
       tag_id: tagId !== "all" ? tagId : undefined,
@@ -61,6 +64,7 @@ export const DashboardCoursesPage = () => {
     pageSize,
     searchKeyword,
     status,
+    mode,
     targetLevel,
     categoryId,
     tagId,
@@ -122,9 +126,26 @@ export const DashboardCoursesPage = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tất cả trạng thái</SelectItem>
-            <SelectItem value="draft">Nháp</SelectItem>
             <SelectItem value="active">Đang mở</SelectItem>
+            <SelectItem value="inactive">Tạm ẩn</SelectItem>
             <SelectItem value="archived">Lưu trữ</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={mode}
+          onValueChange={(value) => {
+            setMode(value);
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Mode khóa học" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tất cả mode</SelectItem>
+            <SelectItem value="center">Khóa trung tâm</SelectItem>
+            <SelectItem value="template">Khóa template</SelectItem>
           </SelectContent>
         </Select>
 
@@ -250,6 +271,7 @@ export const DashboardCoursesPage = () => {
             variant="outline"
             onClick={() => {
               setStatus("all");
+              setMode("all");
               setTargetLevel("all");
               setCategoryId("all");
               setTagId("all");

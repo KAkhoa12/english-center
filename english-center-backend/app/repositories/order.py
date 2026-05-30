@@ -1,7 +1,9 @@
-from sqlalchemy import select
+from datetime import datetime
+
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.commerce import Order, OrderItem
+from app.models.commerce import Order, OrderItem, OrderStatus
 from app.repositories.base import BaseRepository
 
 
@@ -25,6 +27,22 @@ class OrderRepository(BaseRepository[Order]):
                 select(Order).where(Order.user_id == user_id, Order.deleted_at.is_(None)).order_by(Order.created_at.desc())
             ).scalars().all()
         )
+
+    def count_created_since(self, from_datetime: datetime) -> int:
+        return int(
+            self.db.execute(
+                select(func.count()).select_from(Order).where(Order.created_at >= from_datetime)
+            ).scalar_one()
+        )
+
+    def list_filtered(self, user_id: str | None = None, status: OrderStatus | None = None) -> list[Order]:
+        stmt = select(Order).where(Order.deleted_at.is_(None))
+        if user_id:
+            stmt = stmt.where(Order.user_id == user_id)
+        if status:
+            stmt = stmt.where(Order.status == status)
+        stmt = stmt.order_by(Order.created_at.desc())
+        return list(self.db.execute(stmt).scalars().all())
 
 
 class OrderItemRepository(BaseRepository[OrderItem]):

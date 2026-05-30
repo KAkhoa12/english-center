@@ -1,7 +1,7 @@
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.models.course import Lesson
+from app.models.course import Lesson, LessonStatus
 from app.repositories.base import BaseRepository
 
 
@@ -29,3 +29,20 @@ class LessonRepository(BaseRepository[Lesson]):
                 .order_by(Lesson.order_index.asc())
             ).scalars().all()
         )
+
+    def list_filtered_by_course(
+        self,
+        course_id: str,
+        module_id: str | None = None,
+        status: LessonStatus | None = None,
+        search: str | None = None,
+    ) -> list[Lesson]:
+        stmt = select(Lesson).where(Lesson.course_id == course_id, Lesson.deleted_at.is_(None))
+        if module_id:
+            stmt = stmt.where(Lesson.module_id == module_id)
+        if status:
+            stmt = stmt.where(Lesson.status == status)
+        if search:
+            term = f"%{search}%"
+            stmt = stmt.where(or_(Lesson.title.ilike(term), Lesson.description.ilike(term)))
+        return list(self.db.execute(stmt).scalars().all())

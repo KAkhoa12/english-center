@@ -11,8 +11,8 @@ from app.models.assignment import (
     AssignmentStatus,
     AssignmentSubmission,
     AssignmentSubmissionStatus,
-    AssignmentType,
 )
+from app.models.assignment_type import AssignmentType, AssignmentTypeStatus
 from app.models.class_model import ClassStatus, ClassType, CourseClass
 from app.models.class_session import ClassSession, SessionMode, SessionStatus
 from app.models.class_student import ClassEnrollmentStatus, ClassStudent
@@ -67,6 +67,7 @@ PERMISSIONS = [
     "attendance.create", "attendance.read", "attendance.update", "attendance.delete", "attendance.all",
     "attendance_report.read", "attendance_report.all",
     "assignment.create", "assignment.read", "assignment.update", "assignment.delete", "assignment.all",
+    "assignment_type.create", "assignment_type.read", "assignment_type.update", "assignment_type.delete", "assignment_type.all",
     "assignment_attachment.create", "assignment_attachment.read", "assignment_attachment.update", "assignment_attachment.delete", "assignment_attachment.all",
     "assignment_submission.create", "assignment_submission.read", "assignment_submission.update", "assignment_submission.delete", "assignment_submission.all",
     "submission_attachment.create", "submission_attachment.read", "submission_attachment.update", "submission_attachment.delete", "submission_attachment.all",
@@ -95,7 +96,7 @@ ROLE_PERMISSION_CODES = {
         "cart.all", "wishlist.all", "order.create", "order.read", "order.update", "invoice.read", "payment.create", "payment.read",
         "class.read", "class_student.read", "class_session.read", "attendance.read", "attendance_report.read",
         "assignment.read", "assignment_submission.create", "assignment_submission.read", "assignment_submission.update",
-        "submission_attachment.create", "submission_attachment.read", "submission_attachment.delete", "assignment_grade.read",
+        "submission_attachment.create", "submission_attachment.read", "submission_attachment.delete", "assignment_grade.read", "payment.update"
     ],
 }
 
@@ -179,6 +180,7 @@ def seed_defaults(db: Session) -> None:
 
     seed_course_samples(db)
     seed_academic_samples(db, roles)
+    seed_assignment_types(db)
     seed_assignment_samples(db)
     db.commit()
 
@@ -454,6 +456,17 @@ def seed_academic_samples(db: Session, roles: dict[str, Role]) -> None:
 
 
 def seed_assignment_samples(db: Session) -> None:
+    type_by_code = {
+        item.code: item
+        for item in db.execute(
+            select(AssignmentType).where(AssignmentType.deleted_at.is_(None), AssignmentType.status == AssignmentTypeStatus.active)
+        ).scalars().all()
+    }
+    writing_type = type_by_code.get("writing")
+    practice_type = type_by_code.get("practice")
+    if not writing_type or not practice_type:
+        return
+
     class_obj = db.execute(
         select(CourseClass).where(CourseClass.name == "IELTS Foundation T2/T4 Evening", CourseClass.deleted_at.is_(None))
     ).scalar_one_or_none()
@@ -484,7 +497,7 @@ def seed_assignment_samples(db: Session) -> None:
             title="Writing Task 1 Homework",
             description="Write a short line graph report",
             instruction="Write at least 150 words.",
-            assignment_type=AssignmentType.writing,
+            assignment_type_id=writing_type.id,
             status=AssignmentStatus.published,
             max_score=10,
             due_at=(_now() + timedelta(days=7)).replace(microsecond=0),
@@ -502,7 +515,7 @@ def seed_assignment_samples(db: Session) -> None:
             class_id=class_obj.id,
             title="Vocabulary Practice",
             description="Practice key words from the latest lesson",
-            assignment_type=AssignmentType.vocabulary,
+            assignment_type_id=practice_type.id,
             status=AssignmentStatus.published,
             max_score=10,
             allow_late_submission=True,
@@ -558,6 +571,38 @@ def seed_assignment_samples(db: Session) -> None:
             )
         )
         submission.status = AssignmentSubmissionStatus.graded
+
+
+def seed_assignment_types(db: Session) -> None:
+    defaults = [
+        ("homework", "Homework", False, False, True, False),
+        ("quiz", "Quiz", True, False, False, False),
+        ("exam", "Exam", False, False, True, False),
+        ("practice", "Practice", True, False, True, False),
+        ("project", "Project", False, True, True, True),
+        ("speaking", "Speaking", False, False, True, False),
+        ("writing", "Writing", False, False, True, False),
+        ("file_upload", "File Upload", False, True, False, True),
+        ("mixed", "Mixed", False, True, True, True),
+    ]
+    for code, name, is_auto_gradable, requires_file_submission, allow_text_submission, allow_file_submission in defaults:
+        item = db.execute(
+            select(AssignmentType).where(AssignmentType.code == code, AssignmentType.deleted_at.is_(None))
+        ).scalar_one_or_none()
+        if item:
+            continue
+        db.add(
+            AssignmentType(
+                code=code,
+                name=name,
+                is_auto_gradable=is_auto_gradable,
+                requires_file_submission=requires_file_submission,
+                allow_text_submission=allow_text_submission,
+                allow_file_submission=allow_file_submission,
+                status=AssignmentTypeStatus.active,
+            )
+        )
+        db.flush()
 
 
 if __name__ == "__main__":

@@ -1,7 +1,18 @@
 
+export type OrderItemClassRef = {
+  id: string;
+  name: string;
+  code: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  status: string;
+};
+
 export type OrderItem = {
   id: string;
   course_id: string;
+  class_id: string | null;
+  class: OrderItemClassRef | null;
   course_name: string;
   course_code: string;
   unit_price: number;

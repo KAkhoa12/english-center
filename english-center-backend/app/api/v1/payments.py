@@ -8,8 +8,8 @@ from app.core.response import api_response
 from app.db.session import get_db
 from app.dependencies.permissions import require_permission
 from app.models.rbac.user import User
-from app.schemas.commerce import CreateSePayPaymentRequest
-from app.services.commerce_service import OrderSerializer, OrderService, PaymentService
+from app.schemas.commerce import CreateSePayPaymentRequest, MarkOrderPaidRequest
+from app.services.commerce_service import OrderSerializer, OrderService, PaymentService, mark_order_paid_for_testing
 
 router = APIRouter(tags=["payments"])
 
@@ -42,3 +42,14 @@ async def sepay_ipn(request: Request, db: Annotated[Session, Depends(get_db)]):
     payload = await request.json()
     success, status_code = PaymentService(db).handle_sepay_ipn(payload, dict(request.headers))
     return JSONResponse(status_code=status_code, content={"success": success})
+
+
+@router.post("/orders/{order_id}/payments/mark-paid")
+def mark_order_paid(
+    order_id: str,
+    payload: MarkOrderPaidRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: User = Depends(require_permission("payment.update")),
+):
+    order = mark_order_paid_for_testing(db, order_id, current_user, payload.payment_method, payload.reference)
+    return api_response(True, "Order marked as paid successfully", OrderSerializer(db).order_detail(order), None)

@@ -17,3 +17,6 @@ class CourseOutcomeRepository(BaseRepository[CourseOutcome]):
                 .order_by(CourseOutcome.order_index.asc())
             ).scalars().all()
         )
+
+    def get_active_by_id(self, outcome_id: str) -> CourseOutcome | None:
+        return self.get(outcome_id)

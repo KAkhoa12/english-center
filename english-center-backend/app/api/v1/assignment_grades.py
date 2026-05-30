@@ -69,9 +69,9 @@ def get_student_grades(
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
     class_id: str | None = None,
-    assignment_type: str | None = None,
+    assignment_type_id: str | None = None,
 ):
     query = PaginationParams(page=page, page_size=page_size)
     service = AssignmentGradeService(db)
-    items, total = service.get_student_grades(student_id, query, current_user, class_id, assignment_type)
+    items, total = service.get_student_grades(student_id, query, current_user, class_id, assignment_type_id)
     return api_response(True, "Student assignment grades retrieved successfully", [service.grade_dict(item) for item in items], build_pagination(page, page_size, total))

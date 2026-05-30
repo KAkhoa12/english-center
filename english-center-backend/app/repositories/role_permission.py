@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Role, RolePermission
+from app.models import Permission, Role, RolePermission
 from app.repositories.base import BaseRepository
 
 
@@ -72,5 +72,19 @@ class RolePermissionRepository(BaseRepository[RolePermission]):
                     RolePermission.role_id.in_(role_ids),
                     RolePermission.deleted_at.is_(None),
                 )
+            ).scalars().all()
+        )
+
+    def list_active_permissions_by_role_id(self, role_id: str) -> list[Permission]:
+        return list(
+            self.db.execute(
+                select(Permission)
+                .join(RolePermission, RolePermission.permission_id == Permission.id)
+                .where(
+                    RolePermission.role_id == role_id,
+                    RolePermission.deleted_at.is_(None),
+                    Permission.deleted_at.is_(None),
+                )
+                .order_by(Permission.code.asc())
             ).scalars().all()
         )

@@ -1,4 +1,3 @@
-import enum
 from datetime import datetime
 from decimal import Decimal
 
@@ -9,16 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 
-class AssignmentType(str, enum.Enum):
-    homework = "homework"
-    writing = "writing"
-    speaking = "speaking"
-    reading = "reading"
-    listening = "listening"
-    grammar = "grammar"
-    vocabulary = "vocabulary"
-    project = "project"
-    other = "other"
+import enum
 
 
 class AssignmentStatus(str, enum.Enum):
@@ -57,12 +47,7 @@ class Assignment(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     instruction: Mapped[str | None] = mapped_column(Text, nullable=True)
-    assignment_type: Mapped[AssignmentType] = mapped_column(
-        Enum(AssignmentType, name="assignment_type"),
-        nullable=False,
-        default=AssignmentType.homework,
-        index=True,
-    )
+    assignment_type_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("assignment_types.id"), nullable=False, index=True)
     status: Mapped[AssignmentStatus] = mapped_column(
         Enum(AssignmentStatus, name="assignment_status"),
         nullable=False,

@@ -2,12 +2,12 @@ import { useNavigate } from "react-router-dom";
 
 type CartSummaryProps = {
   subtotal: number;
-  discount: number;
+  total: number;
 };
 
-export default function CartSummary({ subtotal, discount }: CartSummaryProps) {
+export default function CartSummary({ subtotal, total }: CartSummaryProps) {
   const navigate = useNavigate();
-  const total = subtotal - discount;
+  const discount = subtotal - total;
 
   return (
     <aside className="sticky top-28 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
@@ -39,4 +39,3 @@ export default function CartSummary({ subtotal, discount }: CartSummaryProps) {
     </aside>
   );
 }
-

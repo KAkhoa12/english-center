@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -53,6 +53,42 @@ class Settings(BaseSettings):
 
     APP_PUBLIC_API_URL: str = "http://localhost:8000/api/v1"
     FRONTEND_URL: str = "http://localhost:5173"
+
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_LOW_LLM_MODEL: str = "qwen2.5:3b"
+    OLLAMA_HIGH_LLM_MODEL: str = "llama3.1:70b"
+    OLLAMA_RERANK_MODEL: str = "bge-reranker-v2-m3"
+    OLLAMA_EMBEDDING_MODEL: str = "nomic-embed-text"
+    OLLAMA_TIMEOUT_SECONDS: int = Field(default=120, ge=1, le=3600)
+    OLLAMA_TEMPERATURE: float = Field(default=0.2, ge=0.0, le=1)
+
+    LANGGRAPH_CHECKPOINTER: str = "memory"
+    LANGGRAPH_THREAD_ID_PREFIX: str = "ec"
+    LANGGRAPH_RECURSION_LIMIT: int = Field(default=50, ge=1, le=500)
+
+    QDRANT_URL: str | None = None
+    QDRANT_HOST: str = "localhost"
+    QDRANT_PORT: int = 6333
+    QDRANT_API_KEY: str | None = None
+    QDRANT_COLLECTION_PREFIX: str = "english_center"
+
+    @field_validator("OLLAMA_BASE_URL")
+    @classmethod
+    def normalize_ollama_base_url(cls, value: str) -> str:
+        return value.rstrip("/")
+
+    @property
+    def QDRANT_ENDPOINT(self) -> str:
+        if self.QDRANT_URL:
+            return self.QDRANT_URL.rstrip("/")
+        return f"http://{self.QDRANT_HOST}:{self.QDRANT_PORT}"
+
+    @property
+    def LANGGRAPH_DEFAULT_CONFIG(self) -> dict:
+        return {
+            "recursion_limit": self.LANGGRAPH_RECURSION_LIMIT,
+            "configurable": {"thread_id": f"{self.LANGGRAPH_THREAD_ID_PREFIX}-default"},
+        }
 
     @property
     def SQLALCHEMY_DATABASE_URL(self) -> str:

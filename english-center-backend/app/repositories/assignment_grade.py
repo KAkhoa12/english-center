@@ -1,7 +1,7 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.assignment import Assignment, AssignmentGrade, AssignmentType
+from app.models.assignment import Assignment, AssignmentGrade
 from app.models.class_model import CourseClass
 from app.models.class_student import ClassStudent
 from app.repositories.base import BaseRepository
@@ -46,7 +46,7 @@ class AssignmentGradeRepository(BaseRepository[AssignmentGrade]):
         student_id: str,
         query: PaginationParams,
         class_id: str | None = None,
-        assignment_type: AssignmentType | None = None,
+        assignment_type_id: str | None = None,
     ) -> tuple[list[AssignmentGrade], int]:
         stmt = select(AssignmentGrade).join(Assignment, Assignment.id == AssignmentGrade.assignment_id).where(
             AssignmentGrade.student_id == student_id,
@@ -55,8 +55,8 @@ class AssignmentGradeRepository(BaseRepository[AssignmentGrade]):
         )
         if class_id:
             stmt = stmt.where(Assignment.class_id == class_id)
-        if assignment_type:
-            stmt = stmt.where(Assignment.assignment_type == assignment_type)
+        if assignment_type_id:
+            stmt = stmt.where(Assignment.assignment_type_id == assignment_type_id)
         total = int(self.db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one())
         stmt = stmt.order_by(AssignmentGrade.graded_at.desc().nullslast(), AssignmentGrade.created_at.desc())
         stmt = stmt.offset((query.page - 1) * query.page_size).limit(query.page_size)

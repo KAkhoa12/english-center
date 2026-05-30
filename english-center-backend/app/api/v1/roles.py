@@ -17,6 +17,10 @@ def _role_dict(x):
     return {"id": str(x.id), "name": x.name, "description": x.description}
 
 
+def _permission_dict(x):
+    return {"id": str(x.id), "code": x.code, "name": x.name, "description": x.description}
+
+
 @router.get("", dependencies=[Depends(require_permission("role.read"))])
 def list_roles(db: Annotated[Session, Depends(get_db)], page: int = Query(1), page_size: int = Query(10), search: str | None = None, sort_by: str | None = None, sort_order: str = Query("desc", pattern="^(asc|desc)$")):
     q = PaginationParams(page=page, page_size=page_size, search=search, sort_by=sort_by, sort_order=sort_order)
@@ -31,7 +35,13 @@ def create_role(payload: RoleCreate, db: Annotated[Session, Depends(get_db)]):
 
 @router.get("/{role_id}", dependencies=[Depends(require_permission("role.read"))])
 def get_role(role_id: str, db: Annotated[Session, Depends(get_db)]):
-    return api_response(True, "Role retrieved successfully", _role_dict(RoleService(db).get_role(role_id)), None)
+    service = RoleService(db)
+    role = service.get_role(role_id)
+    permissions = service.get_role_permissions(role_id)
+    payload = _role_dict(role)
+    payload["permission_ids"] = [str(item.id) for item in permissions]
+    payload["permissions"] = [_permission_dict(item) for item in permissions]
+    return api_response(True, "Role retrieved successfully", payload, None)
 
 
 @router.patch("/{role_id}", dependencies=[Depends(require_permission("role.update"))])
@@ -55,4 +65,3 @@ def assign_permissions(role_id: str, payload: AssignPermissionsRequest, db: Anno
 def remove_permission(role_id: str, permission_id: str, db: Annotated[Session, Depends(get_db)]):
     RoleService(db).remove_permission(role_id, permission_id)
     return api_response(True, "Permission removed successfully", None, None)
-

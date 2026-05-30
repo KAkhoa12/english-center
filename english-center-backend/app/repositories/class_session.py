@@ -55,6 +55,30 @@ class ClassSessionRepository(BaseRepository[ClassSession]):
     def count_by_class_id(self, class_id: str) -> int:
         return self.count(filters=[ClassSession.class_id == class_id])
 
+    def count_non_cancelled_by_class_id(self, class_id: str) -> int:
+        return int(
+            self.db.execute(
+                select(func.count()).select_from(ClassSession).where(
+                    ClassSession.class_id == class_id,
+                    ClassSession.deleted_at.is_(None),
+                    ClassSession.status != SessionStatus.cancelled,
+                )
+            ).scalar_one()
+        )
+
+    def count_non_cancelled_by_class_ids(self, class_ids: list[str]) -> int:
+        if not class_ids:
+            return 0
+        return int(
+            self.db.execute(
+                select(func.count()).select_from(ClassSession).where(
+                    ClassSession.class_id.in_(class_ids),
+                    ClassSession.deleted_at.is_(None),
+                    ClassSession.status != SessionStatus.cancelled,
+                )
+            ).scalar_one()
+        )
+
     def list_filtered_by_class(
         self,
         class_id: str,

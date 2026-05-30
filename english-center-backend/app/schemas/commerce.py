@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 
 class AddCartItemRequest(BaseModel):
     course_id: str
+    class_id: str | None = None
 
 
 class UpdateCartItemRequest(BaseModel):
@@ -24,3 +25,8 @@ class CheckoutRequest(BaseModel):
 class CreateSePayPaymentRequest(BaseModel):
     order_id: str
     payment_method: str = "BANK_TRANSFER"
+
+
+class MarkOrderPaidRequest(BaseModel):
+    payment_method: str = "MANUAL_BANK_TRANSFER"
+    reference: str | None = None

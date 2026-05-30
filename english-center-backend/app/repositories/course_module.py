@@ -17,3 +17,6 @@ class CourseModuleRepository(BaseRepository[CourseModule]):
                 .order_by(CourseModule.order_index.asc())
             ).scalars().all()
         )
+
+    def get_active_by_id(self, module_id: str) -> CourseModule | None:
+        return self.get(module_id)

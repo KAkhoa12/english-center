@@ -6,102 +6,186 @@ import {
   Globe2,
   GraduationCap,
   Heart,
+  MapPin,
   PlayCircle,
   ShoppingCart,
   Star,
   Trophy,
   Users,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
 
-const courseContent = {
-  "kids-english": {
-    title: "Tiếng Anh Trẻ Em",
-    subtitle: "Nền tảng tiếng Anh vui nhộn cho bé 4-11 tuổi",
-    image: "https://picsum.photos/seed/detail-kids/1200/720.jpg",
-    price: 3500000,
-    sessions: "36 buổi",
-    level: "Cơ bản - Trung cấp",
-    students: "1.200+ học viên",
-    rating: 4.9,
-  },
-  "teen-english": {
-    title: "Tiếng Anh Thiếu Niên",
-    subtitle: "Phát triển toàn diện 4 kỹ năng cho học sinh 12-17 tuổi",
-    image: "https://picsum.photos/seed/detail-teen/1200/720.jpg",
-    price: 4800000,
-    sessions: "48 buổi",
-    level: "Tiền trung cấp - Trung cấp",
-    students: "980+ học viên",
-    rating: 4.8,
-  },
-  "ielts-prep": {
-    title: "Luyện Thi IELTS",
-    subtitle: "Lộ trình tăng band có chiến lược, bám sát đề thi thật",
-    image: "https://picsum.photos/seed/detail-ielts/1200/720.jpg",
-    price: 8500000,
-    sessions: "60 buổi",
-    level: "Intermediate - Advanced",
-    students: "2.300+ học viên",
-    rating: 5,
-  },
-} as const;
+import { useAuthStore } from "@/services/auth/auth.store";
+import { useCartStore } from "@/services/cart/cart.store";
+import { useClassesStore } from "@/services/classes/classes.store";
+import type { ClassItem } from "@/services/classes/classes.type";
+import { useCoursesStore } from "@/services/courses/courses.store";
+import { useWishlistStore } from "@/services/wishlist/wishlist.store";
 
 const overviewItems = [
-  { icon: Clock3, label: "Thời lượng", value: "90 phút/buổi" },
+  { icon: Clock3, label: "Thời lượng", field: "duration" },
   { icon: CalendarDays, label: "Lịch khai giảng", value: "Mỗi tuần" },
-  { icon: Globe2, label: "Hình thức", value: "Online + Offline" },
-  { icon: Users, label: "Sĩ số lớp", value: "12-16 học viên" },
+  { icon: Globe2, label: "Hình thức", field: "mode" },
+  { icon: Users, label: "Số bài học", field: "lessons" },
 ];
 
-const highlights = [
-  "Giáo trình cập nhật theo chuẩn CEFR và Cambridge",
-  "Theo dõi tiến bộ hằng tuần với báo cáo chi tiết",
-  "Trợ giảng hỗ trợ ngoài giờ qua nhóm học tập riêng",
-  "Thi thử định kỳ và đánh giá năng lực cuối khóa",
-];
+const formatDate = (value: string | null) =>
+  value ? new Date(value).toLocaleDateString("vi-VN") : "Đang cập nhật";
 
-const outcomes = [
-  "Nâng phản xạ nghe nói tự nhiên trong giao tiếp thực tế",
-  "Mở rộng từ vựng theo chủ đề học tập và công việc",
-  "Tự tin trình bày ý kiến và viết đoạn văn có cấu trúc",
-  "Sẵn sàng bước vào các khóa luyện thi chuyên sâu",
-];
+const modeLabel = (mode?: string | null) =>
+  mode === "template" ? "Khóa tự học" : mode === "center" ? "Học tại trung tâm" : "Đang cập nhật";
+
+const classStatusLabel = (status: string) => {
+  const labels: Record<string, string> = {
+    planned: "Sắp khai giảng",
+    ongoing: "Đang học",
+    completed: "Đã kết thúc",
+    cancelled: "Đã hủy",
+    archived: "Đã lưu trữ",
+  };
+  return labels[status] || status;
+};
+
+const canSelectClass = (item: ClassItem) =>
+  !["completed", "cancelled", "archived"].includes(item.status) &&
+  item.current_students_count < item.max_students;
 
 export default function CourseDetailPage() {
-  const { id = "ielts-prep" } = useParams();
+  const { id = "" } = useParams();
   const navigate = useNavigate();
 
-  const course = useMemo(() => {
+  const { selectedCourse, isLoading, getCourse, clearSelectedCourse } = useCoursesStore();
+  const { classes, isLoading: isLoadingClasses, listCourseClasses } = useClassesStore();
+  const { addCartItem } = useCartStore();
+  const { addWishlist, getWishlistStatus, favorited } = useWishlistStore();
+  const { isAuthenticated } = useAuthStore();
+
+  const [addingCart, setAddingCart] = useState(false);
+  const [addingWishlist, setAddingWishlist] = useState(false);
+  const [selectedClassId, setSelectedClassId] = useState<string>("");
+  const [classLoadError, setClassLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    void getCourse(id);
+    void getWishlistStatus(id);
+    return () => {
+      clearSelectedCourse();
+    };
+  }, [id, getCourse, clearSelectedCourse, getWishlistStatus]);
+
+  useEffect(() => {
+    if (!selectedCourse || selectedCourse.mode !== "center" || !isAuthenticated) return;
+
+    setSelectedClassId("");
+    setClassLoadError(null);
+    void listCourseClasses(selectedCourse.id, {
+      page: 1,
+      page_size: 20,
+      sort_by: "start_date",
+      sort_order: "asc",
+    }).catch((error) => {
+      setClassLoadError(error instanceof Error ? error.message : "Không thể tải danh sách lớp");
+    });
+  }, [isAuthenticated, listCourseClasses, selectedCourse]);
+
+  const handleAddToCart = async () => {
+    if (!isAuthenticated) {
+      toast.error("Vui lòng đăng nhập để thêm vào giỏ hàng");
+      void navigate("/login");
+      return;
+    }
+    if (!selectedCourse) return;
+    if (selectedCourse.mode === "center" && !selectedClassId) {
+      toast.error("Vui lòng chọn lớp trước khi thêm vào giỏ hàng");
+      return;
+    }
+
+    try {
+      setAddingCart(true);
+      await addCartItem({
+        course_id: selectedCourse.id,
+        class_id: selectedCourse.mode === "center" ? selectedClassId : null,
+      });
+      toast.success("Đã thêm khóa học vào giỏ hàng");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Thêm vào giỏ hàng thất bại");
+    } finally {
+      setAddingCart(false);
+    }
+  };
+
+  const handleAddToWishlist = async () => {
+    if (!isAuthenticated) {
+      toast.error("Vui lòng đăng nhập để lưu yêu thích");
+      void navigate("/login");
+      return;
+    }
+    if (!selectedCourse) return;
+
+    try {
+      setAddingWishlist(true);
+      await addWishlist({ course_id: selectedCourse.id });
+      toast.success("Đã lưu vào danh sách yêu thích");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Lưu yêu thích thất bại");
+    } finally {
+      setAddingWishlist(false);
+    }
+  };
+
+  if (isLoading) {
     return (
-      courseContent[id as keyof typeof courseContent] ?? courseContent["ielts-prep"]
+      <section className="relative overflow-hidden bg-gradient-to-br from-brand-700 via-brand-500 to-brand-300 pb-24 pt-28">
+        <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="flex h-96 items-center justify-center">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/30 border-t-white" />
+          </div>
+        </div>
+      </section>
     );
-  }, [id]);
+  }
+
+  if (!selectedCourse) {
+    return (
+      <section className="relative overflow-hidden bg-gray-50 pb-24 pt-28">
+        <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
+          <p className="text-center text-gray-500">Không tìm thấy khóa học.</p>
+        </div>
+      </section>
+    );
+  }
+
+  const isFavorited = favorited[selectedCourse.id] ?? false;
+  const isCenterCourse = selectedCourse.mode === "center";
+  const selectedClass = classes.find((item) => item.id === selectedClassId);
 
   return (
-    <section className="hero-course-gradient relative overflow-hidden pb-24 pt-28">
-      <div className="blob-a" />
-      <div className="blob-b" />
+    <section className="relative overflow-hidden bg-gradient-to-br from-brand-700 via-brand-500 to-brand-300 pb-24 pt-28">
+      <div className="pointer-events-none absolute -right-24 -top-24 h-[500px] w-[500px] rounded-full bg-amber-400/10 blur-[80px]" />
+      <div className="pointer-events-none absolute -bottom-20 -left-20 h-[400px] w-[400px] rounded-full bg-accent-400/10 blur-[80px]" />
+
       <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="mb-8 flex items-center gap-2 text-sm text-gray-500">
+        <div className="mb-8 flex items-center gap-2 text-sm text-white/60">
           <button
             type="button"
             onClick={() => navigate("/courses")}
-            className="transition-colors hover:text-brand-500"
+            className="transition-colors hover:text-white"
           >
             Khóa học
           </button>
           <span>/</span>
-          <span className="font-medium text-gray-700">{course.title}</span>
+          <span className="font-medium text-white">{selectedCourse.name}</span>
         </div>
 
         <div className="grid items-start gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-          <article className="card-hover overflow-hidden rounded-3xl border border-white/70 bg-white shadow-sm">
+          <article className="card-hover overflow-hidden rounded-3xl border border-white/20 bg-white shadow-sm">
             <div className="relative h-72 overflow-hidden sm:h-96">
               <img
-                src={course.image}
-                alt={course.title}
+                src={selectedCourse.thumbnail_url || "https://picsum.photos/seed/course-detail/1200/720.jpg"}
+                alt={selectedCourse.name}
                 className="h-full w-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent" />
@@ -120,10 +204,10 @@ export default function CourseDetailPage() {
                 Lộ trình chuẩn hóa
               </div>
               <h1 className="text-3xl font-bold leading-tight text-gray-900 sm:text-4xl">
-                {course.title}
+                {selectedCourse.name}
               </h1>
               <p className="mt-3 text-sm leading-relaxed text-gray-500 sm:text-base">
-                {course.subtitle}
+                {selectedCourse.description || "Khóa học đang được cập nhật mô tả chi tiết."}
               </p>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -136,15 +220,35 @@ export default function CourseDetailPage() {
                       <item.icon className="h-4 w-4 text-brand-500" />
                       {item.label}
                     </p>
-                    <p className="text-sm font-semibold text-gray-800">{item.value}</p>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {item.field === "duration"
+                        ? selectedCourse.duration_weeks
+                          ? `${selectedCourse.duration_weeks} tuần`
+                          : "Đang cập nhật"
+                        : item.field === "mode"
+                          ? selectedCourse.mode === "template"
+                            ? "Khóa tự học"
+                            : selectedCourse.mode === "center"
+                              ? "Học tại trung tâm"
+                              : "Đang cập nhật"
+                          : item.field === "lessons"
+                            ? `${selectedCourse.lessons_count ?? 0} bài học`
+                            : item.value}
+                    </p>
                   </div>
                 ))}
               </div>
 
               <div className="mt-7 border-t border-gray-100 pt-6">
-                <h2 className="mb-3 text-lg font-semibold text-gray-900">Bạn sẽ nhận được</h2>
+                <h2 className="mb-3 text-lg font-semibold text-gray-900">Yêu cầu đầu vào</h2>
                 <ul className="space-y-2">
-                  {highlights.map((item) => (
+                  {(selectedCourse.requirements?.length
+                    ? selectedCourse.requirements
+                        .slice()
+                        .sort((a, b) => a.order_index - b.order_index)
+                        .map((r) => r.requirement_text)
+                    : ["Hoàn thành bài kiểm tra đầu vào", "Đảm bảo thời gian học theo lộ trình của khóa"]
+                  ).map((item) => (
                     <li key={item} className="flex items-start gap-2 text-sm text-gray-600">
                       <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" />
                       {item}
@@ -163,7 +267,7 @@ export default function CourseDetailPage() {
                     Học phí khóa học
                   </p>
                   <p className="mt-1 text-3xl font-bold text-brand-600">
-                    {course.price.toLocaleString("vi-VN")}
+                    {selectedCourse.price.toLocaleString("vi-VN")}
                     <span className="ml-1 text-xs font-normal text-gray-400">VNĐ</span>
                   </p>
                 </div>
@@ -171,59 +275,186 @@ export default function CourseDetailPage() {
                   <p className="text-xs text-amber-600">Đánh giá</p>
                   <p className="flex items-center gap-1 text-sm font-semibold text-amber-600">
                     <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                    {course.rating}/5
+                    5/5
                   </p>
                 </div>
               </div>
 
               <div className="space-y-2 rounded-2xl bg-gray-50 p-4 text-sm">
+                <p className="flex items-center justify-between gap-4 text-gray-600">
+                  <span className="inline-flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-brand-500" />
+                    Loại khóa
+                  </span>
+                  <span className="text-right font-medium text-gray-800">
+                    {modeLabel(selectedCourse.mode)}
+                  </span>
+                </p>
                 <p className="flex items-center justify-between text-gray-600">
                   <span className="inline-flex items-center gap-2">
                     <GraduationCap className="h-4 w-4 text-brand-500" />
                     Trình độ
                   </span>
-                  <span className="font-medium text-gray-800">{course.level}</span>
+                  <span className="font-medium text-gray-800">
+                    {selectedCourse.target_level || "Tổng quát"}
+                  </span>
                 </p>
                 <p className="flex items-center justify-between text-gray-600">
                   <span className="inline-flex items-center gap-2">
                     <Users className="h-4 w-4 text-brand-500" />
-                    Học viên
+                    Danh mục
                   </span>
-                  <span className="font-medium text-gray-800">{course.students}</span>
+                  <span className="font-medium text-gray-800">
+                    {selectedCourse.category?.name || "Đang cập nhật"}
+                  </span>
                 </p>
                 <p className="flex items-center justify-between text-gray-600">
                   <span className="inline-flex items-center gap-2">
                     <Trophy className="h-4 w-4 text-brand-500" />
                     Số buổi
                   </span>
-                  <span className="font-medium text-gray-800">{course.sessions}</span>
+                  <span className="font-medium text-gray-800">
+                    {selectedCourse.total_sessions ? `${selectedCourse.total_sessions} buổi` : "Đang cập nhật"}
+                  </span>
                 </p>
               </div>
+
+              <div className="mt-5 rounded-2xl border border-gray-100 bg-white p-4">
+                <div className="mb-3">
+                  <h3 className="text-sm font-semibold text-gray-900">
+                    {isCenterCourse ? "Chọn lớp học tại trung tâm" : "Hình thức tự học"}
+                  </h3>
+                  <p className="mt-1 text-xs leading-relaxed text-gray-500">
+                    {isCenterCourse
+                      ? "Khóa học tại trung tâm cần chọn lớp trước khi thêm vào giỏ hàng."
+                      : "Khóa tự học không cần chọn lớp. Bạn có thể thêm khóa học vào giỏ hàng ngay."}
+                  </p>
+                </div>
+
+                {isCenterCourse ? (
+                  !isAuthenticated ? (
+                    <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm text-amber-700">
+                      Vui lòng đăng nhập để xem lớp có thể đăng ký.
+                    </div>
+                  ) : isLoadingClasses ? (
+                    <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-500">
+                      Đang tải danh sách lớp...
+                    </div>
+                  ) : classLoadError ? (
+                    <div className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-600">
+                      {classLoadError}
+                    </div>
+                  ) : classes.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-gray-200 p-3 text-sm text-gray-500">
+                      Hiện chưa có lớp phù hợp để đăng ký.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {classes.map((classItem) => {
+                        const available = canSelectClass(classItem);
+                        const selected = selectedClassId === classItem.id;
+                        return (
+                          <button
+                            key={classItem.id}
+                            type="button"
+                            disabled={!available}
+                            onClick={() => setSelectedClassId(classItem.id)}
+                            className={`w-full rounded-xl border p-3 text-left transition-colors ${
+                              selected
+                                ? "border-brand-500 bg-brand-50"
+                                : "border-gray-100 bg-gray-50 hover:border-brand-200"
+                            } disabled:cursor-not-allowed disabled:opacity-60`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-gray-900">{classItem.name}</p>
+                                <p className="mt-1 text-xs text-gray-500">
+                                  Mã lớp: {classItem.code || "Chưa có"} · {classStatusLabel(classItem.status)}
+                                </p>
+                              </div>
+                              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-gray-600">
+                                {classItem.current_students_count}/{classItem.max_students}
+                              </span>
+                            </div>
+                            <div className="mt-3 grid gap-2 text-xs text-gray-500 sm:grid-cols-2">
+                              <span>Khai giảng: {formatDate(classItem.start_date)}</span>
+                              <span>Kết thúc: {formatDate(classItem.end_date)}</span>
+                              <span>Loại lớp: {classItem.class_type}</span>
+                              <span>Giáo viên: {classItem.teacher?.full_name || "Đang cập nhật"}</span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )
+                ) : (
+                  <div className="rounded-xl bg-brand-50 p-3 text-sm text-brand-700">
+                    Khóa tự học được kích hoạt trực tiếp sau khi thanh toán thành công.
+                  </div>
+                )}
+              </div>
+
+              {isCenterCourse && selectedClass ? (
+                <div className="mt-4 rounded-2xl border border-brand-100 bg-brand-50 p-4 text-sm text-brand-800">
+                  <p className="font-semibold">Lớp đã chọn: {selectedClass.name}</p>
+                  <p className="mt-1">
+                    {selectedClass.code || "Chưa có mã lớp"} · khai giảng {formatDate(selectedClass.start_date)}
+                  </p>
+                </div>
+              ) : null}
 
               <div className="mt-5 space-y-2">
                 <button
                   type="button"
-                  onClick={() => navigate("/cart")}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-500 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-600"
+                  onClick={handleAddToCart}
+                  disabled={addingCart || (isCenterCourse && !selectedClassId)}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-500 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-600 disabled:opacity-50"
                 >
                   <ShoppingCart className="h-4 w-4" />
-                  Thêm vào giỏ hàng
+                  {addingCart ? "Đang thêm..." : "Thêm vào giỏ hàng"}
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate("/wishlist")}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-brand-200 bg-white px-5 py-2.5 text-sm font-medium text-brand-600 transition-colors hover:bg-brand-50"
+                  onClick={handleAddToWishlist}
+                  disabled={addingWishlist}
+                  className={`inline-flex w-full items-center justify-center gap-2 rounded-full border px-5 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 ${
+                    isFavorited
+                      ? "border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
+                      : "border-brand-200 bg-white text-brand-600 hover:bg-brand-50"
+                  }`}
                 >
-                  <Heart className="h-4 w-4" />
-                  Lưu vào yêu thích
+                  <Heart className={`h-4 w-4 ${isFavorited ? "fill-red-500 text-red-500" : ""}`} />
+                  {isFavorited ? "Đã lưu yêu thích" : addingWishlist ? "Đang lưu..." : "Lưu vào yêu thích"}
                 </button>
               </div>
             </div>
 
             <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+              <h3 className="mb-3 text-lg font-semibold text-gray-900">Nội dung khóa học</h3>
+              <ul className="mb-4 space-y-2">
+                {(selectedCourse.modules?.length
+                  ? selectedCourse.modules
+                      .slice()
+                      .sort((a, b) => a.order_index - b.order_index)
+                      .map((m) => `${m.title}${m.description ? `: ${m.description}` : ""}`)
+                  : ["Nội dung module đang được cập nhật"]
+                ).map((item) => (
+                  <li key={item} className="flex gap-2 text-sm text-gray-600">
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+
               <h3 className="mb-3 text-lg font-semibold text-gray-900">Kết quả đầu ra</h3>
               <ul className="space-y-2">
-                {outcomes.map((item) => (
+                {(selectedCourse.outcomes?.length
+                  ? selectedCourse.outcomes
+                      .slice()
+                      .sort((a, b) => a.order_index - b.order_index)
+                      .map((o) => o.outcome_text)
+                  : ["Nâng phản xạ nghe nói tự nhiên", "Mở rộng từ vựng theo chủ đề", "Tự tin trình bày ý kiến", "Sẵn sàng luyện thi chuyên sâu"]
+                ).map((item) => (
                   <li key={item} className="flex gap-2 text-sm text-gray-600">
                     <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" />
                     {item}

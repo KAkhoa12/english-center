@@ -1,7 +1,7 @@
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.models.course import CourseCategory
+from app.models.course import CategoryStatus, CourseCategory
 from app.repositories.base import BaseRepository
 
 
@@ -25,3 +25,12 @@ class CourseCategoryRepository(BaseRepository[CourseCategory]):
                 select(CourseCategory).where(CourseCategory.id.in_(category_ids), CourseCategory.deleted_at.is_(None))
             ).scalars().all()
         )
+
+    def list_filtered(self, search: str | None = None, status: CategoryStatus | None = None) -> list[CourseCategory]:
+        stmt = select(CourseCategory).where(CourseCategory.deleted_at.is_(None))
+        if search:
+            term = f"%{search}%"
+            stmt = stmt.where(or_(CourseCategory.name.ilike(term), CourseCategory.slug.ilike(term)))
+        if status:
+            stmt = stmt.where(CourseCategory.status == status)
+        return list(self.db.execute(stmt).scalars().all())

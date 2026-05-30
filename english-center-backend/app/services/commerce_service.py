@@ -3,10 +3,11 @@ from decimal import Decimal
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.models.class_model import ClassStatus, CourseClass
+from app.models.class_student import ClassEnrollmentStatus, ClassStudent
 from app.models.commerce import (
     Cart,
     CartItem,
@@ -27,9 +28,17 @@ from app.models.commerce import (
     PaymentStatus,
     SePayIPNLog,
 )
-from app.models.course import Course, CourseStatus
-from app.models.student import Student
+from app.models.course import CourseMode, CourseStatus
 from app.models import User
+from app.repositories.cart import CartItemRepository, CartRepository, CourseWishlistRepository
+from app.repositories.course import CourseRepository
+from app.repositories.course_class import CourseClassRepository
+from app.repositories.course_enrollment import CourseEnrollmentRepository
+from app.repositories.invoice import InvoiceItemRepository, InvoiceRepository
+from app.repositories.order import OrderItemRepository, OrderRepository
+from app.repositories.payment import PaymentRepository, SePayIPNLogRepository
+from app.repositories.student import StudentRepository
+from app.repositories.class_student import ClassStudentRepository
 from app.schemas.commerce import CheckoutRequest
 from app.schemas.common import PaginationParams
 from app.services.course_service import CourseService
@@ -65,23 +74,71 @@ class AccessMixin:
 class CartService:
     def __init__(self, db: Session) -> None:
         self.db = db
+        self.cart_repo = CartRepository(db)
+        self.cart_item_repo = CartItemRepository(db)
+        self.course_repo = CourseRepository(db)
+        self.class_repo = CourseClassRepository(db)
+        self.class_student_repo = ClassStudentRepository(db)
+        self.student_repo = StudentRepository(db)
+
+    def _validate_class_selection(
+        self,
+        user_id: str,
+        course,
+        class_id: str | None,
+    ) -> CourseClass | None:
+        if course.mode == CourseMode.template:
+            if class_id:
+                raise HTTPException(status_code=400, detail="Template course does not require class_id")
+            return None
+
+        if not class_id:
+            raise HTTPException(status_code=400, detail="class_id is required for center course")
+
+        class_obj = self.class_repo.get_active_by_id(class_id)
+        if not class_obj:
+            raise HTTPException(status_code=404, detail="Class not found")
+        if str(class_obj.course_id) != str(course.id):
+            raise HTTPException(status_code=400, detail="Class does not belong to course")
+        if class_obj.status in {ClassStatus.cancelled, ClassStatus.completed, ClassStatus.archived}:
+            raise HTTPException(status_code=400, detail="Class is not available for enrollment")
+        if self.class_student_repo.count_active_students(str(class_obj.id)) >= class_obj.max_students:
+            raise HTTPException(status_code=400, detail="Class is full")
+
+        student = self.student_repo.get_by_user_id(user_id)
+        if not student:
+            raise HTTPException(status_code=400, detail="Student profile is required for center course enrollment")
+        class_student = self.class_student_repo.get_by_class_and_student(str(class_obj.id), str(student.id))
+        if class_student and class_student.enrollment_status not in {ClassEnrollmentStatus.cancelled, ClassEnrollmentStatus.dropped}:
+            raise HTTPException(status_code=400, detail="Student already enrolled in class")
+        return class_obj
 
     def get_or_create_active_cart(self, user_id: str) -> Cart:
-        cart = self.db.execute(
-            select(Cart).where(Cart.user_id == user_id, Cart.status == CartStatus.active, Cart.deleted_at.is_(None))
-        ).scalar_one_or_none()
+        cart = self.cart_repo.get_active_by_user_id(user_id)
         if cart:
             return cart
         cart = Cart(user_id=user_id, status=CartStatus.active)
-        self.db.add(cart)
+        self.cart_repo.create(cart)
         self.db.commit()
-        self.db.refresh(cart)
         return cart
 
     def get_items(self, cart_id: str) -> list[CartItem]:
-        return list(
-            self.db.execute(select(CartItem).where(CartItem.cart_id == cart_id, CartItem.deleted_at.is_(None))).scalars().all()
-        )
+        return self.cart_item_repo.list_by_cart_id(cart_id)
+
+    def _class_ref(self, class_id: str | None) -> dict[str, Any] | None:
+        if not class_id:
+            return None
+        class_obj = self.class_repo.get_active_by_id(str(class_id))
+        if not class_obj:
+            return None
+        return {
+            "id": str(class_obj.id),
+            "name": class_obj.name,
+            "code": class_obj.code,
+            "start_date": class_obj.start_date,
+            "end_date": class_obj.end_date,
+            "status": class_obj.status.value,
+        }
 
     def cart_dict(self, cart: Cart) -> dict[str, Any]:
         items = self.get_items(str(cart.id))
@@ -94,6 +151,8 @@ class CartService:
                 {
                     "id": str(item.id),
                     "course_id": str(item.course_id),
+                    "class_id": str(item.class_id) if item.class_id else None,
+                    "class": self._class_ref(str(item.class_id) if item.class_id else None),
                     "course_name": item.course_name,
                     "course_code": item.course_code,
                     "unit_price": money(item.unit_price),
@@ -106,30 +165,31 @@ class CartService:
             "total_items": len(items),
         }
 
-    def add_course_to_cart(self, user_id: str, course_id: str) -> Cart:
+    def add_course_to_cart(self, user_id: str, course_id: str, class_id: str | None = None) -> Cart:
         cart = self.get_or_create_active_cart(user_id)
-        course = self.db.execute(
-            select(Course).where(Course.id == course_id, Course.status == CourseStatus.active, Course.deleted_at.is_(None))
-        ).scalar_one_or_none()
+        course = self.course_repo.get(course_id)
+        if course and course.status != CourseStatus.active:
+            course = None
         if not course:
             raise HTTPException(status_code=404, detail="Active course not found")
-        exists = self.db.execute(
-            select(CartItem).where(CartItem.cart_id == cart.id, CartItem.course_id == course.id)
-        ).scalar_one_or_none()
+        class_obj = self._validate_class_selection(user_id, course, class_id)
+        exists = self.cart_item_repo.get_by_cart_and_course(str(cart.id), str(course.id))
         if exists and exists.deleted_at is None:
             raise HTTPException(status_code=400, detail="Course already exists in cart")
         if exists:
             exists.deleted_at = None
+            exists.class_id = class_obj.id if class_obj else None
             exists.course_name = course.name
             exists.course_code = course.code
             exists.unit_price = course.price
             exists.quantity = 1
             exists.total_price = course.price
         else:
-            self.db.add(
+            self.cart_item_repo.create(
                 CartItem(
                 cart_id=cart.id,
                 course_id=course.id,
+                class_id=class_obj.id if class_obj else None,
                 course_name=course.name,
                 course_code=course.code,
                 unit_price=course.price,
@@ -138,16 +198,13 @@ class CartService:
                 )
             )
         self.db.commit()
-        self.db.refresh(cart)
         return cart
 
     def update_cart_item(self, user_id: str, cart_item_id: str, quantity: int) -> Cart:
         if quantity != 1:
             raise HTTPException(status_code=400, detail="Course quantity must be 1")
         cart = self.get_or_create_active_cart(user_id)
-        item = self.db.execute(
-            select(CartItem).where(CartItem.id == cart_item_id, CartItem.cart_id == cart.id, CartItem.deleted_at.is_(None))
-        ).scalar_one_or_none()
+        item = self.cart_item_repo.get_active_by_id_and_cart(cart_item_id, str(cart.id))
         if not item:
             raise HTTPException(status_code=404, detail="Cart item not found")
         item.quantity = quantity
@@ -157,9 +214,7 @@ class CartService:
 
     def remove_cart_item(self, user_id: str, cart_item_id: str) -> Cart:
         cart = self.get_or_create_active_cart(user_id)
-        item = self.db.execute(
-            select(CartItem).where(CartItem.id == cart_item_id, CartItem.cart_id == cart.id, CartItem.deleted_at.is_(None))
-        ).scalar_one_or_none()
+        item = self.cart_item_repo.get_active_by_id_and_cart(cart_item_id, str(cart.id))
         if not item:
             raise HTTPException(status_code=404, detail="Cart item not found")
         item.deleted_at = now()
@@ -177,16 +232,23 @@ class CartService:
 class WishlistService:
     def __init__(self, db: Session) -> None:
         self.db = db
+        self.wishlist_repo = CourseWishlistRepository(db)
+        self.course_repo = CourseRepository(db)
+
+    def _resolve_active_course(self, course_identifier: str):
+        course = self.course_repo.get(course_identifier)
+        if not course:
+            course = self.course_repo.get_by_slug(course_identifier)
+        if course and course.status != CourseStatus.active:
+            course = None
+        if not course:
+            raise HTTPException(status_code=404, detail="Active course not found")
+        return course
 
     def get_wishlist(self, user_id: str, query: PaginationParams) -> tuple[list[dict[str, Any]], int]:
-        stmt = (
-            select(CourseWishlist, Course)
-            .join(Course, Course.id == CourseWishlist.course_id)
-            .where(CourseWishlist.user_id == user_id, CourseWishlist.deleted_at.is_(None), Course.deleted_at.is_(None))
-        )
-        total = self.db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
-        stmt = stmt.offset((query.page - 1) * query.page_size).limit(query.page_size)
-        rows = self.db.execute(stmt).all()
+        rows = self.wishlist_repo.list_with_course_by_user_id(user_id)
+        total = len(rows)
+        rows = rows[(query.page - 1) * query.page_size : query.page * query.page_size]
         return [
             {
                 "id": str(wishlist.id),
@@ -198,48 +260,62 @@ class WishlistService:
         ], int(total)
 
     def add_to_wishlist(self, user_id: str, course_id: str) -> CourseWishlist:
-        course = self.db.execute(select(Course).where(Course.id == course_id, Course.status == CourseStatus.active, Course.deleted_at.is_(None))).scalar_one_or_none()
-        if not course:
-            raise HTTPException(status_code=404, detail="Active course not found")
-        item = self.db.execute(select(CourseWishlist).where(CourseWishlist.user_id == user_id, CourseWishlist.course_id == course_id)).scalar_one_or_none()
+        course = self._resolve_active_course(course_id)
+        item = self.wishlist_repo.get_by_user_and_course(user_id, str(course.id))
         if item and item.deleted_at is None:
             raise HTTPException(status_code=400, detail="Course already exists in wishlist")
         if item:
             item.deleted_at = None
         else:
-            item = CourseWishlist(user_id=user_id, course_id=course_id)
-            self.db.add(item)
+            item = CourseWishlist(user_id=user_id, course_id=str(course.id))
+            self.wishlist_repo.create(item)
         self.db.commit()
-        self.db.refresh(item)
         return item
 
     def remove_from_wishlist(self, user_id: str, course_id: str) -> None:
-        item = self.db.execute(
-            select(CourseWishlist).where(CourseWishlist.user_id == user_id, CourseWishlist.course_id == course_id, CourseWishlist.deleted_at.is_(None))
-        ).scalar_one_or_none()
+        course = self._resolve_active_course(course_id)
+        item = self.wishlist_repo.get_active_by_user_and_course(user_id, str(course.id))
         if not item:
             raise HTTPException(status_code=404, detail="Wishlist item not found")
         item.deleted_at = now()
         self.db.commit()
 
     def is_favorited(self, user_id: str, course_id: str) -> bool:
-        return self.db.execute(
-            select(CourseWishlist).where(CourseWishlist.user_id == user_id, CourseWishlist.course_id == course_id, CourseWishlist.deleted_at.is_(None))
-        ).scalar_one_or_none() is not None
+        course = self._resolve_active_course(course_id)
+        return self.wishlist_repo.get_active_by_user_and_course(user_id, str(course.id)) is not None
 
 
 class OrderSerializer:
     def __init__(self, db: Session) -> None:
         self.db = db
+        self.order_item_repo = OrderItemRepository(db)
+        self.invoice_repo = InvoiceRepository(db)
+        self.payment_repo = PaymentRepository(db)
+        self.class_repo = CourseClassRepository(db)
 
     def order_items(self, order_id: str) -> list[OrderItem]:
-        return list(self.db.execute(select(OrderItem).where(OrderItem.order_id == order_id, OrderItem.deleted_at.is_(None))).scalars().all())
+        return self.order_item_repo.list_by_order_id(order_id)
 
     def invoice(self, order_id: str) -> Invoice | None:
-        return self.db.execute(select(Invoice).where(Invoice.order_id == order_id, Invoice.deleted_at.is_(None))).scalar_one_or_none()
+        return self.invoice_repo.get_by_order_id(order_id)
 
     def payments(self, order_id: str) -> list[Payment]:
-        return list(self.db.execute(select(Payment).where(Payment.order_id == order_id, Payment.deleted_at.is_(None))).scalars().all())
+        return self.payment_repo.list_by_order_id(order_id)
+
+    def class_ref(self, class_id: str | None) -> dict[str, Any] | None:
+        if not class_id:
+            return None
+        class_obj = self.class_repo.get_active_by_id(str(class_id))
+        if not class_obj:
+            return None
+        return {
+            "id": str(class_obj.id),
+            "name": class_obj.name,
+            "code": class_obj.code,
+            "start_date": class_obj.start_date,
+            "end_date": class_obj.end_date,
+            "status": class_obj.status.value,
+        }
 
     def payment_dict(self, payment: Payment) -> dict[str, Any]:
         return {
@@ -271,6 +347,8 @@ class OrderSerializer:
                 {
                     "id": str(item.id),
                     "course_id": str(item.course_id),
+                    "class_id": str(item.class_id) if item.class_id else None,
+                    "class": self.class_ref(str(item.class_id) if item.class_id else None),
                     "course_name": item.course_name,
                     "course_code": item.course_code,
                     "unit_price": money(item.unit_price),
@@ -292,9 +370,27 @@ class OrderSerializer:
 class InvoiceService:
     def __init__(self, db: Session) -> None:
         self.db = db
+        self.invoice_repo = InvoiceRepository(db)
+        self.invoice_item_repo = InvoiceItemRepository(db)
+        self.class_repo = CourseClassRepository(db)
+
+    def _class_ref(self, class_id: str | None) -> dict[str, Any] | None:
+        if not class_id:
+            return None
+        class_obj = self.class_repo.get_active_by_id(str(class_id))
+        if not class_obj:
+            return None
+        return {
+            "id": str(class_obj.id),
+            "name": class_obj.name,
+            "code": class_obj.code,
+            "start_date": class_obj.start_date,
+            "end_date": class_obj.end_date,
+            "status": class_obj.status.value,
+        }
 
     def invoice_detail(self, invoice: Invoice) -> dict[str, Any]:
-        items = self.db.execute(select(InvoiceItem).where(InvoiceItem.invoice_id == invoice.id, InvoiceItem.deleted_at.is_(None))).scalars().all()
+        items = self.invoice_item_repo.list_by_invoice_id(str(invoice.id))
         return {
             "id": str(invoice.id),
             "order_id": str(invoice.order_id),
@@ -310,6 +406,9 @@ class InvoiceService:
             "items": [
                 {
                     "id": str(item.id),
+                    "course_id": str(item.course_id) if item.course_id else None,
+                    "class_id": str(item.class_id) if item.class_id else None,
+                    "class": self._class_ref(str(item.class_id) if item.class_id else None),
                     "item_name": item.item_name,
                     "item_code": item.item_code,
                     "unit_price": money(item.unit_price),
@@ -323,7 +422,7 @@ class InvoiceService:
         }
 
     def get_invoice(self, invoice_id: str) -> Invoice:
-        invoice = self.db.execute(select(Invoice).where(Invoice.id == invoice_id, Invoice.deleted_at.is_(None))).scalar_one_or_none()
+        invoice = self.invoice_repo.get(invoice_id)
         if not invoice:
             raise HTTPException(status_code=404, detail="Invoice not found")
         return invoice
@@ -336,31 +435,64 @@ class InvoiceService:
         raise HTTPException(status_code=403, detail="Permission denied")
 
     def get_invoices(self, query: PaginationParams, user: User, status: str | None = None, user_id: str | None = None) -> tuple[list[Invoice], int]:
-        stmt = select(Invoice).where(Invoice.deleted_at.is_(None))
         can_all = RBACService(self.db).has_permission(str(user.id), "invoice.all") or RBACService(self.db).has_permission(str(user.id), "admin.all")
-        if not can_all:
-            stmt = stmt.where(Invoice.user_id == user.id)
-        elif user_id:
-            stmt = stmt.where(Invoice.user_id == user_id)
-        if status:
-            stmt = stmt.where(Invoice.invoice_status == parse_enum(InvoiceStatus, status, "invoice status"))
-        total = self.db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
-        stmt = stmt.order_by(Invoice.created_at.desc()).offset((query.page - 1) * query.page_size).limit(query.page_size)
-        return list(self.db.execute(stmt).scalars().all()), int(total)
+        filtered_user_id = None if can_all and not user_id else str(user_id or user.id)
+        filtered_status = parse_enum(InvoiceStatus, status, "invoice status") if status else None
+        items = self.invoice_repo.list_filtered(user_id=filtered_user_id, status=filtered_status)
+        total = len(items)
+        items = items[(query.page - 1) * query.page_size : query.page * query.page_size]
+        return items, total
 
     def get_invoice_by_order(self, order_id: str, user: User) -> Invoice:
         order = OrderService(self.db).get_order(order_id)
         OrderService(self.db).assert_order_access(order, user)
-        invoice = self.db.execute(select(Invoice).where(Invoice.order_id == order.id, Invoice.deleted_at.is_(None))).scalar_one_or_none()
+        invoice = self.invoice_repo.get_by_order_id(str(order.id))
         if not invoice:
             raise HTTPException(status_code=404, detail="Invoice not found")
         return invoice
 
 
 class OrderService(AccessMixin):
+    def __init__(self, db: Session) -> None:
+        super().__init__(db)
+        self.order_repo = OrderRepository(db)
+        self.order_item_repo = OrderItemRepository(db)
+        self.invoice_repo = InvoiceRepository(db)
+        self.invoice_item_repo = InvoiceItemRepository(db)
+        self.student_repo = StudentRepository(db)
+        self.course_repo = CourseRepository(db)
+        self.class_repo = CourseClassRepository(db)
+        self.class_student_repo = ClassStudentRepository(db)
+
+    def _validate_checkout_item(self, item: CartItem, student: Any | None) -> None:
+        course = self.course_repo.get(str(item.course_id))
+        if not course or course.status != CourseStatus.active:
+            raise HTTPException(status_code=400, detail="Cart contains inactive or missing course")
+        if course.mode == CourseMode.template:
+            if item.class_id:
+                raise HTTPException(status_code=400, detail="Template course does not require class_id")
+            return
+
+        if not item.class_id:
+            raise HTTPException(status_code=400, detail="class_id is required for center course")
+        class_obj = self.class_repo.get_active_by_id(str(item.class_id))
+        if not class_obj:
+            raise HTTPException(status_code=404, detail="Class not found")
+        if str(class_obj.course_id) != str(item.course_id):
+            raise HTTPException(status_code=400, detail="Class does not belong to course")
+        if class_obj.status in {ClassStatus.cancelled, ClassStatus.completed, ClassStatus.archived}:
+            raise HTTPException(status_code=400, detail="Class is not available for enrollment")
+        if self.class_student_repo.count_active_students(str(class_obj.id)) >= class_obj.max_students:
+            raise HTTPException(status_code=400, detail="Class is full")
+        if not student:
+            raise HTTPException(status_code=400, detail="Student profile is required for center course enrollment")
+        class_student = self.class_student_repo.get_by_class_and_student(str(class_obj.id), str(student.id))
+        if class_student and class_student.enrollment_status not in {ClassEnrollmentStatus.cancelled, ClassEnrollmentStatus.dropped}:
+            raise HTTPException(status_code=400, detail="Student already enrolled in class")
+
     def _next_code(self, prefix: str) -> str:
         stamp = now().strftime("%Y%m%d")
-        count = self.db.execute(select(func.count()).select_from(Order).where(Order.created_at >= now().replace(hour=0, minute=0, second=0, microsecond=0))).scalar_one()
+        count = self.order_repo.count_created_since(now().replace(hour=0, minute=0, second=0, microsecond=0))
         return f"{prefix}{stamp}{int(count) + 1:04d}"
 
     def checkout_from_cart(self, user: User, payload: CheckoutRequest) -> Order:
@@ -369,7 +501,9 @@ class OrderService(AccessMixin):
         items = cart_service.get_items(str(cart.id))
         if not items:
             raise HTTPException(status_code=400, detail="Cannot checkout empty cart")
-        student = self.db.execute(select(Student).where(Student.user_id == user.id, Student.deleted_at.is_(None))).scalar_one_or_none()
+        student = self.student_repo.get_by_user_id(str(user.id))
+        for item in items:
+            self._validate_checkout_item(item, student)
         subtotal = sum(item.total_price for item in items)
         order = Order(
             user_id=user.id,
@@ -384,20 +518,20 @@ class OrderService(AccessMixin):
             total_amount=subtotal,
             note=payload.note,
         )
-        self.db.add(order)
-        self.db.flush()
+        self.order_repo.create(order)
         order_items: list[OrderItem] = []
         for item in items:
             order_item = OrderItem(
                 order_id=order.id,
                 course_id=item.course_id,
+                class_id=item.class_id,
                 course_name=item.course_name,
                 course_code=item.course_code,
                 unit_price=item.unit_price,
                 quantity=item.quantity,
                 total_price=item.total_price,
             )
-            self.db.add(order_item)
+            self.order_item_repo.create(order_item)
             order_items.append(order_item)
         invoice = Invoice(
             order_id=order.id,
@@ -414,13 +548,13 @@ class OrderService(AccessMixin):
             discount_amount=order.discount_amount,
             total_amount=order.total_amount,
         )
-        self.db.add(invoice)
-        self.db.flush()
+        self.invoice_repo.create(invoice)
         for order_item in order_items:
-            self.db.add(
+            self.invoice_item_repo.create(
                 InvoiceItem(
                     invoice_id=invoice.id,
                     course_id=order_item.course_id,
+                    class_id=order_item.class_id,
                     item_name=order_item.course_name,
                     item_code=order_item.course_code,
                     unit_price=order_item.unit_price,
@@ -430,17 +564,16 @@ class OrderService(AccessMixin):
             )
         cart.status = CartStatus.checked_out
         self.db.commit()
-        self.db.refresh(order)
         return order
 
     def get_order(self, order_id: str) -> Order:
-        order = self.db.execute(select(Order).where(Order.id == order_id, Order.deleted_at.is_(None))).scalar_one_or_none()
+        order = self.order_repo.get(order_id)
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
         return order
 
     def get_order_by_invoice_number(self, invoice_number: str) -> Order | None:
-        return self.db.execute(select(Order).where(Order.invoice_number == invoice_number, Order.deleted_at.is_(None))).scalar_one_or_none()
+        return self.order_repo.get_by_invoice_number(invoice_number)
 
     def assert_order_access(self, order: Order, user: User) -> None:
         if str(order.user_id) == str(user.id):
@@ -450,16 +583,12 @@ class OrderService(AccessMixin):
         raise HTTPException(status_code=403, detail="Permission denied")
 
     def get_orders(self, query: PaginationParams, user: User, status: str | None = None, user_id: str | None = None) -> tuple[list[Order], int]:
-        stmt = select(Order).where(Order.deleted_at.is_(None))
-        if not self.can_access_all(user, "order.all"):
-            stmt = stmt.where(Order.user_id == user.id)
-        elif user_id:
-            stmt = stmt.where(Order.user_id == user_id)
-        if status:
-            stmt = stmt.where(Order.status == parse_enum(OrderStatus, status, "order status"))
-        total = self.db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
-        stmt = stmt.order_by(Order.created_at.desc()).offset((query.page - 1) * query.page_size).limit(query.page_size)
-        return list(self.db.execute(stmt).scalars().all()), int(total)
+        filtered_user_id = None if self.can_access_all(user, "order.all") and not user_id else str(user_id or user.id)
+        filtered_status = parse_enum(OrderStatus, status, "order status") if status else None
+        items = self.order_repo.list_filtered(user_id=filtered_user_id, status=filtered_status)
+        total = len(items)
+        items = items[(query.page - 1) * query.page_size : query.page * query.page_size]
+        return items, total
 
     def cancel_order(self, order_id: str, user: User) -> Order:
         order = self.get_order(order_id)
@@ -474,18 +603,46 @@ class OrderService(AccessMixin):
 
 
 class EnrollmentService(AccessMixin):
+    def __init__(self, db: Session) -> None:
+        super().__init__(db)
+        self.enrollment_repo = CourseEnrollmentRepository(db)
+        self.course_repo = CourseRepository(db)
+        self.class_repo = CourseClassRepository(db)
+        self.class_student_repo = ClassStudentRepository(db)
+
+    def _upsert_class_student(self, class_id: str, student_id: str, enrollment_id: str) -> None:
+        class_obj = self.class_repo.get_active_by_id(class_id)
+        if not class_obj:
+            return
+        if class_obj.status in {ClassStatus.cancelled, ClassStatus.completed, ClassStatus.archived}:
+            return
+        existing = self.class_student_repo.get_by_class_and_student_including_deleted(class_id, student_id)
+        if existing and existing.deleted_at is None and existing.enrollment_status not in {ClassEnrollmentStatus.cancelled, ClassEnrollmentStatus.dropped}:
+            return
+        if existing:
+            existing.enrollment_id = enrollment_id
+            existing.enrollment_status = ClassEnrollmentStatus.enrolled
+            existing.enrolled_at = now()
+            existing.note = "Auto enrollment from paid order"
+            self.class_student_repo.restore(existing)
+        else:
+            self.class_student_repo.create(
+                ClassStudent(
+                    class_id=class_id,
+                    student_id=student_id,
+                    enrollment_id=enrollment_id,
+                    enrollment_status=ClassEnrollmentStatus.enrolled,
+                    enrolled_at=now(),
+                    note="Auto enrollment from paid order",
+                )
+            )
+
     def create_enrollments_from_order(self, order: Order) -> None:
         items = OrderSerializer(self.db).order_items(str(order.id))
         for item in items:
-            exists = self.db.execute(
-                select(CourseEnrollment).where(
-                    CourseEnrollment.user_id == order.user_id,
-                    CourseEnrollment.course_id == item.course_id,
-                    CourseEnrollment.deleted_at.is_(None),
-                )
-            ).scalar_one_or_none()
+            exists = self.enrollment_repo.get_by_user_and_course(str(order.user_id), str(item.course_id))
             if not exists:
-                self.db.add(
+                exists = self.enrollment_repo.create(
                     CourseEnrollment(
                         user_id=order.user_id,
                         student_id=order.student_id,
@@ -496,9 +653,14 @@ class EnrollmentService(AccessMixin):
                         enrolled_at=now(),
                     )
                 )
+            if item.class_id and exists and exists.student_id:
+                self._upsert_class_student(str(item.class_id), str(exists.student_id), str(exists.id))
 
     def enrollment_dict(self, enrollment: CourseEnrollment) -> dict[str, Any]:
-        course = self.db.execute(select(Course).where(Course.id == enrollment.course_id)).scalar_one()
+        course = self.course_repo.get(str(enrollment.course_id))
+        if not course:
+            raise HTTPException(status_code=404, detail="Course not found")
+        course_service = CourseService(self.db)
         return {
             "id": str(enrollment.id),
             "course_id": str(enrollment.course_id),
@@ -506,7 +668,7 @@ class EnrollmentService(AccessMixin):
                 "id": str(course.id),
                 "name": course.name,
                 "code": course.code,
-                "thumbnail_url": CourseService(self.db)._thumbnail_url(course),
+                "thumbnail_url": course_service._course_base_dict(course)["thumbnail_url"],
             },
             "order_id": str(enrollment.order_id) if enrollment.order_id else None,
             "enrollment_status": enrollment.enrollment_status.value,
@@ -514,15 +676,50 @@ class EnrollmentService(AccessMixin):
         }
 
     def get_enrollments(self, query: PaginationParams, user: User) -> tuple[list[CourseEnrollment], int]:
-        stmt = select(CourseEnrollment).where(CourseEnrollment.deleted_at.is_(None))
-        if not self.can_access_all(user, "order.all"):
-            stmt = stmt.where(CourseEnrollment.user_id == user.id)
-        total = self.db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
-        stmt = stmt.order_by(CourseEnrollment.enrolled_at.desc()).offset((query.page - 1) * query.page_size).limit(query.page_size)
-        return list(self.db.execute(stmt).scalars().all()), int(total)
+        filtered_user_id = None if self.can_access_all(user, "order.all") else str(user.id)
+        items = self.enrollment_repo.list_filtered(filtered_user_id)
+        total = len(items)
+        items = items[(query.page - 1) * query.page_size : query.page * query.page_size]
+        return items, total
 
 
 class PaymentService(AccessMixin):
+    def __init__(self, db: Session) -> None:
+        super().__init__(db)
+        self.payment_repo = PaymentRepository(db)
+        self.log_repo = SePayIPNLogRepository(db)
+
+    def _to_order_payment_method(self, method: PaymentMethod) -> OrderPaymentMethod:
+        mapping = {
+            PaymentMethod.BANK_TRANSFER: OrderPaymentMethod.sepay_bank_transfer,
+            PaymentMethod.CARD: OrderPaymentMethod.sepay_card,
+            PaymentMethod.NAPAS_BANK_TRANSFER: OrderPaymentMethod.sepay_napas_bank_transfer,
+            PaymentMethod.MANUAL_CASH: OrderPaymentMethod.manual_cash,
+            PaymentMethod.MANUAL_BANK_TRANSFER: OrderPaymentMethod.manual_bank_transfer,
+        }
+        return mapping[method]
+
+    def _apply_paid_state(
+        self,
+        order: Order,
+        invoice: Invoice | None,
+        payment: Payment | None,
+        provider_transaction_id: str | None = None,
+        provider_payment_id: str | None = None,
+    ) -> None:
+        order.status = OrderStatus.paid
+        order.paid_at = order.paid_at or now()
+        if invoice:
+            invoice.invoice_status = InvoiceStatus.paid
+            invoice.paid_at = invoice.paid_at or now()
+        if payment:
+            payment.status = PaymentStatus.approved
+            if provider_transaction_id:
+                payment.provider_transaction_id = provider_transaction_id
+            if provider_payment_id:
+                payment.provider_payment_id = provider_payment_id
+        EnrollmentService(self.db).create_enrollments_from_order(order)
+
     async def create_sepay_payment(self, order_id: str, payment_method: str, user: User) -> Payment:
         order_service = OrderService(self.db)
         order = order_service.get_order(order_id)
@@ -547,19 +744,67 @@ class PaymentService(AccessMixin):
             raw_request=checkout["checkout_form_fields"],
             raw_response=checkout["raw_response"],
         )
-        order.payment_method = {
-            PaymentMethod.BANK_TRANSFER: OrderPaymentMethod.sepay_bank_transfer,
-            PaymentMethod.CARD: OrderPaymentMethod.sepay_card,
-            PaymentMethod.NAPAS_BANK_TRANSFER: OrderPaymentMethod.sepay_napas_bank_transfer,
-        }[method]
-        self.db.add(payment)
+        order.payment_method = self._to_order_payment_method(method)
+        self.payment_repo.create(payment)
         self.db.commit()
-        self.db.refresh(payment)
         payment.raw_response = {**(payment.raw_response or {}), "checkout_form_fields": checkout["checkout_form_fields"]}
         return payment
 
+    def mark_order_paid_for_testing(
+        self,
+        order_id: str,
+        user: User,
+        payment_method: str = "MANUAL_BANK_TRANSFER",
+        reference: str | None = None,
+    ) -> Order:
+        if settings.APP_ENV.strip().lower() in {"production", "prod"}:
+            raise HTTPException(status_code=403, detail="This endpoint is disabled in production")
+
+        order_service = OrderService(self.db)
+        order = order_service.get_order(order_id)
+        order_service.assert_order_access(order, user)
+        if order.status in {OrderStatus.cancelled, OrderStatus.expired, OrderStatus.refunded}:
+            raise HTTPException(status_code=400, detail="Order cannot be marked paid")
+        if order.status == OrderStatus.paid:
+            return order
+
+        invoice = OrderSerializer(self.db).invoice(str(order.id))
+        if not invoice:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+
+        method = parse_enum(PaymentMethod, payment_method, "payment method")
+        sepay_payment = self.payment_repo.get_latest_by_order_and_provider(str(order.id), PaymentProvider.sepay)
+        payment: Payment | None = (
+            sepay_payment
+            if sepay_payment and sepay_payment.status in {PaymentStatus.pending, PaymentStatus.processing}
+            else None
+        )
+        if payment is None:
+            payment = Payment(
+                order_id=order.id,
+                invoice_id=invoice.id,
+                user_id=order.user_id,
+                provider=PaymentProvider.manual,
+                payment_method=method,
+                status=PaymentStatus.approved,
+                amount=order.total_amount,
+                currency=order.currency,
+                provider_transaction_id=reference,
+                raw_response={"manual_mark_paid": True, "reference": reference},
+            )
+            self.payment_repo.create(payment)
+        else:
+            payment.payment_method = method
+            payment.raw_response = {**(payment.raw_response or {}), "manual_mark_paid": True, "reference": reference}
+
+        order.payment_method = self._to_order_payment_method(method)
+        self._apply_paid_state(order, invoice, payment, provider_transaction_id=reference)
+        self.db.commit()
+        self.db.refresh(order)
+        return order
+
     def get_payment(self, payment_id: str, user: User) -> Payment:
-        payment = self.db.execute(select(Payment).where(Payment.id == payment_id, Payment.deleted_at.is_(None))).scalar_one_or_none()
+        payment = self.payment_repo.get(payment_id)
         if not payment:
             raise HTTPException(status_code=404, detail="Payment not found")
         order = OrderService(self.db).get_order(str(payment.order_id))
@@ -584,8 +829,7 @@ class PaymentService(AccessMixin):
             headers=dict(headers),
             is_valid=False,
         )
-        self.db.add(log)
-        self.db.flush()
+        self.log_repo.create(log)
         if not sepay.verify_ipn_secret(headers):
             log.error_message = "Invalid IPN secret"
             self.db.commit()
@@ -597,41 +841,38 @@ class PaymentService(AccessMixin):
             self.db.commit()
             return True, 200
         invoice = OrderSerializer(self.db).invoice(str(order.id))
-        payment = self.db.execute(
-            select(Payment)
-            .where(Payment.order_id == order.id, Payment.provider == PaymentProvider.sepay, Payment.deleted_at.is_(None))
-            .order_by(Payment.created_at.desc())
-        ).scalars().first()
+        payment = self.payment_repo.get_latest_by_order_and_provider(str(order.id), PaymentProvider.sepay)
         log.order_id = order.id
         log.payment_id = payment.id if payment else None
         if parsed["currency"] != order.currency or parsed["amount"] != Decimal(order.total_amount):
             log.error_message = "Invalid amount or currency"
             self.db.commit()
             return True, 200
-        duplicate = self.db.execute(
-            select(SePayIPNLog).where(
-                SePayIPNLog.sepay_transaction_id == parsed["sepay_transaction_id"],
-                SePayIPNLog.is_valid.is_(True),
-                SePayIPNLog.id != log.id,
-            )
-        ).first()
+        duplicate = self.log_repo.has_valid_transaction(parsed["sepay_transaction_id"], str(log.id))
         if duplicate:
             log.is_valid = True
             log.processed_at = now()
             self.db.commit()
             return True, 200
         if sepay.is_paid_ipn(payload):
-            order.status = OrderStatus.paid
-            order.paid_at = order.paid_at or now()
-            if invoice:
-                invoice.invoice_status = InvoiceStatus.paid
-                invoice.paid_at = invoice.paid_at or now()
-            if payment:
-                payment.status = PaymentStatus.approved
-                payment.provider_transaction_id = parsed["sepay_transaction_id"]
-                payment.provider_payment_id = parsed["sepay_order_id"]
-            EnrollmentService(self.db).create_enrollments_from_order(order)
+            self._apply_paid_state(
+                order,
+                invoice,
+                payment,
+                provider_transaction_id=parsed["sepay_transaction_id"],
+                provider_payment_id=parsed["sepay_order_id"],
+            )
         log.is_valid = True
         log.processed_at = now()
         self.db.commit()
         return True, 200
+
+
+def mark_order_paid_for_testing(
+    db: Session,
+    order_id: str,
+    user: User,
+    payment_method: str = "MANUAL_BANK_TRANSFER",
+    reference: str | None = None,
+) -> Order:
+    return PaymentService(db).mark_order_paid_for_testing(order_id, user, payment_method, reference)

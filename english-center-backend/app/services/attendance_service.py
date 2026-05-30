@@ -2,16 +2,17 @@ from datetime import date, datetime, timezone
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.attendance import Attendance, AttendanceStatus
-from app.models.class_model import CourseClass
 from app.models.class_session import ClassSession, SessionStatus
-from app.models.class_student import ClassEnrollmentStatus, ClassStudent
 from app.models.student import Student
-from app.models.teacher import Teacher
 from app.models.rbac.user import User
+from app.repositories.attendance import AttendanceRepository
+from app.repositories.class_session import ClassSessionRepository
+from app.repositories.class_student import ClassStudentRepository
+from app.repositories.student import StudentRepository
+from app.repositories.user import UserRepository
 from app.schemas.attendance import AttendanceBulkItem, AttendanceUpdateRequest
 from app.schemas.common import PaginationParams
 from app.services.class_service import AcademicAccessMixin, ClassService, _enum
@@ -24,37 +25,29 @@ def _now() -> datetime:
 
 
 class AttendanceService(AcademicAccessMixin):
+    def __init__(self, db: Session) -> None:
+        super().__init__(db)
+        self.attendance_repo = AttendanceRepository(db)
+        self.class_student_repo = ClassStudentRepository(db)
+        self.class_session_repo = ClassSessionRepository(db)
+        self.student_repo = StudentRepository(db)
+        self.user_repo = UserRepository(db)
+
     def _teacher_can_view_student(self, student_id: str, user: User) -> bool:
         teacher = self.get_teacher_profile_by_user(str(user.id))
         if not teacher:
             return False
-        mapping = self.db.execute(
-            select(ClassStudent)
-            .join(CourseClass, CourseClass.id == ClassStudent.class_id)
-            .where(
-                ClassStudent.student_id == student_id,
-                ClassStudent.deleted_at.is_(None),
-                CourseClass.teacher_id == teacher.id,
-                CourseClass.deleted_at.is_(None),
-            )
-        ).scalar_one_or_none()
-        return mapping is not None
+        return self.class_student_repo.exists_student_in_teacher_classes(student_id, str(teacher.id))
 
     def _get_attendance(self, attendance_id: str) -> Attendance:
-        item = self.db.execute(select(Attendance).where(Attendance.id == attendance_id, Attendance.deleted_at.is_(None))).scalar_one_or_none()
+        item = self.attendance_repo.get(attendance_id)
         if not item:
             raise HTTPException(status_code=404, detail="Attendance not found")
         return item
 
     def _get_class_student_ids(self, class_id: str) -> set[str]:
-        items = self.db.execute(
-            select(ClassStudent.student_id).where(
-                ClassStudent.class_id == class_id,
-                ClassStudent.deleted_at.is_(None),
-                ClassStudent.enrollment_status.notin_([ClassEnrollmentStatus.cancelled, ClassEnrollmentStatus.dropped]),
-            )
-        ).scalars().all()
-        return {str(item) for item in items}
+        items = self.class_student_repo.list_active_student_ids_by_class_id(class_id)
+        return set(items)
 
     def _assert_teacher_can_record(self, session: ClassSession, user: User) -> None:
         if self.has_any_permission(user, "admin.all", "attendance.all"):
@@ -70,11 +63,15 @@ class AttendanceService(AcademicAccessMixin):
         raise HTTPException(status_code=403, detail="Permission denied")
 
     def attendance_dict(self, attendance: Attendance, student: Student | None = None, user: User | None = None) -> dict[str, Any]:
-        student = student or self.db.execute(select(Student).where(Student.id == attendance.student_id, Student.deleted_at.is_(None))).scalar_one()
-        user = user or self.db.execute(select(User).where(User.id == student.user_id, User.deleted_at.is_(None))).scalar_one()
+        student = student or self.student_repo.get(str(attendance.student_id))
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        user = user or self.user_repo.get_active_by_id(str(student.user_id))
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
         recorder = None
         if attendance.recorded_by:
-            recorder = self.db.execute(select(User).where(User.id == attendance.recorded_by, User.deleted_at.is_(None))).scalar_one_or_none()
+            recorder = self.user_repo.get_active_by_id(str(attendance.recorded_by))
         return {
             "id": str(attendance.id),
             "session_id": str(attendance.session_id),
@@ -110,7 +107,14 @@ class AttendanceService(AcademicAccessMixin):
             "session_id": str(session.id),
             "class_id": str(session.class_id),
             "student_id": str(student.id),
-            "student": user_to_dict(user, include_meta=False),
+            "student": {
+                "id": str(user.id),
+                "full_name": user.full_name,
+                "email": user.email,
+                "avatar_url": getattr(student, "avatar_url", None),
+                "status": user.status.value if getattr(user, "status", None) else None,
+                "is_verified": getattr(user, "is_verified", None),
+            },
             "status": AttendanceStatus.not_marked.value,
             "check_in_time": None,
             "note": None,
@@ -130,14 +134,12 @@ class AttendanceService(AcademicAccessMixin):
                 if item.student_id not in class_student_ids:
                     raise HTTPException(status_code=400, detail="Student does not belong to class")
                 status = _enum(AttendanceStatus, item.status, "attendance status")
-                attendance = self.db.execute(
-                    select(Attendance).where(Attendance.session_id == session.id, Attendance.student_id == item.student_id)
-                ).scalar_one_or_none()
+                attendance = self.attendance_repo.get_by_session_and_student(str(session.id), item.student_id)
                 if attendance:
                     attendance.deleted_at = None
                 else:
                     attendance = Attendance(session_id=session.id, class_id=session.class_id, student_id=item.student_id)
-                    self.db.add(attendance)
+                    self.attendance_repo.create(attendance)
                 attendance.status = status
                 attendance.check_in_time = item.check_in_time
                 attendance.note = item.note
@@ -146,17 +148,7 @@ class AttendanceService(AcademicAccessMixin):
                 results.append(attendance)
             self.db.flush()
             active_student_count = len(class_student_ids)
-            marked_count = int(
-                self.db.execute(
-                    select(func.count())
-                    .select_from(Attendance)
-                    .where(
-                        Attendance.session_id == session.id,
-                        Attendance.deleted_at.is_(None),
-                        Attendance.status != AttendanceStatus.not_marked,
-                    )
-                ).scalar_one()
-            )
+            marked_count = self.attendance_repo.count_marked_by_session(str(session.id), AttendanceStatus.not_marked)
             if active_student_count > 0 and marked_count >= active_student_count:
                 session.status = SessionStatus.completed
             self.db.commit()
@@ -174,20 +166,8 @@ class AttendanceService(AcademicAccessMixin):
         status: str | None = None,
     ) -> tuple[list[dict[str, Any]], int]:
         session = ClassSessionService(self.db).get_session_by_id(session_id)
-        rows = self.db.execute(
-            select(ClassStudent, Student, User)
-            .join(Student, Student.id == ClassStudent.student_id)
-            .join(User, User.id == Student.user_id)
-            .where(
-                ClassStudent.class_id == session.class_id,
-                ClassStudent.deleted_at.is_(None),
-                Student.deleted_at.is_(None),
-                User.deleted_at.is_(None),
-            )
-        ).all()
-        attendance_rows = self.db.execute(
-            select(Attendance).where(Attendance.session_id == session.id, Attendance.deleted_at.is_(None))
-        ).scalars().all()
+        rows = self.class_student_repo.list_with_student_user_by_class_id(str(session.class_id))
+        attendance_rows = self.attendance_repo.list_by_session_id(str(session.id))
         attendance_map = {str(item.student_id): item for item in attendance_rows}
         items: list[dict[str, Any]] = []
         for _, student, user in rows:
@@ -238,25 +218,18 @@ class AttendanceService(AcademicAccessMixin):
         to_date: date | None = None,
     ) -> tuple[list[Attendance], int]:
         ClassService(self.db).get_class_by_id(class_id)
-        stmt = select(Attendance).join(ClassSession, ClassSession.id == Attendance.session_id).where(
-            Attendance.class_id == class_id,
-            Attendance.deleted_at.is_(None),
-            ClassSession.deleted_at.is_(None),
+        items = self.attendance_repo.list_filtered_by_class(
+            class_id=class_id,
+            session_id=session_id,
+            student_id=student_id,
+            status=_enum(AttendanceStatus, status, "attendance status") if status else None,
+            from_date=from_date,
+            to_date=to_date,
         )
-        if session_id:
-            stmt = stmt.where(Attendance.session_id == session_id)
-        if student_id:
-            stmt = stmt.where(Attendance.student_id == student_id)
-        if status:
-            stmt = stmt.where(Attendance.status == _enum(AttendanceStatus, status, "attendance status"))
-        if from_date:
-            stmt = stmt.where(ClassSession.session_date >= from_date)
-        if to_date:
-            stmt = stmt.where(ClassSession.session_date <= to_date)
-        total = self.db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
-        stmt = stmt.order_by(ClassSession.session_date.desc(), Attendance.created_at.desc())
-        stmt = stmt.offset((query.page - 1) * query.page_size).limit(query.page_size)
-        return list(self.db.execute(stmt).scalars().all()), int(total)
+        total = len(items)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        return items[start:end], total
 
     def get_attendance_by_student(
         self,
@@ -270,13 +243,11 @@ class AttendanceService(AcademicAccessMixin):
         except HTTPException:
             if not self._teacher_can_view_student(student_id, current_user):
                 raise
-        stmt = select(Attendance).where(Attendance.student_id == student_id, Attendance.deleted_at.is_(None))
-        if class_id:
-            stmt = stmt.where(Attendance.class_id == class_id)
-        total = self.db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
-        stmt = stmt.order_by(Attendance.recorded_at.desc().nullslast(), Attendance.created_at.desc())
-        stmt = stmt.offset((query.page - 1) * query.page_size).limit(query.page_size)
-        return list(self.db.execute(stmt).scalars().all()), int(total)
+        items = self.attendance_repo.list_filtered_by_student(student_id, class_id)
+        total = len(items)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        return items[start:end], total
 
     def get_my_attendance(self, query: PaginationParams, current_user: User) -> tuple[list[Attendance], int]:
         student = self.get_student_profile_by_user(str(current_user.id))
@@ -286,6 +257,14 @@ class AttendanceService(AcademicAccessMixin):
 
 
 class AttendanceReportService(AcademicAccessMixin):
+    def __init__(self, db: Session) -> None:
+        super().__init__(db)
+        self.attendance_repo = AttendanceRepository(db)
+        self.class_session_repo = ClassSessionRepository(db)
+        self.class_student_repo = ClassStudentRepository(db)
+        self.student_repo = StudentRepository(db)
+        self.user_repo = UserRepository(db)
+
     # Attendance rate excludes excused sessions from the denominator.
     def _attendance_rate(self, present: int, absent: int, late: int) -> float:
         denominator = present + absent + late
@@ -296,21 +275,9 @@ class AttendanceReportService(AcademicAccessMixin):
     def get_class_attendance_summary(self, class_id: str) -> dict[str, Any]:
         class_obj = ClassService(self.db).get_class_by_id(class_id)
         course = CourseService(self.db).get_course_by_id(str(class_obj.course_id))
-        total_sessions = int(
-            self.db.execute(
-                select(func.count()).select_from(ClassSession).where(
-                    ClassSession.class_id == class_obj.id,
-                    ClassSession.deleted_at.is_(None),
-                    ClassSession.status != SessionStatus.cancelled,
-                )
-            ).scalar_one()
-        )
+        total_sessions = self.class_session_repo.count_non_cancelled_by_class_id(str(class_obj.id))
         total_students = ClassService(self.db).count_students(class_id)
-        rows = self.db.execute(
-            select(Attendance.status, func.count())
-            .where(Attendance.class_id == class_obj.id, Attendance.deleted_at.is_(None))
-            .group_by(Attendance.status)
-        ).all()
+        rows = self.attendance_repo.count_group_by_status_for_class(str(class_obj.id))
         summary = {status.value: 0 for status in AttendanceStatus}
         counted = 0
         for status, count in rows:
@@ -338,39 +305,12 @@ class AttendanceReportService(AcademicAccessMixin):
         query: PaginationParams,
     ) -> tuple[list[dict[str, Any]], int]:
         ClassService(self.db).get_class_by_id(class_id)
-        total_sessions = int(
-            self.db.execute(
-                select(func.count()).select_from(ClassSession).where(
-                    ClassSession.class_id == class_id,
-                    ClassSession.deleted_at.is_(None),
-                    ClassSession.status != SessionStatus.cancelled,
-                )
-            ).scalar_one()
-        )
-        rows = self.db.execute(
-            select(ClassStudent, Student, User)
-            .join(Student, Student.id == ClassStudent.student_id)
-            .join(User, User.id == Student.user_id)
-            .where(
-                ClassStudent.class_id == class_id,
-                ClassStudent.deleted_at.is_(None),
-                Student.deleted_at.is_(None),
-                User.deleted_at.is_(None),
-            )
-            .order_by(User.full_name.asc())
-        ).all()
+        total_sessions = self.class_session_repo.count_non_cancelled_by_class_id(class_id)
+        rows = self.class_student_repo.list_with_student_user_by_class_id(class_id)
         items: list[dict[str, Any]] = []
         for _, student, user in rows:
             counts = {status.value: 0 for status in AttendanceStatus}
-            attendance_rows = self.db.execute(
-                select(Attendance.status, func.count())
-                .where(
-                    Attendance.class_id == class_id,
-                    Attendance.student_id == student.id,
-                    Attendance.deleted_at.is_(None),
-                )
-                .group_by(Attendance.status)
-            ).all()
+            attendance_rows = self.attendance_repo.count_group_by_status_for_student_in_class(class_id, str(student.id))
             counted = 0
             for status, count in attendance_rows:
                 counts[status.value] = int(count)
@@ -407,30 +347,14 @@ class AttendanceReportService(AcademicAccessMixin):
         except HTTPException:
             if not AttendanceService(self.db)._teacher_can_view_student(student_id, current_user):
                 raise
-        student = self.db.execute(select(Student).where(Student.id == student_id, Student.deleted_at.is_(None))).scalar_one_or_none()
-        if not student:
+        student_with_user = self.student_repo.get_active_with_user_by_id(student_id)
+        if not student_with_user:
             raise HTTPException(status_code=404, detail="Student not found")
-        user = self.db.execute(select(User).where(User.id == student.user_id, User.deleted_at.is_(None))).scalar_one()
-        class_ids = self.db.execute(
-            select(ClassStudent.class_id).where(ClassStudent.student_id == student.id, ClassStudent.deleted_at.is_(None))
-        ).scalars().all()
-        total_sessions = 0
-        if class_ids:
-            total_sessions = int(
-                self.db.execute(
-                    select(func.count()).select_from(ClassSession).where(
-                        ClassSession.class_id.in_(class_ids),
-                        ClassSession.deleted_at.is_(None),
-                        ClassSession.status != SessionStatus.cancelled,
-                    )
-                ).scalar_one()
-            )
+        student, user = student_with_user
+        class_ids = self.class_student_repo.list_class_ids_by_student_id(str(student.id))
+        total_sessions = self.class_session_repo.count_non_cancelled_by_class_ids(class_ids)
         counts = {status.value: 0 for status in AttendanceStatus}
-        rows = self.db.execute(
-            select(Attendance.status, func.count())
-            .where(Attendance.student_id == student.id, Attendance.deleted_at.is_(None))
-            .group_by(Attendance.status)
-        ).all()
+        rows = self.attendance_repo.count_group_by_status_for_student(str(student.id))
         counted = 0
         for status, count in rows:
             counts[status.value] = int(count)

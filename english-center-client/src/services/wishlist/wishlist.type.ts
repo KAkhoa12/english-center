@@ -1,5 +1,17 @@
 
-export type WishlistCourse = Record<string, unknown>;
+export type WishlistCourse = {
+  id: string;
+  name: string;
+  code: string;
+  slug: string;
+  description: string | null;
+  target_level: string | null;
+  total_sessions: number | null;
+  duration_weeks: number | null;
+  price: number;
+  status: string;
+  thumbnail_url: string | null;
+};
 
 export type WishlistItem = {
   id: string;

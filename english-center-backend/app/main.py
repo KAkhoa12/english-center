@@ -7,6 +7,9 @@ from app.api.v1 import (
     attendance_reports,
     assignment_attachments,
     assignment_grades,
+    assignment_question_options,
+    assignment_questions,
+    assignment_types,
     assignments,
     auth,
     cart,
@@ -29,6 +32,7 @@ from app.api.v1 import (
     staff,
     students,
     submission_attachments,
+    submission_answers,
     submissions,
     teachers,
     users,
@@ -103,9 +107,13 @@ app.include_router(class_sessions.router, prefix=settings.API_V1_PREFIX)
 app.include_router(attendance.router, prefix=settings.API_V1_PREFIX)
 app.include_router(attendance_reports.router, prefix=settings.API_V1_PREFIX)
 app.include_router(assignments.router, prefix=settings.API_V1_PREFIX)
+app.include_router(assignment_types.router, prefix=settings.API_V1_PREFIX)
 app.include_router(assignment_attachments.router, prefix=settings.API_V1_PREFIX)
+app.include_router(assignment_questions.router, prefix=settings.API_V1_PREFIX)
+app.include_router(assignment_question_options.router, prefix=settings.API_V1_PREFIX)
 app.include_router(submissions.router, prefix=settings.API_V1_PREFIX)
 app.include_router(submission_attachments.router, prefix=settings.API_V1_PREFIX)
+app.include_router(submission_answers.router, prefix=settings.API_V1_PREFIX)
 app.include_router(assignment_grades.router, prefix=settings.API_V1_PREFIX)
 app.include_router(course_categories.router, prefix=settings.API_V1_PREFIX)
 app.include_router(course_tags.router, prefix=settings.API_V1_PREFIX)

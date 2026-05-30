@@ -2,6 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models import Role
+from app.models.rbac.permission import Permission
 from app.repositories.permission import PermissionRepository
 from app.repositories.role import RoleRepository
 from app.repositories.role_permission import RolePermissionRepository
@@ -38,6 +39,10 @@ class RoleService:
         if not role:
             raise HTTPException(status_code=404, detail="Role not found")
         return role
+
+    def get_role_permissions(self, role_id: str) -> list[Permission]:
+        self.get_role(role_id)
+        return self.role_permission_repo.list_active_permissions_by_role_id(role_id)
 
     def update_role(self, role_id: str, payload: RoleUpdate) -> Role:
         try:

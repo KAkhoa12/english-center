@@ -17,3 +17,6 @@ class CourseRequirementRepository(BaseRepository[CourseRequirement]):
                 .order_by(CourseRequirement.order_index.asc())
             ).scalars().all()
         )
+
+    def get_active_by_id(self, requirement_id: str) -> CourseRequirement | None:
+        return self.get(requirement_id)

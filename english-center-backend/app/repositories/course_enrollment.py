@@ -38,3 +38,10 @@ class CourseEnrollmentRepository(BaseRepository[CourseEnrollment]):
                 .order_by(CourseEnrollment.created_at.desc())
             ).scalars().all()
         )
+
+    def list_filtered(self, user_id: str | None = None) -> list[CourseEnrollment]:
+        stmt = select(CourseEnrollment).where(CourseEnrollment.deleted_at.is_(None))
+        if user_id:
+            stmt = stmt.where(CourseEnrollment.user_id == user_id)
+        stmt = stmt.order_by(CourseEnrollment.enrolled_at.desc())
+        return list(self.db.execute(stmt).scalars().all())

@@ -53,3 +53,12 @@ class UserRepository(BaseRepository[User]):
 
     def get_active_by_id(self, user_id: str) -> User | None:
         return self.get(user_id)
+
+    def get_active_by_ids(self, user_ids: list[str]) -> list[User]:
+        if not user_ids:
+            return []
+        return list(
+            self.db.execute(
+                select(User).where(User.id.in_(user_ids), User.deleted_at.is_(None))
+            ).scalars().all()
+        )

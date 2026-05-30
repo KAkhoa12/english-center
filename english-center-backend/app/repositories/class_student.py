@@ -63,6 +63,47 @@ class ClassStudentRepository(BaseRepository[ClassStudent]):
             ).scalar_one()
         )
 
+    def list_active_student_ids_by_class_id(self, class_id: str) -> list[str]:
+        return [str(item) for item in self.db.execute(
+            select(ClassStudent.student_id).where(
+                ClassStudent.class_id == class_id,
+                ClassStudent.deleted_at.is_(None),
+                ClassStudent.enrollment_status.notin_([ClassEnrollmentStatus.cancelled, ClassEnrollmentStatus.dropped]),
+            )
+        ).scalars().all()]
+
+    def exists_student_in_teacher_classes(self, student_id: str, teacher_id: str) -> bool:
+        return self.db.execute(
+            select(ClassStudent)
+            .join(CourseClass, CourseClass.id == ClassStudent.class_id)
+            .where(
+                ClassStudent.student_id == student_id,
+                ClassStudent.deleted_at.is_(None),
+                CourseClass.teacher_id == teacher_id,
+                CourseClass.deleted_at.is_(None),
+            )
+        ).scalar_one_or_none() is not None
+
+    def list_with_student_user_by_class_id(self, class_id: str) -> list[tuple[ClassStudent, Student, User]]:
+        rows = self.db.execute(
+            select(ClassStudent, Student, User)
+            .join(Student, Student.id == ClassStudent.student_id)
+            .join(User, User.id == Student.user_id)
+            .where(
+                ClassStudent.class_id == class_id,
+                ClassStudent.deleted_at.is_(None),
+                Student.deleted_at.is_(None),
+                User.deleted_at.is_(None),
+            )
+            .order_by(User.full_name.asc())
+        ).all()
+        return [(row[0], row[1], row[2]) for row in rows]
+
+    def list_class_ids_by_student_id(self, student_id: str) -> list[str]:
+        return [str(item) for item in self.db.execute(
+            select(ClassStudent.class_id).where(ClassStudent.student_id == student_id, ClassStudent.deleted_at.is_(None))
+        ).scalars().all()]
+
     def list_with_student_user_by_class(
         self,
         class_id: str,

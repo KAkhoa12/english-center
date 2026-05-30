@@ -25,7 +25,7 @@ def create_class(payload: ClassCreate, db: Annotated[Session, Depends(get_db)]):
     return api_response(True, "Class created successfully", service.class_detail_dict(item), None)
 
 
-@router.get("/classes", dependencies=[Depends(require_permission("class.read"))])
+@router.get("/classes")
 def list_classes(
     db: Annotated[Session, Depends(get_db)],
     page: int = Query(1),
@@ -46,7 +46,7 @@ def list_classes(
     return api_response(True, "Classes retrieved successfully", [service.class_list_dict(item) for item in items], build_pagination(page, page_size, total))
 
 
-@router.get("/classes/{class_id}", dependencies=[Depends(require_permission("class.read"))])
+@router.get("/classes/{class_id}")
 def get_class(class_id: str, db: Annotated[Session, Depends(get_db)]):
     service = ClassService(db)
     item = service.get_class_by_id(class_id)

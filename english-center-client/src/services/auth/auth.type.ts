@@ -25,7 +25,13 @@ export type RegisterRequest = {
   date_of_birth: string | null;
   gender: string | null;
   address: string | null;
-  level: string | null;
+  level:
+    | "beginner"
+    | "elementary"
+    | "intermediate"
+    | "upper_intermediate"
+    | "advanced"
+    | null;
   learning_goal: string | null;
   parent_name: string | null;
   parent_phone: string | null;

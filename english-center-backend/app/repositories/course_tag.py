@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models.course import CourseTag
@@ -25,3 +25,10 @@ class CourseTagRepository(BaseRepository[CourseTag]):
                 select(CourseTag).where(CourseTag.id.in_(tag_ids), CourseTag.deleted_at.is_(None))
             ).scalars().all()
         )
+
+    def list_filtered(self, search: str | None = None) -> list[CourseTag]:
+        stmt = select(CourseTag).where(CourseTag.deleted_at.is_(None))
+        if search:
+            term = f"%{search}%"
+            stmt = stmt.where(or_(CourseTag.name.ilike(term), CourseTag.slug.ilike(term)))
+        return list(self.db.execute(stmt).scalars().all())

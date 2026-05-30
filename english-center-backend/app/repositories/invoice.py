@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.commerce import Invoice, InvoiceItem
+from app.models.commerce import Invoice, InvoiceItem, InvoiceStatus
 from app.repositories.base import BaseRepository
 
 
@@ -25,6 +25,15 @@ class InvoiceRepository(BaseRepository[Invoice]):
                 select(Invoice).where(Invoice.user_id == user_id, Invoice.deleted_at.is_(None)).order_by(Invoice.created_at.desc())
             ).scalars().all()
         )
+
+    def list_filtered(self, user_id: str | None = None, status: InvoiceStatus | None = None) -> list[Invoice]:
+        stmt = select(Invoice).where(Invoice.deleted_at.is_(None))
+        if user_id:
+            stmt = stmt.where(Invoice.user_id == user_id)
+        if status:
+            stmt = stmt.where(Invoice.invoice_status == status)
+        stmt = stmt.order_by(Invoice.created_at.desc())
+        return list(self.db.execute(stmt).scalars().all())
 
 
 class InvoiceItemRepository(BaseRepository[InvoiceItem]):
