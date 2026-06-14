@@ -178,14 +178,90 @@ vd: LM001 - L001 (Bài 1: Hi) - M001 - U002
 
 ** Nếu khóa học được thêm vào với mode là center **
 
+Rooms ( Phòng học )
+- id 
+- name 
+vd:
+P001 - Phòng A01 
+P002 - Phòng A02 
+
 Classes ( Lớp theo khóa học )
 - id 
 - courses_id 
 - name
 - teacher ( user_id ) 
+- start_date 15/06/2026
+- end_date 06/07/2026 
 vd:
 - CL001 - C001 ( Khóa học tiếng Anh cho trẻ em lớp 1 ) - Trẻ Lớp 1 Sáng 2/4/6 - U002 ( Nguyễn Văn B )
 - CL002 - C001 ( Khóa học tiếng Anh cho trẻ em lớp 1 ) - Trẻ Lớp 1 Chiều 2/4/6 - U002 ( Nguyễn Văn B )
 - CL003 - C001 ( Khóa học tiếng Anh cho trẻ em lớp 1 ) - Trẻ Lớp 1 Tối 2/4/6 - - U002 ( Nguyễn Văn B )
+
+ClassSession ( Buổi học của lớp )
+- id
+- class_id 
+- room_id 
+- title 
+- session_date 
+- start_time
+- end_time 
+vd: 
+- CS001 - CL001 (Trẻ Lớp 1 Sáng 2/4/6) - P001 (Phòng A01) - Buổi 1 - 15/06/2026 - 8:00 AM - 10:00 AM
+- CS001 - CL001 (Trẻ Lớp 1 Sáng 2/4/6) - P001 (Phòng A01) - Buổi 2 - 17/06/2026 - 8:00 AM - 10:00 AM
+.... 
+- CS001 - CL001 (Trẻ Lớp 1 Sáng 2/4/6) - P001 (Phòng A01) - Buổi 9 - 06/-7/2026 - 8:00 AM - 10:00 AM
+
+Atenndances ( Điểm danh buổi học ) 
+( đây là phần điểm danh theo buổi học ) 
+
+ClassStudent 
+( Học viên trong lớp học đó )
+
+
+
+====================== CÁCH CHẠY DỰ ÁN =====================
+
+Thư mục dự án: https://github.com/KAkhoa12/english-center.git
+
+B1: Vào trong thư mục trên máy tạo 1 folder lưu trữ code của mình 
+B2: clone src này về bằng lệnh git:  git clone https://github.com/KAkhoa12/english-center.git
+B3: cd english-center
+
+== Chạy src FE trước  == 
+bắt buộc có: nodejs, pnpm 
+
+1. cd english-center-client 
+2. pnpm i 
+3. pnpm dev 
+
+== Chạy docker compose ==  ( Chạy 1 lần duy nhất cho lần đầu )
+bắt buộc có: docker destop
+1. về lại thư mục gốc english-center
+2. cd english-center-backend 
+3. docker compose up -d 
+Hiển thị chấm xanh là thành công 
+
+== Chạy src BE === 
+options: dbeaver, hoặc 1 ide hỗ trợ kết nối PostgreDB, thư viên uv, python >=3.12 
+1. Kết nối DB 
+2. Chuột phải commections -> create -> connection -> PostgresSQL ( Chạy 1 lần duy nhất cho lần đầu )
+3. Chỉnh các thông số như sau: ( Chạy 1 lần duy nhất cho lần đầu )
+- database name: english_center_db
+- username: postgres
+- password: postgres	
+4. Nhấn Test connection hiển thị ok thì đã kết nối thành công  ( Chạy 1 lần duy nhất cho lần đầu )
+5. cp .env.local > .env   ( Chạy 1 lần duy nhất cho lần đầu )
+6. pip install uv ( Nếu như chưa cài ) ( Chạy 1 lần duy nhất cho lần đầu )
+7. uv sync ( tải tất cả các thư viện ) ( Chạy 1 lần duy nhất cho lần đầu )
+8. .venv\Scripts\activate.bat, nếu dùng vs code tạo 1 terminal git bash: source .venv/Scripts/activate 
+9. hiển thị biến môi trường ảo như (english-center-backend) là thành công 
+10. python -m alembic upgrade head  ( Chạy 1 lần duy nhất cho lần đầu )
+11. uvicorn app.main:app --reload 
+
+Lưu ý: 
+Khi có lệnh của anh là tải source code mới nhất về máy 
+1. Vào trong dự án clone src ban đầu 
+2. cd english-center 
+3. git pull 
 
 
