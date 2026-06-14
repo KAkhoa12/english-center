@@ -38,6 +38,8 @@ type AssignmentsState = {
 
   createAssignment: (classId: string, data: AssignmentCreateRequest) => Promise<Assignment>;
   listClassAssignments: (classId: string, query?: ListAssignmentsQuery) => Promise<Assignment[]>;
+  createLessonAssignment: (lessonId: string, data: AssignmentCreateRequest) => Promise<Assignment>;
+  listLessonAssignments: (lessonId: string, query?: ListAssignmentsQuery) => Promise<Assignment[]>;
   getAssignment: (assignmentId: string) => Promise<Assignment>;
   updateAssignment: (assignmentId: string, data: AssignmentUpdateRequest) => Promise<Assignment>;
   deleteAssignment: (assignmentId: string) => Promise<void>;
@@ -85,6 +87,20 @@ export const useAssignmentsStore = create<AssignmentsState>()((set) => ({
   listClassAssignments: async (classId, query) => {
     const response = await assignmentsApi.listClassAssignments(classId, query);
     const assignments = unwrap(response, "Lay danh sach bai tap that bai");
+    set({ assignments, pagination: response.pagination ?? null });
+    return assignments;
+  },
+
+  createLessonAssignment: async (lessonId, data) => {
+    const response = await assignmentsApi.createLessonAssignment(lessonId, data);
+    const assignment = unwrap(response, "Tao bai tap bai hoc that bai");
+    set((state) => ({ assignments: [assignment, ...state.assignments], selectedAssignment: assignment }));
+    return assignment;
+  },
+
+  listLessonAssignments: async (lessonId, query) => {
+    const response = await assignmentsApi.listLessonAssignments(lessonId, query);
+    const assignments = unwrap(response, "Lay danh sach bai tap bai hoc that bai");
     set({ assignments, pagination: response.pagination ?? null });
     return assignments;
   },

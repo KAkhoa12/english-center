@@ -50,8 +50,11 @@ from app.schemas.course import (
 from app.repositories.course_media import CourseMediaRepository
 from app.repositories.course import CourseRepository
 from app.repositories.course_category import CourseCategoryRepository
+from app.repositories.course_class import CourseClassRepository
+from app.repositories.course_enrollment import CourseEnrollmentRepository
 from app.repositories.course_tag import CourseTagRepository
 from app.repositories.course_tag_mapping import CourseTagMappingRepository
+from app.repositories.class_student import ClassStudentRepository
 from app.repositories.course_requirement import CourseRequirementRepository
 from app.repositories.course_outcome import CourseOutcomeRepository
 from app.repositories.course_module import CourseModuleRepository
@@ -290,6 +293,9 @@ class CourseService(CourseSerializationMixin):
         self.lesson_material_repo = LessonMaterialRepository(db)
         self.media_repo = MediaRepository(db)
         self.course_media_repo = CourseMediaRepository(db)
+        self.class_repo = CourseClassRepository(db)
+        self.class_student_repo = ClassStudentRepository(db)
+        self.enrollment_repo = CourseEnrollmentRepository(db)
 
     def _validate_category(self, category_id: str) -> CourseCategory:
         item = self.category_repo.get(category_id)
@@ -344,6 +350,12 @@ class CourseService(CourseSerializationMixin):
             raise HTTPException(status_code=404, detail="Course not found")
         return course
 
+    def get_course_by_slug(self, slug: str) -> Course:
+        course = self.course_repo.get_by_slug(slug)
+        if not course:
+            raise HTTPException(status_code=404, detail="Course not found")
+        return course
+
     def get_courses(
         self,
         query: PaginationParams,
@@ -393,6 +405,37 @@ class CourseService(CourseSerializationMixin):
             }
         )
         return data
+
+    def get_course_statistics(self, mode: str) -> list[dict[str, Any]]:
+        course_mode = _enum(CourseMode, mode, "mode")
+        courses = self.course_repo.list_filtered(mode=course_mode)
+        courses.sort(key=lambda item: item.created_at, reverse=True)
+        results: list[dict[str, Any]] = []
+        for course in courses:
+            course_data = self.course_list_dict(course)
+            total_enrollments = self.enrollment_repo.count_by_course_id(str(course.id))
+            item: dict[str, Any] = {
+                "course": course_data,
+                "total_enrollments": total_enrollments,
+            }
+            if course.mode == CourseMode.center:
+                classes = self.class_repo.list_by_course_id(str(course.id))
+                class_rows = [
+                    {
+                        "id": str(class_obj.id),
+                        "name": class_obj.name,
+                        "code": class_obj.code,
+                        "status": class_obj.status.value,
+                        "max_students": class_obj.max_students,
+                        "students_count": self.class_student_repo.count_active_students(str(class_obj.id)),
+                    }
+                    for class_obj in classes
+                ]
+                item["classes_count"] = len(class_rows)
+                item["total_class_students"] = sum(row["students_count"] for row in class_rows)
+                item["classes"] = class_rows
+            results.append(item)
+        return results
 
     def update_course(self, course_id: str, payload: CourseUpdate) -> Course:
         course = self.get_course_by_id(course_id)
@@ -759,6 +802,28 @@ class CourseModuleService(CourseSerializationMixin):
                 setattr(module, field, value)
         if payload.status is not None:
             module.status = _enum(CourseModuleStatus, payload.status, "status")
+        self.db.commit()
+        self.db.refresh(module)
+        return module
+
+    def upload_module_media(self, module_id: str, file, file_size: int) -> CourseModule:
+        module = self.get_module_by_id(module_id)
+        uploaded = StorageService().upload_file(
+            bucket_name=settings.MINIO_BUCKET_AVATARS,
+            file=file,
+            file_size=file_size,
+            folder=f"course-modules/{module_id}/media",
+        )
+        media = Media(
+            bucket=uploaded["bucket"],
+            object_name=uploaded["object_name"],
+            original_filename=file.filename,
+            content_type=file.content_type,
+            size=file_size,
+            uploaded_by=None,
+        )
+        self.media_repo.create(media)
+        module.media_id = media.id
         self.db.commit()
         self.db.refresh(module)
         return module

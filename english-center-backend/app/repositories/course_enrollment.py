@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.commerce import CourseEnrollment
@@ -37,6 +37,16 @@ class CourseEnrollmentRepository(BaseRepository[CourseEnrollment]):
                 .where(CourseEnrollment.course_id == course_id, CourseEnrollment.deleted_at.is_(None))
                 .order_by(CourseEnrollment.created_at.desc())
             ).scalars().all()
+        )
+
+    def count_by_course_id(self, course_id: str) -> int:
+        return int(
+            self.db.execute(
+                select(func.count()).select_from(CourseEnrollment).where(
+                    CourseEnrollment.course_id == course_id,
+                    CourseEnrollment.deleted_at.is_(None),
+                )
+            ).scalar_one()
         )
 
     def list_filtered(self, user_id: str | None = None) -> list[CourseEnrollment]:

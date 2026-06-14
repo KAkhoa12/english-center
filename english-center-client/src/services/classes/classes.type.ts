@@ -6,13 +6,15 @@ export type EnrollmentStatus = string;
 export type SessionMode = string;
 export type SessionStatus = string;
 
-export type CourseRef = { id: string; name: string; code?: string };
+export type CourseRef = { id: string; name: string; code?: string; duration_weeks?: number | null };
 export type TeacherRef = UserRef & { id: string };
+export type RoomRef = { id: string; name: string; location?: string | null };
 
 export type ClassItem = {
   id: string;
   course_id: string;
   teacher_id: string | null;
+  room_id: string | null;
   name: string;
   code: string | null;
   class_type: ClassType;
@@ -23,6 +25,7 @@ export type ClassItem = {
   status: ClassStatus;
   course: CourseRef;
   teacher: TeacherRef | null;
+  room: RoomRef | null;
   created_at: string;
   updated_at: string;
   students_count?: number;
@@ -68,6 +71,7 @@ export type ClassSessionItem = {
 export type ClassCreateRequest = {
   course_id: string;
   teacher_id?: string | null;
+  room_id?: string | null;
   name: string;
   code?: string | null;
   class_type: ClassType;
@@ -79,6 +83,7 @@ export type ClassCreateRequest = {
 
 export type ClassUpdateRequest = {
   teacher_id?: string | null;
+  room_id?: string | null;
   name?: string | null;
   code?: string | null;
   class_type?: ClassType | null;

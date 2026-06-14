@@ -55,8 +55,8 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:5173"
 
     OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_LOW_LLM_MODEL: str = "qwen2.5:3b"
-    OLLAMA_HIGH_LLM_MODEL: str = "llama3.1:70b"
+    OLLAMA_LOW_LLM_MODEL: str = "gpt-oss:20b-cloud"
+    OLLAMA_HIGH_LLM_MODEL: str = "gpt-oss:120b-cloud"
     OLLAMA_RERANK_MODEL: str = "bge-reranker-v2-m3"
     OLLAMA_EMBEDDING_MODEL: str = "nomic-embed-text"
     OLLAMA_TIMEOUT_SECONDS: int = Field(default=120, ge=1, le=3600)

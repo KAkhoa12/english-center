@@ -1,9 +1,14 @@
 import type { SortOrder, UserRef } from "@/shared/types/response";
 
 export type AssignmentStatus = string;
-export type AssignmentType = string;
 export type SubmissionStatus = string;
 export type GradingMethod = string;
+
+export type AssignmentTypeRef = {
+  id: string;
+  code: string;
+  name: string;
+};
 
 export type AssignmentAttachment = {
   id: string;
@@ -55,18 +60,19 @@ export type AssignmentSubmission = {
 
 export type Assignment = {
   id: string;
-  class_id: string;
+  class_id: string | null;
   session_id: string | null;
   lesson_id: string | null;
   title: string;
   description: string | null;
   instruction: string | null;
-  assignment_type: AssignmentType;
+  assignment_type_id: string;
+  assignment_type: AssignmentTypeRef | null;
   status: AssignmentStatus;
   max_score: number;
   due_at: string | null;
   allow_late_submission: boolean;
-  class: { id: string; name: string };
+  class: { id: string; name: string } | null;
   session: { id: string; title: string } | null;
   lesson: { id: string; title: string } | null;
   created_at: string;
@@ -83,7 +89,7 @@ export type AssignmentCreateRequest = {
   title: string;
   description?: string | null;
   instruction?: string | null;
-  assignment_type?: AssignmentType;
+  assignment_type_id: string;
   status?: AssignmentStatus;
   max_score?: number;
   due_at?: string | null;
@@ -96,7 +102,7 @@ export type AssignmentUpdateRequest = {
   title?: string | null;
   description?: string | null;
   instruction?: string | null;
-  assignment_type?: AssignmentType | null;
+  assignment_type_id?: string | null;
   status?: AssignmentStatus | null;
   max_score?: number | null;
   due_at?: string | null;
@@ -153,7 +159,7 @@ export type ListAssignmentsQuery = {
   sort_by?: string;
   sort_order?: SortOrder;
   status?: AssignmentStatus;
-  assignment_type?: AssignmentType;
+  assignment_type_id?: string;
   session_id?: string;
   lesson_id?: string;
   due_from?: string;

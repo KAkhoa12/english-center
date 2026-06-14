@@ -1,0 +1,191 @@
+Link dự án: https://github.com/KAkhoa12/english-center.git
+
+Kiến trúc dự án: Trung tâm giảng dạy tiếng anh
+- phân quyền rbac ( Phân quyền động ) 
+- Roles (Vai trò ):
++ Admin: Quản lý tất cả,Xem hóa đơn, Cập nhập hóa đơn, Tạo hóa đơn, xóa hóa đơn
++ Giáo viên: Xem danh sách học viên, Xem danh sách khóa học, thêm khóa học, ... 
++ Học viên: Xem lịch của học viên, xem danh sách khóa học,... 
++ Kế toán: Xem hóa đơn, Cập nhập hóa đơn, ... 
++ Nhân viên nhập kho:....
++ Giảng viên part time: .... 
+
+Permistions (Quyền): 
+order.create ( Quyền tạo được hóa đơn) 
+order.read (Quyền xem được hóa đơn)
+order.update (Quyền cập nhập hóa đơn)
+order.delete(Quyền xóa hóa đơn)
+... 
+
+Xác thực bằng JWT 
+- Đăng nhập hệ thống -> cho access_token -> Đi kiểm tra xem có hợp lệ hay không"
++ access_token hợp lệ -> cho truy vấn api :
+	* Nếu giải mã access_token cho user_id ( ví dụ id = 1 ): gọi api cập nhập thông tin cá nhân user id = 1 -> thì nó sẽ cho cập nhập 
+	* Nếu giải mã access_token cho user_id ( ví dụ id = 1 ): gọi api cập nhập thông tin cá nhân user id = 2 -> thì nó sẽ không cho cập nhập  
++ access_token k hợp lệ -> trả về lỗi 401 unauthorize 
+
+Cơ chế access_token chỉ tồn tại trong 30p, refesh_token tồn tại trong 30 ngày
+
+Nghiệp vụ DB 
+
+Permisions:
+- id
+- code
+vd: Q001 - user.all ( read, update, create, delete ) 
+    Q002 - user.read
+    Q003 - user.update
+    Q004 - user.delete
+    Q005 - user.create
+    Q006 - teacher.all ( read, update, create, delete ) 
+    Q007 - teacher.read
+    Q008 - teacher.update
+    Q009 - teacher.delete
+    Q010 - teacher.create
+
+
+User:
+- id
+- tên 
+- password
+- email  
+vd:U001- Nguyễn Văn A - nguyenvana@gmail.com - 123456
+   U002- Nguyễn Văn B - nguyenvanb@gmail.com - 123456
+   U003- Nguyễn Văn C - nguyenvanc@gmail.com - 123456
+
+Roles:
+- name
+- id 
+vd: R001 - Admin 
+    R002 - Giảng viên 
+    R003 - Học viên 
+    R004 - Nhân viên 
+
+UserRole:
+- user_id
+- user_role 
+vd: U001 - R001 
+
+RolePermision:
+- role_id
+- permision_id
+vd: R001 (Admin) - Q001 (user.all)
+    R001 (Admin) - Q006 (user.all)
+    R002 (Giảng viên) - Q002 
+    R002 (Giảng viên) - Q003
+    R002 (Giảng viên) - Q007 
+    R002 (Giảng viên) - Q008 
+
+Media
+( Lưu những hình ảnh, video, tài liệu trong toàn bộ hệ thống)
+
+Teacher:
+- id
+- user_id
+- certificates
+vd: T001 - U002 - Chứng chỉ TOEIC 700 
+
+Student: 
+- id 
+- user_id
+- gender
+vd: ST001 - U003 - Nam
+
+CouresMedia:
+( Hình ảnh, video liên quan đến khóa học này)
+
+CourseCategories:
+- id 
+- name
+vd: CC01 - Trẻ em 
+    CC02 - Người đi làm 
+    CC03 - IELTS 
+    CC04 - TOEIC
+
+CourseTag 
+- id 
+- name
+vd: T001 - Online
+    T002 - Offline 
+    T003 - HotSale 
+
+( Có 2 loại mode khóa học: template (khóa học có sẵn, tự học), center ( Khóa học tại trung tâm )  
+Course:
+- id
+- name
+- mode
+- categories_id
+- durations_week ( học trong bn tuần )
+- total_lessons ( tổng số buổi học ) 
+
+vd: C001 - Khóa học tiếng Anh cho trẻ em lớp 1 - center - CC01 - 3 tuần - 9 buổi
+    C002 - Khóa học cho người đi làm - template - CC02 - 1 tuần - 10 buổi 
+
+CourseRequirements:
+- id 
+- course_id 
+( yêu cầu bắt buộc khi học khóa học này ) 
+
+CourseOutcome:
+- id 
+- Couses_id
+( Đầu ra hoàn thành sau khi học khóa học )
+
+CousesWlislist
+- id 
+- user_id 
+- course_id 
+vd: CWL001 - U003  - C001
+
+CourseTagMaping 
+- course_id 
+- course_tag_id
+vd: C001 - T001
+    C001 - T002
+    C001 - T003
+    C001 - T001
+    C001 - T003 
+
+** Nếu khóa học được thêm vào với mode là template ** 
+CourseModules
+- id 
+- course_id 
+- title 
+vd: CM001 - C001 ( Khóa học tiếng Anh cho trẻ em lớp 1 ) - Phần 1: Cách xưng hô
+    CM002 - C001 ( Khóa học tiếng Anh cho trẻ em lớp 1 ) - Phần 2: Cách chào hỏi
+    CM002 - C001 ( Khóa học tiếng Anh cho trẻ em lớp 1 ) - Phần 3: Cách đếm số
+    CM003 - C001 ( Khóa học tiếng Anh cho trẻ em lớp 1 ) - Phần 4: Cách đặt câu hỏi
+    CM003 - C001 ( Khóa học tiếng Anh cho trẻ em lớp 1 ) - Phần 5: Kết thúc khóa học 
+
+Lessons 
+- id 
+- course_id 
+- course_module_id 
+- title 
+- content 
+vd: 
+L001 - C001 ( Khóa học tiếng Anh cho trẻ em lớp 1 ) - CM001 (Phần 1: Cách xưng hô ) - Bài 1: Hi - < nội dung >
+L002 - C001 ( Khóa học tiếng Anh cho trẻ em lớp 1 ) - CM001 (Phần 1: Cách xưng hô ) - Bài 2: Hello - < nội dung >
+L003 - C001 ( Khóa học tiếng Anh cho trẻ em lớp 1 ) - CM002 (Phần 2: Cách chào hỏi ) - Bài 1: Chào bạn - < nội dung >
+....
+
+
+LessonsMaterials ( Tài liệu về Bài học trong khóa học )
+- id 
+- lesson_id 
+- media_id 
+- create_by ( user_id ) 
+vd: LM001 - L001 (Bài 1: Hi) - M001 - U002 
+
+** Nếu khóa học được thêm vào với mode là center **
+
+Classes ( Lớp theo khóa học )
+- id 
+- courses_id 
+- name
+- teacher ( user_id ) 
+vd:
+- CL001 - C001 ( Khóa học tiếng Anh cho trẻ em lớp 1 ) - Trẻ Lớp 1 Sáng 2/4/6 - U002 ( Nguyễn Văn B )
+- CL002 - C001 ( Khóa học tiếng Anh cho trẻ em lớp 1 ) - Trẻ Lớp 1 Chiều 2/4/6 - U002 ( Nguyễn Văn B )
+- CL003 - C001 ( Khóa học tiếng Anh cho trẻ em lớp 1 ) - Trẻ Lớp 1 Tối 2/4/6 - - U002 ( Nguyễn Văn B )
+
+

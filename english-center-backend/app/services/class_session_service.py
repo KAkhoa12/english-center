@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date, time, timedelta
 from typing import Any
 
 from fastapi import HTTPException
@@ -18,7 +18,7 @@ from app.repositories.lesson import LessonRepository
 from app.repositories.room import RoomRepository
 from app.repositories.teacher import TeacherRepository
 from app.repositories.user import UserRepository
-from app.schemas.class_session import ClassSessionCreate, ClassSessionUpdate
+from app.schemas.class_session import ClassSessionBulkCreate, ClassSessionCreate, ClassSessionUpdate
 from app.schemas.common import PaginationParams
 from app.services.class_service import AcademicAccessMixin, ClassService, _enum, _enum_required
 from app.services.course_service import CourseService
@@ -59,6 +59,28 @@ class ClassSessionService(AcademicAccessMixin):
             raise HTTPException(status_code=404, detail="Lesson not found")
         return lesson
 
+    def _teacher_scope_id(self, user: User | None) -> str | None:
+        if not user:
+            return None
+        roles = self.rbac_service.get_user_roles(str(user.id))
+        if "teacher" not in roles or "admin" in roles or "staff" in roles:
+            return None
+        teacher = self.get_teacher_profile_by_user(str(user.id))
+        if not teacher:
+            raise HTTPException(status_code=404, detail="Teacher profile not found")
+        return str(teacher.id)
+
+    def _assert_session_access(self, session: ClassSession, user: User | None) -> None:
+        teacher_id = self._teacher_scope_id(user)
+        if not teacher_id:
+            return
+        class_obj = ClassService(self.db).get_class_by_id(str(session.class_id))
+        if (session.teacher_id and str(session.teacher_id) == teacher_id) or (
+            class_obj.teacher_id and str(class_obj.teacher_id) == teacher_id
+        ):
+            return
+        raise HTTPException(status_code=403, detail="Permission denied")
+
     def _validate_payload(
         self,
         class_obj: CourseClass,
@@ -76,8 +98,6 @@ class ClassSessionService(AcademicAccessMixin):
             raise HTTPException(status_code=400, detail="Cannot create or update session for this class")
         if end_time <= start_time:
             raise HTTPException(status_code=400, detail="end_time must be greater than start_time")
-        if mode == SessionMode.online and not meeting_url:
-            raise HTTPException(status_code=400, detail="meeting_url is required for online sessions")
         if mode == SessionMode.offline and not room:
             raise HTTPException(status_code=400, detail="room_id is required for offline sessions")
         if room and room.status != RoomStatus.active:
@@ -147,7 +167,7 @@ class ClassSessionService(AcademicAccessMixin):
     def create_session(self, class_id: str, payload: ClassSessionCreate) -> ClassSession:
         class_obj = ClassService(self.db).get_class_by_id(class_id)
         mode = _enum_required(SessionMode, payload.mode, "session mode")
-        room = self._get_room(payload.room_id)
+        room = self._get_room(payload.room_id or (str(class_obj.room_id) if class_obj.room_id and mode == SessionMode.offline else None))
         teacher = self._get_teacher(payload.teacher_id)
         lesson = self._get_lesson(payload.lesson_id)
         teacher = self._validate_payload(
@@ -172,13 +192,65 @@ class ClassSessionService(AcademicAccessMixin):
             start_time=payload.start_time,
             end_time=payload.end_time,
             mode=mode,
-            meeting_url=payload.meeting_url,
+            meeting_url=payload.meeting_url if mode == SessionMode.online else None,
             status=SessionStatus.scheduled,
             note=payload.note,
         )
         created = self.session_repo.create(session)
         self.db.commit()
         return created
+
+    def create_sessions_bulk(self, class_id: str, payload: ClassSessionBulkCreate) -> list[ClassSession]:
+        class_obj = ClassService(self.db).get_class_by_id(class_id)
+        course = CourseService(self.db).get_course_by_id(str(class_obj.course_id))
+        if course.duration_weeks and payload.weeks > course.duration_weeks:
+            raise HTTPException(status_code=400, detail="weeks cannot exceed course duration")
+
+        mode = _enum_required(SessionMode, payload.mode, "session mode")
+        room = self._get_room(payload.room_id or (str(class_obj.room_id) if class_obj.room_id and mode == SessionMode.offline else None))
+        teacher = self._get_teacher(payload.teacher_id)
+        lesson = self._get_lesson(payload.lesson_id)
+        total_days = payload.weeks * 7
+        dates = [payload.start_date + timedelta(days=offset) for offset in range(total_days)]
+        session_dates = [item for item in dates if item.weekday() in payload.weekdays]
+        if not session_dates:
+            raise HTTPException(status_code=400, detail="No session dates generated")
+
+        created: list[ClassSession] = []
+        try:
+            for index, session_date in enumerate(session_dates, start=1):
+                resolved_teacher = self._validate_payload(
+                    class_obj,
+                    mode,
+                    room,
+                    teacher,
+                    lesson,
+                    session_date,
+                    payload.start_time,
+                    payload.end_time,
+                    meeting_url=payload.meeting_url,
+                )
+                session = ClassSession(
+                    class_id=str(class_obj.id),
+                    teacher_id=str(resolved_teacher.id) if resolved_teacher else None,
+                    lesson_id=str(lesson.id) if lesson else None,
+                    room_id=str(room.id) if room else None,
+                    title=f"{payload.title_prefix.strip() or 'Buổi'} {index}",
+                    description=payload.description,
+                    session_date=session_date,
+                    start_time=payload.start_time,
+                    end_time=payload.end_time,
+                    mode=mode,
+                    meeting_url=payload.meeting_url if mode == SessionMode.online else None,
+                    status=SessionStatus.scheduled,
+                    note=payload.note,
+                )
+                created.append(self.session_repo.create(session))
+            self.db.commit()
+            return created
+        except Exception:
+            self.db.rollback()
+            raise
 
     def get_sessions_by_class(
         self,
@@ -199,28 +271,64 @@ class ClassSessionService(AcademicAccessMixin):
             to_date=to_date,
         )
 
+    def get_sessions(
+        self,
+        query: PaginationParams,
+        class_id: str | None = None,
+        course_id: str | None = None,
+        class_ids: list[str] | None = None,
+        course_ids: list[str] | None = None,
+        teacher_id: str | None = None,
+        room_id: str | None = None,
+        status: str | None = None,
+        mode: str | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        current_user: User | None = None,
+    ) -> tuple[list[ClassSession], int]:
+        return self.session_repo.list_filtered(
+            query=query,
+            class_id=class_id,
+            course_id=course_id,
+            class_ids=class_ids,
+            course_ids=course_ids,
+            teacher_id=teacher_id,
+            accessible_teacher_id=self._teacher_scope_id(current_user),
+            room_id=room_id,
+            status=_enum(SessionStatus, status, "session status") if status else None,
+            mode=_enum(SessionMode, mode, "session mode") if mode else None,
+            from_date=from_date,
+            to_date=to_date,
+        )
+
     def get_session_by_id(self, session_id: str) -> ClassSession:
         session = self.session_repo.get_active_by_id(session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Class session not found")
         return session
 
+    def get_session_for_user(self, session_id: str, current_user: User | None = None) -> ClassSession:
+        session = self.get_session_by_id(session_id)
+        self._assert_session_access(session, current_user)
+        return session
+
     def update_session(self, session_id: str, payload: ClassSessionUpdate) -> ClassSession:
         session = self.get_session_by_id(session_id)
         class_obj = ClassService(self.db).get_class_by_id(str(session.class_id))
+        fields_set = payload.model_fields_set
         if session.status == SessionStatus.completed and any(
             getattr(payload, field) is not None
             for field in ["teacher_id", "lesson_id", "room_id", "session_date", "start_time", "end_time", "mode"]
         ):
             raise HTTPException(status_code=400, detail="Completed session cannot be rescheduled")
-        teacher = self._get_teacher(payload.teacher_id) if payload.teacher_id is not None else (self._get_teacher(str(session.teacher_id)) if session.teacher_id else None)
-        lesson = self._get_lesson(payload.lesson_id) if payload.lesson_id is not None else (self._get_lesson(str(session.lesson_id)) if session.lesson_id else None)
-        room = self._get_room(payload.room_id) if payload.room_id is not None else (self._get_room(str(session.room_id)) if session.room_id else None)
-        mode = _enum_required(SessionMode, payload.mode, "session mode") if payload.mode is not None else session.mode
+        teacher = self._get_teacher(payload.teacher_id) if "teacher_id" in fields_set else (self._get_teacher(str(session.teacher_id)) if session.teacher_id else None)
+        lesson = self._get_lesson(payload.lesson_id) if "lesson_id" in fields_set else (self._get_lesson(str(session.lesson_id)) if session.lesson_id else None)
+        room = self._get_room(payload.room_id) if "room_id" in fields_set else (self._get_room(str(session.room_id)) if session.room_id else None)
+        mode = _enum_required(SessionMode, payload.mode, "session mode") if "mode" in fields_set and payload.mode is not None else session.mode
         session_date = payload.session_date or session.session_date
         start_time = payload.start_time or session.start_time
         end_time = payload.end_time or session.end_time
-        meeting_url = payload.meeting_url if payload.meeting_url is not None else session.meeting_url
+        meeting_url = payload.meeting_url if "meeting_url" in fields_set else session.meeting_url
         teacher = self._validate_payload(
             class_obj,
             mode,
@@ -233,14 +341,17 @@ class ClassSessionService(AcademicAccessMixin):
             exclude_session_id=session_id,
             meeting_url=meeting_url,
         )
-        for field in ["title", "description", "meeting_url", "note"]:
-            value = getattr(payload, field)
-            if value is not None:
-                setattr(session, field, value.strip() if field == "title" else value)
+        if "title" in fields_set and payload.title is not None:
+            session.title = payload.title.strip()
+        for field in ["description", "meeting_url", "note"]:
+            if field in fields_set:
+                setattr(session, field, getattr(payload, field))
         session.teacher_id = str(teacher.id) if teacher else None
         session.lesson_id = str(lesson.id) if lesson else None
         session.room_id = str(room.id) if room else None
         session.mode = mode
+        if mode == SessionMode.offline:
+            session.meeting_url = None
         session.session_date = session_date
         session.start_time = start_time
         session.end_time = end_time

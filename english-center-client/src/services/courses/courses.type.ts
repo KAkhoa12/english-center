@@ -94,6 +94,23 @@ export type CourseThumbnailUploadResult = {
   object_name: string | null;
 };
 
+export type CenterCourseClassStatistic = {
+  id: string;
+  name: string;
+  code: string | null;
+  status: string;
+  max_students: number;
+  students_count: number;
+};
+
+export type CourseStatistic = {
+  course: CourseListItem;
+  total_enrollments: number;
+  classes_count?: number;
+  total_class_students?: number;
+  classes?: CenterCourseClassStatistic[];
+};
+
 export type CreateCourseRequest = {
   name: string;
   code: string;

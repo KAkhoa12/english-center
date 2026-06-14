@@ -21,7 +21,7 @@ router = APIRouter(prefix="/staff", tags=["staff"])
 def _staff_dict(st, user):
     return {
         "id": str(st.id),
-        "user": user_to_dict(user, include_meta=False),
+        "user": user_to_dict(user, include_meta=True),
         "position": st.position,
         "department": st.department,
         "note": st.note,
@@ -83,4 +83,3 @@ def update_staff_avatar(staff_id: str, file: UploadFile = File(...), db: Annotat
 def delete_staff(staff_id: str, db: Annotated[Session, Depends(get_db)]):
     StaffService(db).soft_delete_staff(staff_id)
     return api_response(True, "Staff deleted successfully", None, None)
-

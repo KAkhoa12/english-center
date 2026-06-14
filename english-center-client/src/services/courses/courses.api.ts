@@ -5,6 +5,7 @@ import type {
   CourseListItem,
   CourseOutcome,
   CourseRequirement,
+  CourseStatistic,
   CourseThumbnailUploadResult,
   CreateCourseOutcomeRequest,
   CreateCourseRequest,
@@ -39,13 +40,19 @@ export const coursesApi = {
   getCourse: (courseId: string) =>
     apiClient.get<CourseDetail>(`/courses/${courseId}`),
 
+  getCourseBySlug: (slug: string) =>
+    apiClient.get<CourseDetail>(`/courses/slug/${slug}`),
+
+  getCourseStatistics: (mode: "center" | "template") =>
+    apiClient.get<CourseStatistic[]>(`/courses/statistics/${mode}`),
+
   updateCourse: (courseId: string, data: UpdateCourseRequest) =>
     apiClient.patch<CourseDetail, UpdateCourseRequest>(`/courses/${courseId}`, data),
 
   uploadCourseThumbnail: (courseId: string, file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    return apiClient.post<CourseThumbnailUploadResult, FormData>(`/courses/${courseId}/thumbnail`, formData);
+    return apiClient.postForm<CourseThumbnailUploadResult>(`/courses/${courseId}/thumbnail`, formData);
   },
 
   deleteCourse: (courseId: string) =>

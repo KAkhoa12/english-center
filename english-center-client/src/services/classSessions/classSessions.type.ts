@@ -32,6 +32,15 @@ export type SessionLessonRef = {
   title: string;
 } | null;
 
+export type SessionMediaRef = {
+  id: string;
+  class_session_id: string;
+  media_id: string;
+  title: string | null;
+  description: string | null;
+  order_index: number;
+};
+
 export type ClassSession = {
   id: string;
   class_id: string;
@@ -53,6 +62,7 @@ export type ClassSession = {
   room?: SessionRoomRef;
   lesson?: SessionLessonRef;
   attendance_summary?: SessionAttendanceSummary;
+  media?: SessionMediaRef[];
 };
 
 export type CreateClassSessionRequest = {
@@ -66,6 +76,22 @@ export type CreateClassSessionRequest = {
   end_time: string;
   mode: string;
   meeting_url?: string | null;
+  note?: string | null;
+};
+
+export type BulkCreateClassSessionsRequest = {
+  start_date: string;
+  weekdays: number[];
+  weeks: number;
+  start_time: string;
+  end_time: string;
+  mode: string;
+  meeting_url?: string | null;
+  room_id?: string | null;
+  teacher_id?: string | null;
+  lesson_id?: string | null;
+  title_prefix?: string;
+  description?: string | null;
   note?: string | null;
 };
 
@@ -93,6 +119,15 @@ export type ListClassSessionsQuery = {
   mode?: string;
   from_date?: string;
   to_date?: string;
+};
+
+export type ListAllSessionsQuery = ListClassSessionsQuery & {
+  class_id?: string;
+  course_id?: string;
+  class_ids?: string[];
+  course_ids?: string[];
+  teacher_id?: string;
+  room_id?: string;
 };
 
 export type ListMySessionsQuery = {

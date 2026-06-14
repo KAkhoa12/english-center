@@ -21,7 +21,7 @@ from app.models.assignment_type import AssignmentType
 from app.models.class_model import CourseClass
 from app.models.class_session import ClassSession
 from app.models.class_student import ClassEnrollmentStatus
-from app.models.course import Lesson
+from app.models.course import CourseMode, Lesson
 from app.models.student import Student
 from app.models.submission_answer import SubmissionAnswer, SubmissionAnswerMedia
 from app.models.rbac.user import User
@@ -33,6 +33,7 @@ from app.repositories.assignment_question import AssignmentQuestionOptionReposit
 from app.repositories.assignment_type import AssignmentTypeRepository
 from app.repositories.class_session import ClassSessionRepository
 from app.repositories.class_student import ClassStudentRepository
+from app.repositories.course import CourseRepository
 from app.repositories.lesson import LessonRepository
 from app.repositories.media import MediaRepository
 from app.repositories.student import StudentRepository
@@ -80,6 +81,7 @@ class AssignmentAccessMixin(AcademicAccessMixin):
         self.submission_answer_media_repo = SubmissionAnswerMediaRepository(db)
         self.class_student_repo = ClassStudentRepository(db)
         self.class_session_repo = ClassSessionRepository(db)
+        self.course_repo = CourseRepository(db)
         self.lesson_repo = LessonRepository(db)
         self.student_repo = StudentRepository(db)
         self.user_repo = UserRepository(db)
@@ -92,6 +94,8 @@ class AssignmentAccessMixin(AcademicAccessMixin):
         return student
 
     def _get_assignment_class(self, assignment: Assignment) -> CourseClass:
+        if not assignment.class_id:
+            raise HTTPException(status_code=400, detail="Assignment is not linked to a class")
         return ClassService(self.db).get_class_by_id(str(assignment.class_id))
 
     def _student_in_class(self, student_id: str, class_id: str) -> bool:
@@ -101,6 +105,8 @@ class AssignmentAccessMixin(AcademicAccessMixin):
         return item is not None
 
     def _teacher_owns_assignment(self, assignment: Assignment, user: User) -> bool:
+        if not assignment.class_id:
+            return False
         teacher = self.get_teacher_profile_by_user(str(user.id))
         if not teacher:
             return False
@@ -110,6 +116,8 @@ class AssignmentAccessMixin(AcademicAccessMixin):
     def assert_can_manage_assignment(self, assignment: Assignment, user: User) -> None:
         if self.has_any_permission(user, "admin.all", "assignment.all", "assignment_grade.all", "assignment_submission.all"):
             return
+        if not assignment.class_id and self.has_any_permission(user, "assignment.create", "assignment.update", "assignment.delete"):
+            return
         if self._teacher_owns_assignment(assignment, user):
             return
         raise HTTPException(status_code=403, detail="Permission denied")
@@ -117,10 +125,12 @@ class AssignmentAccessMixin(AcademicAccessMixin):
     def assert_can_read_assignment(self, assignment: Assignment, user: User) -> None:
         if self.has_any_permission(user, "admin.all", "assignment.all", "assignment_submission.all", "assignment_grade.all"):
             return
+        if not assignment.class_id and self.has_any_permission(user, "assignment.read", "assignment.update", "assignment.create"):
+            return
         if self._teacher_owns_assignment(assignment, user):
             return
         student = self.get_student_profile_by_user(str(user.id))
-        if student and assignment.status == AssignmentStatus.published and self._student_in_class(str(student.id), str(assignment.class_id)):
+        if assignment.class_id and student and assignment.status == AssignmentStatus.published and self._student_in_class(str(student.id), str(assignment.class_id)):
             return
         raise HTTPException(status_code=403, detail="Permission denied")
 
@@ -163,6 +173,17 @@ class AssignmentService(AssignmentAccessMixin):
                 raise HTTPException(status_code=400, detail="Lesson does not belong to class course")
         return session, lesson
 
+    def _get_template_lesson(self, lesson_id: str) -> Lesson:
+        lesson = self.lesson_repo.get_active_by_id(lesson_id)
+        if not lesson:
+            raise HTTPException(status_code=404, detail="Lesson not found")
+        course = self.course_repo.get_active_by_id(str(lesson.course_id))
+        if not course:
+            raise HTTPException(status_code=404, detail="Course not found")
+        if course.mode != CourseMode.template:
+            raise HTTPException(status_code=400, detail="Lesson assignments without class_id are only allowed for template courses")
+        return lesson
+
     def create_assignment(self, class_id: str, payload: AssignmentCreate, current_user: User) -> Assignment:
         class_obj = ClassService(self.db).get_class_by_id(class_id)
         fake_assignment = Assignment(class_id=class_obj.id, title=payload.title, max_score=payload.max_score, created_by=str(current_user.id))
@@ -183,6 +204,28 @@ class AssignmentService(AssignmentAccessMixin):
             allow_late_submission=payload.allow_late_submission,
             created_by=str(current_user.id),
         )
+        created = self.assignment_repo.create(assignment)
+        self.db.commit()
+        return created
+
+    def create_lesson_assignment(self, lesson_id: str, payload: AssignmentCreate, current_user: User) -> Assignment:
+        lesson = self._get_template_lesson(lesson_id)
+        self._get_assignment_type(payload.assignment_type_id)
+        assignment = Assignment(
+            class_id=None,
+            session_id=None,
+            lesson_id=str(lesson.id),
+            title=payload.title.strip(),
+            description=payload.description,
+            instruction=payload.instruction,
+            assignment_type_id=payload.assignment_type_id,
+            status=_enum_required(AssignmentStatus, payload.status, "assignment status"),
+            max_score=payload.max_score,
+            due_at=payload.due_at,
+            allow_late_submission=payload.allow_late_submission,
+            created_by=str(current_user.id),
+        )
+        self.assert_can_manage_assignment(assignment, current_user)
         created = self.assignment_repo.create(assignment)
         self.db.commit()
         return created
@@ -227,15 +270,39 @@ class AssignmentService(AssignmentAccessMixin):
             only_published=only_published,
         )
 
+    def get_assignments_by_lesson(
+        self,
+        lesson_id: str,
+        query: PaginationParams,
+        current_user: User,
+        status: str | None = None,
+        assignment_type_id: str | None = None,
+    ) -> tuple[list[Assignment], int]:
+        self._get_template_lesson(lesson_id)
+        if not self.has_any_permission(current_user, "admin.all", "assignment.all", "assignment.read", "assignment.update"):
+            raise HTTPException(status_code=403, detail="Permission denied")
+        return self.assignment_repo.list_filtered_by_lesson(
+            lesson_id=lesson_id,
+            query=query,
+            status=_enum_required(AssignmentStatus, status, "assignment status") if status else None,
+            assignment_type_id=assignment_type_id,
+        )
+
     def update_assignment(self, assignment_id: str, payload: AssignmentUpdate, current_user: User) -> Assignment:
         assignment = self.get_assignment_by_id(assignment_id)
         self.assert_can_manage_assignment(assignment, current_user)
         if assignment.status in {AssignmentStatus.closed, AssignmentStatus.archived} and payload.status is None:
             raise HTTPException(status_code=400, detail="Closed or archived assignment cannot be updated")
-        class_obj = self._get_assignment_class(assignment)
-        session_id = payload.session_id if payload.session_id is not None else str(assignment.session_id) if assignment.session_id else None
-        lesson_id = payload.lesson_id if payload.lesson_id is not None else str(assignment.lesson_id) if assignment.lesson_id else None
-        self._validate_class_links(class_obj, session_id, lesson_id)
+        if assignment.class_id:
+            class_obj = self._get_assignment_class(assignment)
+            session_id = payload.session_id if payload.session_id is not None else str(assignment.session_id) if assignment.session_id else None
+            lesson_id = payload.lesson_id if payload.lesson_id is not None else str(assignment.lesson_id) if assignment.lesson_id else None
+            self._validate_class_links(class_obj, session_id, lesson_id)
+        else:
+            if payload.session_id is not None:
+                raise HTTPException(status_code=400, detail="Template lesson assignments must not have session_id")
+            if payload.lesson_id is not None:
+                self._get_template_lesson(payload.lesson_id)
         for field in ["description", "instruction", "due_at", "allow_late_submission"]:
             value = getattr(payload, field)
             if value is not None:
@@ -319,13 +386,13 @@ class AssignmentService(AssignmentAccessMixin):
         return assignments[start:start + query.page_size], total
 
     def assignment_dict(self, assignment: Assignment, current_user: User | None = None, detail: bool = False) -> dict[str, Any]:
-        class_obj = ClassService(self.db).get_class_by_id(str(assignment.class_id))
+        class_obj = ClassService(self.db).get_class_by_id(str(assignment.class_id)) if assignment.class_id else None
         session = self.class_session_repo.get_active_by_id(str(assignment.session_id)) if assignment.session_id else None
         lesson = self.lesson_repo.get_active_by_id(str(assignment.lesson_id)) if assignment.lesson_id else None
         assignment_type = self.assignment_type_repo.get(str(assignment.assignment_type_id))
         data = {
             "id": str(assignment.id),
-            "class_id": str(assignment.class_id),
+            "class_id": str(assignment.class_id) if assignment.class_id else None,
             "session_id": str(assignment.session_id) if assignment.session_id else None,
             "lesson_id": str(assignment.lesson_id) if assignment.lesson_id else None,
             "title": assignment.title,
@@ -341,7 +408,7 @@ class AssignmentService(AssignmentAccessMixin):
             "max_score": float(assignment.max_score),
             "due_at": assignment.due_at,
             "allow_late_submission": assignment.allow_late_submission,
-            "class": {"id": str(class_obj.id), "name": class_obj.name},
+            "class": {"id": str(class_obj.id), "name": class_obj.name} if class_obj else None,
             "session": {"id": str(session.id), "title": session.title} if session else None,
             "lesson": {"id": str(lesson.id), "title": lesson.title} if lesson else None,
             "created_at": assignment.created_at,

@@ -60,6 +60,19 @@ def list_courses(
     return api_response(True, "Courses retrieved successfully", items, build_pagination(page, page_size, total))
 
 
+@router.get("/courses/slug/{slug}")
+def get_course_by_slug(slug: str, db: Annotated[Session, Depends(get_db)]):
+    service = CourseService(db)
+    course = service.get_course_by_slug(slug)
+    return api_response(True, "Course retrieved successfully", service.course_detail_dict(course), None)
+
+
+@router.get("/courses/statistics/{mode}", dependencies=[Depends(require_permission("course.read"))])
+def get_course_statistics(mode: str, db: Annotated[Session, Depends(get_db)]):
+    service = CourseService(db)
+    return api_response(True, "Course statistics retrieved successfully", service.get_course_statistics(mode), None)
+
+
 @router.get("/courses/{course_id}")
 def get_course(course_id: str, db: Annotated[Session, Depends(get_db)]):
     service = CourseService(db)

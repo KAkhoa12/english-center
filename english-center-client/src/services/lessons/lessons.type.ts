@@ -1,13 +1,11 @@
 type MediaRef = {
   id: string;
-  file_name?: string;
-  file_type?: string;
-  mime_type?: string;
-  file_size?: number;
-  storage_provider?: string;
-  bucket_name?: string;
+  bucket?: string;
   object_name?: string;
-  public_url?: string;
+  original_filename?: string | null;
+  content_type?: string | null;
+  size?: number | null;
+  url?: string | null;
 };
 
 type LessonCourseRef = {
@@ -57,6 +55,7 @@ export type CreateLessonRequest = {
   content?: string | null;
   order_index?: number;
   estimated_duration_minutes?: number | null;
+  status?: string;
 };
 
 export type UpdateLessonRequest = {

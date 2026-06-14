@@ -1,9 +1,7 @@
 import {
   BookOpen,
-  BookOpenCheck,
   Camera,
   ChevronDown,
-  FileText,
   Globe2,
   Heart,
   LayoutDashboard,
@@ -11,7 +9,6 @@ import {
   Menu,
   Play,
   ShoppingCart,
-  User,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -166,13 +163,6 @@ function Header() {
                 className="w-56 rounded-xl border border-gray-100 bg-white p-1.5 shadow-lg"
               >
                 <DropdownMenuItem
-                  onClick={() => navigate("/me")}
-                  className="cursor-pointer rounded-lg px-3 py-2 text-gray-700 focus:bg-brand-50 focus:text-brand-700"
-                >
-                  <User className="mr-2 h-4 w-4" />
-                  Thông tin
-                </DropdownMenuItem>
-                <DropdownMenuItem
                   onClick={() => navigate("/cart")}
                   className="cursor-pointer rounded-lg px-3 py-2 text-gray-700 focus:bg-brand-50 focus:text-brand-700"
                 >
@@ -185,20 +175,6 @@ function Header() {
                 >
                   <Heart className="mr-2 h-4 w-4" />
                   Yêu thích
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => navigate("/my-courses")}
-                  className="cursor-pointer rounded-lg px-3 py-2 text-gray-700 focus:bg-brand-50 focus:text-brand-700"
-                >
-                  <BookOpenCheck className="mr-2 h-4 w-4" />
-                  Khóa học của tôi
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => navigate("/my-invoices")}
-                  className="cursor-pointer rounded-lg px-3 py-2 text-gray-700 focus:bg-brand-50 focus:text-brand-700"
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  Hóa đơn của tôi
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => navigate("/dashboard")}

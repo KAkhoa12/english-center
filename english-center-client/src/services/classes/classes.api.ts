@@ -46,6 +46,9 @@ export const classesApi = {
   listCourseClasses: (courseId: string, query?: ListCourseClassesQuery) =>
     apiClient.get<ClassItem[]>(appendQuery(`/courses/${courseId}/classes`, query)),
 
+  listPublicCourseClasses: (courseId: string, query?: ListCourseClassesQuery) =>
+    apiClient.get<ClassItem[]>(appendQuery(`/public/courses/${courseId}/classes`, query)),
+
   addStudentToClass: (classId: string, data: AddStudentToClassRequest) =>
     apiClient.post<ClassStudentItem, AddStudentToClassRequest>(`/classes/${classId}/students`, data),
 

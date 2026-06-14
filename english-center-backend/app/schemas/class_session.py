@@ -1,6 +1,6 @@
 from datetime import date, time
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 def _not_blank(value: str) -> str:
@@ -51,5 +51,35 @@ class ClassSessionUpdate(BaseModel):
     @model_validator(mode="after")
     def validate_times(self) -> "ClassSessionUpdate":
         if self.start_time and self.end_time and self.end_time <= self.start_time:
+            raise ValueError("end_time must be greater than start_time")
+        return self
+
+
+class ClassSessionBulkCreate(BaseModel):
+    start_date: date
+    weekdays: list[int] = Field(min_length=1)
+    weeks: int = Field(ge=1)
+    start_time: time
+    end_time: time
+    mode: str
+    meeting_url: str | None = None
+    room_id: str | None = None
+    teacher_id: str | None = None
+    lesson_id: str | None = None
+    title_prefix: str = "Buổi"
+    description: str | None = None
+    note: str | None = None
+
+    @field_validator("weekdays")
+    @classmethod
+    def validate_weekdays(cls, value: list[int]) -> list[int]:
+        invalid = [item for item in value if item < 0 or item > 6]
+        if invalid:
+            raise ValueError("weekdays must be between 0 and 6")
+        return sorted(set(value))
+
+    @model_validator(mode="after")
+    def validate_time_range(self) -> "ClassSessionBulkCreate":
+        if self.end_time <= self.start_time:
             raise ValueError("end_time must be greater than start_time")
         return self

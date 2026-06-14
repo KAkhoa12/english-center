@@ -61,8 +61,8 @@ def update_lesson(lesson_id: str, payload: LessonUpdate, db: Annotated[Session, 
 @router.post("/lessons/{lesson_id}/thumbnail", dependencies=[Depends(require_permission("lesson.update"))])
 def upload_lesson_thumbnail(lesson_id: str, db: Annotated[Session, Depends(get_db)], file: UploadFile = File(...)):
     size = get_upload_file_size(file)
-    validate_file_extension(file.filename or "file", "avatar")
-    validate_file_size(size, "avatar")
+    validate_file_extension(file.filename or "file", "media")
+    validate_file_size(size, "media")
     lesson = LessonService(db).upload_thumbnail(lesson_id, file=file, file_size=size)
     return api_response(True, "Lesson thumbnail uploaded successfully", LessonService(db).lesson_detail_dict(lesson), None)
 

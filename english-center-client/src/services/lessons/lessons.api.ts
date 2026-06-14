@@ -37,7 +37,7 @@ export const lessonsApi = {
   uploadLessonThumbnail: (lessonId: string, file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    return apiClient.post<Lesson, FormData>(`/lessons/${lessonId}/thumbnail`, formData);
+    return apiClient.postForm<Lesson>(`/lessons/${lessonId}/thumbnail`, formData);
   },
 
   setLessonThumbnail: (lessonId: string, data: SetLessonThumbnailRequest) =>

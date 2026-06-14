@@ -5,7 +5,9 @@ import type { ApiResponse, Pagination } from "@/shared/types/response";
 import { classSessionsApi } from "./classSessions.api";
 import type {
   ClassSession,
+  BulkCreateClassSessionsRequest,
   CreateClassSessionRequest,
+  ListAllSessionsQuery,
   ListClassSessionsQuery,
   ListMySessionsQuery,
   UpdateClassSessionRequest,
@@ -24,7 +26,9 @@ type ClassSessionsState = {
   error: string | null;
 
   createSession: (classId: string, data: CreateClassSessionRequest) => Promise<ClassSession>;
+  createSessionsBulk: (classId: string, data: BulkCreateClassSessionsRequest) => Promise<ClassSession[]>;
   listSessions: (classId: string, query?: ListClassSessionsQuery) => Promise<ClassSession[]>;
+  listAllSessions: (query?: ListAllSessionsQuery) => Promise<ClassSession[]>;
   mySessions: (query?: ListMySessionsQuery) => Promise<ClassSession[]>;
   getSession: (sessionId: string) => Promise<ClassSession>;
   updateSession: (sessionId: string, data: UpdateClassSessionRequest) => Promise<ClassSession>;
@@ -47,17 +51,34 @@ export const useClassSessionsStore = create<ClassSessionsState>()((set) => ({
     return session;
   },
 
+  createSessionsBulk: async (classId, data) => {
+    const response = await classSessionsApi.createSessionsBulk(classId, data);
+    const created = unwrap(response, "Tao lich hoc tu dong that bai");
+    set((state) => ({ sessions: [...created, ...state.sessions] }));
+    return created;
+  },
+
   listSessions: async (classId, query) => {
+    set({ isLoading: true, error: null });
     const response = await classSessionsApi.listSessions(classId, query);
     const sessions = unwrap(response, "Lay danh sach buoi hoc that bai");
-    set({ sessions, pagination: response.pagination ?? null });
+    set({ sessions, pagination: response.pagination ?? null, isLoading: false });
+    return sessions;
+  },
+
+  listAllSessions: async (query) => {
+    set({ isLoading: true, error: null });
+    const response = await classSessionsApi.listAllSessions(query);
+    const sessions = unwrap(response, "Lay danh sach lich hoc that bai");
+    set({ sessions, pagination: response.pagination ?? null, isLoading: false });
     return sessions;
   },
 
   mySessions: async (query) => {
+    set({ isLoading: true, error: null });
     const response = await classSessionsApi.mySessions(query);
     const sessions = unwrap(response, "Lay danh sach buoi hoc cua toi that bai");
-    set({ sessions, pagination: response.pagination ?? null });
+    set({ sessions, pagination: response.pagination ?? null, isLoading: false });
     return sessions;
   },
 

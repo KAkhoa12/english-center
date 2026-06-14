@@ -53,11 +53,11 @@ const canSelectClass = (item: ClassItem) =>
   item.current_students_count < item.max_students;
 
 export default function CourseDetailPage() {
-  const { id = "" } = useParams();
+  const { id: slug = "" } = useParams();
   const navigate = useNavigate();
 
-  const { selectedCourse, isLoading, getCourse, clearSelectedCourse } = useCoursesStore();
-  const { classes, isLoading: isLoadingClasses, listCourseClasses } = useClassesStore();
+  const { selectedCourse, isLoading, getCourseBySlug, clearSelectedCourse } = useCoursesStore();
+  const { classes, isLoading: isLoadingClasses, listPublicCourseClasses } = useClassesStore();
   const { addCartItem } = useCartStore();
   const { addWishlist, getWishlistStatus, favorited } = useWishlistStore();
   const { isAuthenticated } = useAuthStore();
@@ -68,20 +68,24 @@ export default function CourseDetailPage() {
   const [classLoadError, setClassLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id) return;
-    void getCourse(id);
-    void getWishlistStatus(id);
+    if (!slug) return;
+    void getCourseBySlug(slug);
     return () => {
       clearSelectedCourse();
     };
-  }, [id, getCourse, clearSelectedCourse, getWishlistStatus]);
+  }, [slug, getCourseBySlug, clearSelectedCourse]);
 
   useEffect(() => {
-    if (!selectedCourse || selectedCourse.mode !== "center" || !isAuthenticated) return;
+    if (!selectedCourse || !isAuthenticated) return;
+    void getWishlistStatus(selectedCourse.id);
+  }, [getWishlistStatus, isAuthenticated, selectedCourse]);
+
+  useEffect(() => {
+    if (!selectedCourse || selectedCourse.mode !== "center") return;
 
     setSelectedClassId("");
     setClassLoadError(null);
-    void listCourseClasses(selectedCourse.id, {
+    void listPublicCourseClasses(selectedCourse.id, {
       page: 1,
       page_size: 20,
       sort_by: "start_date",
@@ -89,7 +93,7 @@ export default function CourseDetailPage() {
     }).catch((error) => {
       setClassLoadError(error instanceof Error ? error.message : "Không thể tải danh sách lớp");
     });
-  }, [isAuthenticated, listCourseClasses, selectedCourse]);
+  }, [listPublicCourseClasses, selectedCourse]);
 
   const handleAddToCart = async () => {
     if (!isAuthenticated) {
@@ -158,7 +162,7 @@ export default function CourseDetailPage() {
     );
   }
 
-  const isFavorited = favorited[selectedCourse.id] ?? false;
+  const isFavorited = isAuthenticated ? favorited[selectedCourse.id] ?? false : false;
   const isCenterCourse = selectedCourse.mode === "center";
   const selectedClass = classes.find((item) => item.id === selectedClassId);
 
@@ -319,24 +323,20 @@ export default function CourseDetailPage() {
                 </p>
               </div>
 
+              {isCenterCourse ? (
               <div className="mt-5 rounded-2xl border border-gray-100 bg-white p-4">
                 <div className="mb-3">
                   <h3 className="text-sm font-semibold text-gray-900">
-                    {isCenterCourse ? "Chọn lớp học tại trung tâm" : "Hình thức tự học"}
+                    Chọn lớp học tại trung tâm
                   </h3>
                   <p className="mt-1 text-xs leading-relaxed text-gray-500">
-                    {isCenterCourse
+                    {isAuthenticated
                       ? "Khóa học tại trung tâm cần chọn lớp trước khi thêm vào giỏ hàng."
-                      : "Khóa tự học không cần chọn lớp. Bạn có thể thêm khóa học vào giỏ hàng ngay."}
+                      : "Bạn có thể xem các lớp đang mở. Đăng nhập để chọn lớp và đăng ký."}
                   </p>
                 </div>
 
-                {isCenterCourse ? (
-                  !isAuthenticated ? (
-                    <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm text-amber-700">
-                      Vui lòng đăng nhập để xem lớp có thể đăng ký.
-                    </div>
-                  ) : isLoadingClasses ? (
+                {isLoadingClasses ? (
                     <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-500">
                       Đang tải danh sách lớp...
                     </div>
@@ -357,8 +357,10 @@ export default function CourseDetailPage() {
                           <button
                             key={classItem.id}
                             type="button"
-                            disabled={!available}
-                            onClick={() => setSelectedClassId(classItem.id)}
+                            disabled={!isAuthenticated || !available}
+                            onClick={() => {
+                              if (isAuthenticated) setSelectedClassId(classItem.id);
+                            }}
                             className={`w-full rounded-xl border p-3 text-left transition-colors ${
                               selected
                                 ? "border-brand-500 bg-brand-50"
@@ -386,13 +388,9 @@ export default function CourseDetailPage() {
                         );
                       })}
                     </div>
-                  )
-                ) : (
-                  <div className="rounded-xl bg-brand-50 p-3 text-sm text-brand-700">
-                    Khóa tự học được kích hoạt trực tiếp sau khi thanh toán thành công.
-                  </div>
                 )}
               </div>
+              ) : null}
 
               {isCenterCourse && selectedClass ? (
                 <div className="mt-4 rounded-2xl border border-brand-100 bg-brand-50 p-4 text-sm text-brand-800">

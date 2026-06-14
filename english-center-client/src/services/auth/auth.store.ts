@@ -24,6 +24,7 @@ type AuthState = {
 
   login: (data: LoginRequest) => Promise<ApiResponse<LoginResponse>>;
   register: (data: RegisterRequest) => Promise<ApiResponse<RegisterResponse>>;
+  refreshAccessToken: () => Promise<boolean>;
   fetchMe: () => Promise<void>;
   checkAuth: () => Promise<boolean>;
   logout: () => Promise<void>;
@@ -124,10 +125,44 @@ export const useAuthStore = create<AuthState>()(
         return response;
       },
 
+      refreshAccessToken: async () => {
+        const { refreshToken } = get();
+
+        if (!refreshToken) {
+          await get().logout();
+          return false;
+        }
+
+        const tokenResponse = await authApi.refreshToken({
+          refresh_token: refreshToken,
+        });
+
+        if (!tokenResponse.success) {
+          await get().logout();
+          if (typeof window !== "undefined") window.location.href = "/";
+          return false;
+        }
+
+        set({
+          accessToken: tokenResponse.payload.access_token,
+          refreshToken: tokenResponse.payload.refresh_token ?? refreshToken,
+          isAuthenticated: true,
+          error: null,
+        });
+
+        return true;
+      },
+
       fetchMe: async () => {
         set({ isLoading: true, message: null, error: null });
 
-        const response = await authApi.me();
+        let response = await authApi.me();
+
+        if (!response.success && response.statusCode === 401) {
+          const refreshed = await get().refreshAccessToken();
+          if (!refreshed) return;
+          response = await authApi.me();
+        }
 
         if (response.success) {
           set({
@@ -164,7 +199,7 @@ export const useAuthStore = create<AuthState>()(
 
         set({ isLoading: true, message: null, error: null });
 
-        const meResponse = await authApi.me();
+        let meResponse = await authApi.me();
 
         if (meResponse.success) {
           set({
@@ -178,41 +213,26 @@ export const useAuthStore = create<AuthState>()(
           return true;
         }
 
-        if (!refreshToken) {
-          await get().logout();
-          return false;
+        if (meResponse.statusCode === 401 && refreshToken) {
+          const refreshed = await get().refreshAccessToken();
+          if (!refreshed) return false;
+          meResponse = await authApi.me();
+
+          if (meResponse.success) {
+            set({
+              me: meResponse.payload,
+              isAuthenticated: true,
+              isLoading: false,
+              message: meResponse.message,
+              error: null,
+            });
+
+            return true;
+          }
         }
 
-        const tokenResponse = await authApi.refreshToken({
-          refresh_token: refreshToken,
-        });
-
-        if (!tokenResponse.success) {
-          await get().logout();
-          return false;
-        }
-
-        set({
-          accessToken: tokenResponse.payload.access_token,
-          refreshToken: tokenResponse.payload.refresh_token ?? refreshToken,
-        });
-
-        const refreshedMeResponse = await authApi.me();
-
-        if (!refreshedMeResponse.success) {
-          await get().logout();
-          return false;
-        }
-
-        set({
-          me: refreshedMeResponse.payload,
-          isAuthenticated: true,
-          isLoading: false,
-          message: refreshedMeResponse.message,
-          error: null,
-        });
-
-        return true;
+        await get().logout();
+        return false;
       },
 
       logout: async () => {

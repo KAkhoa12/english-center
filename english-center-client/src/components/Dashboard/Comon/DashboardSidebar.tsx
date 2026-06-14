@@ -12,8 +12,8 @@ import {
   LayoutDashboard,
   MessageCircle,
   PackageOpen,
-  Settings,
   ShieldCheck,
+  UserRound,
   UserSquare2,
 } from "lucide-react";
 import { type ComponentType, useState } from "react";
@@ -47,13 +47,13 @@ const navItems: NavItem[] = [
     allowedRoles: ["admin", "staff", "teacher", "student"],
   },
   {
-    label: "Khóa học",
+    label: "Khóa học tại trung tâm",
     icon: BookOpen,
     allowedRoles: ["admin", "staff", "teacher"],
     children: [
       {
         label: "Danh sách khóa học",
-        href: PRIVATE_ROUTES.DASHBOARD_COURSES,
+        href: PRIVATE_ROUTES.DASHBOARD_CENTER_COURSES,
         allowedRoles: ["admin", "staff"],
         requiredPermissions: ["course.create", "course.update", "course.delete"],
       },
@@ -62,6 +62,35 @@ const navItems: NavItem[] = [
         href: PRIVATE_ROUTES.DASHBOARD_CLASSES,
         allowedRoles: ["admin", "staff", "teacher"],
         requiredPermissions: ["class.read"],
+      },
+      {
+        label: "Buổi học",
+        href: PRIVATE_ROUTES.DASHBOARD_SESSIONS,
+        allowedRoles: ["admin", "teacher"],
+        requiredPermissions: ["class_session.read"],
+      },
+      {
+        label: "Thống kê",
+        href: PRIVATE_ROUTES.DASHBOARD_CENTER_COURSES_STATISTICS,
+        allowedRoles: ["admin", "staff"],
+      },
+    ],
+  },
+  {
+    label: "Khóa học có sẵn",
+    icon: BookOpen,
+    allowedRoles: ["admin", "staff"],
+    children: [
+      {
+        label: "Danh sách khóa học",
+        href: PRIVATE_ROUTES.DASHBOARD_TEMPLATE_COURSES,
+        allowedRoles: ["admin", "staff"],
+        requiredPermissions: ["course.create", "course.update", "course.delete"],
+      },
+      {
+        label: "Thống kê",
+        href: PRIVATE_ROUTES.DASHBOARD_TEMPLATE_COURSES_STATISTICS,
+        allowedRoles: ["admin", "staff"],
       },
     ],
   },
@@ -87,6 +116,12 @@ const navItems: NavItem[] = [
         href: PRIVATE_ROUTES.DASHBOARD_ASSIGNMENT_TYPES,
         allowedRoles: ["admin", "staff"],
         requiredPermissions: ["assignment_type.read"],
+      },
+      {
+        label: "Quản lý phòng học",
+        href: PRIVATE_ROUTES.DASHBOARD_ROOMS,
+        allowedRoles: ["admin", "staff"],
+        requiredPermissions: ["room.read"],
       },
     ],
   },
@@ -220,6 +255,28 @@ const navItems: NavItem[] = [
     href: PRIVATE_ROUTES.DASHBOARD_MESSAGES,
     allowedRoles: ["admin", "staff", "teacher", "student"],
   },
+  {
+    label: "Cá nhân",
+    icon: UserRound,
+    allowedRoles: ["admin", "staff", "teacher", "student"],
+    children: [
+      {
+        label: "Thông tin",
+        href: PRIVATE_ROUTES.DASHBOARD_PROFILE,
+        allowedRoles: ["admin", "staff", "teacher", "student"],
+      },
+      {
+        label: "Khóa học của tôi",
+        href: PRIVATE_ROUTES.DASHBOARD_MY_COURSES,
+        allowedRoles: ["admin", "staff", "teacher", "student"],
+      },
+      {
+        label: "Hóa đơn của tôi",
+        href: PRIVATE_ROUTES.DASHBOARD_MY_INVOICES,
+        allowedRoles: ["admin", "staff", "teacher", "student"],
+      },
+    ],
+  },
 ];
 
 export const DashboardSidebar = ({
@@ -314,29 +371,6 @@ export const DashboardSidebar = ({
           )
         )}
       </nav>
-
-      {!collapsed && (
-        <div className="mt-10 rounded-3xl bg-gray-950 p-5 text-white">
-          <div className="text-sm font-semibold">IELTS Intensive</div>
-          <p className="mt-2 text-xs leading-relaxed text-white/60">
-            Mục tiêu band 7.0 đang đi đúng tiến độ. Còn 18 buổi để hoàn thành lộ
-            trình.
-          </p>
-          <div className="mt-4 h-2 rounded-full bg-white/10">
-            <div className="h-full w-[72%] rounded-full bg-accent-400" />
-          </div>
-        </div>
-      )}
-
-      <a
-        href="#"
-        className={`mt-6 flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-500 transition-all hover:bg-gray-50 hover:text-gray-900 ${
-          collapsed ? "justify-center" : ""
-        }`}
-      >
-        <Settings className="h-5 w-5" />
-        {!collapsed && "Cài đặt"}
-      </a>
     </aside>
   );
 };

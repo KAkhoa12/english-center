@@ -12,6 +12,7 @@ export type ApiResponse<T> = {
   message: string;
   payload: T;
   pagination?: Pagination;
+  statusCode?: number;
 };
 
 export type SortOrder = "asc" | "desc";

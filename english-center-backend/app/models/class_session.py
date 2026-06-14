@@ -1,7 +1,7 @@
 import enum
 from datetime import date, time
 
-from sqlalchemy import Date, Enum, ForeignKey, String, Text, Time
+from sqlalchemy import Date, Enum, ForeignKey, Integer, String, Text, Time
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -44,3 +44,13 @@ class ClassSession(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         index=True,
     )
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class ClassSessionMedia(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "class_sessions_media"
+
+    class_session_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("class_sessions.id"), nullable=False, index=True)
+    media_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("media.id"), nullable=False, index=True)
+    title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    order_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

@@ -3,36 +3,45 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { DashboardListPageHeader } from "@/components/Dashboard/Comon";
+import { ClassesFilterBar } from "@/components/Dashboard/Classes/ClassesFilterBar";
 import { ClassesListTable } from "@/components/Dashboard/Classes/ClassesListTable";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import type { SearchableOption } from "@/components/Dashboard/Classes/SearchableSelect";
 import { useClassesStore } from "@/services/classes/classes.store";
+import type { ListClassesQuery } from "@/services/classes/classes.type";
+import { useCoursesStore } from "@/services/courses/courses.store";
+import { useTeachersStore } from "@/services/teachers/teachers.store";
 import type { Pagination } from "@/shared/types/response";
 import { PRIVATE_ROUTES } from "@/shared/routes";
 
 export default function DashboardClassesPage() {
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<ListClassesQuery>({ sort_by: "created_at", sort_order: "desc" });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const { classes, isLoading, listClasses } = useClassesStore();
+  const { courses, listCourses } = useCoursesStore();
+  const { teachers, listTeachers } = useTeachersStore();
 
   useEffect(() => {
-    void listClasses({ search: search.trim() || undefined }).catch(() => toast.error("Khong the tai danh sach lop hoc"));
-  }, [listClasses, search]);
+    void listCourses({ page: 1, page_size: 100, mode: "center", status: "active" }).catch(() => toast.error("Không thể tải danh sách khóa học"));
+    void listTeachers({ page: 1, page_size: 100 }).catch(() => toast.error("Không thể tải danh sách giáo viên"));
+  }, [listCourses, listTeachers]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void listClasses({ ...filters, search: filters.search?.trim() || undefined }).catch(() => toast.error("Không thể tải danh sách lớp học"));
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [listClasses, filters]);
+
+  const courseOptions = useMemo<SearchableOption[]>(() => courses.map((course) => ({ value: course.id, label: course.name, description: course.code })), [courses]);
+  const teacherOptions = useMemo<SearchableOption[]>(() => teachers.map((teacher) => ({ value: teacher.id, label: teacher.user.full_name, description: teacher.user.email })), [teachers]);
 
   const pagination = useMemo<Pagination>(() => {
     const totalItems = classes.length;
     const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
     const safePage = Math.min(page, totalPages);
-    return {
-      page: safePage,
-      page_size: pageSize,
-      total_items: totalItems,
-      total_pages: totalPages,
-      has_next: safePage < totalPages,
-      has_previous: safePage > 1,
-    };
+    return { page: safePage, page_size: pageSize, total_items: totalItems, total_pages: totalPages, has_next: safePage < totalPages, has_previous: safePage > 1 };
   }, [classes.length, page, pageSize]);
 
   const visible = useMemo(() => {
@@ -42,12 +51,15 @@ export default function DashboardClassesPage() {
 
   return (
     <section>
-      <DashboardListPageHeader title="Quan ly lop hoc" description="Quan tri cac lop hoc" />
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Tim theo ten lop" className="max-w-sm" />
-        <Button variant="outline" onClick={() => navigate(PRIVATE_ROUTES.DASHBOARD_CLASSES_CREATE)}>Them lop hoc</Button>
-      </div>
-      <ClassesListTable data={visible} loading={isLoading} pagination={pagination} onPageChange={setPage} onPageSizeChange={(v) => { setPageSize(v); setPage(1); }} onEdit={(item) => navigate(PRIVATE_ROUTES.DASHBOARD_CLASSES_EDIT.replace(":classId", item.id))} />
+      <DashboardListPageHeader title="Quản lý lớp học" description="Quản trị các lớp học" />
+      <ClassesFilterBar
+        value={filters}
+        courseOptions={courseOptions}
+        teacherOptions={teacherOptions}
+        onChange={(query) => { setFilters(query); setPage(1); }}
+        onCreate={() => navigate(PRIVATE_ROUTES.DASHBOARD_CLASSES_CREATE)}
+      />
+      <ClassesListTable data={visible} loading={isLoading} pagination={pagination} onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} onEdit={(item) => navigate(PRIVATE_ROUTES.DASHBOARD_CLASSES_EDIT.replace(":classId", item.id))} />
     </section>
   );
 }

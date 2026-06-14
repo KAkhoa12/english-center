@@ -6,7 +6,8 @@ from fastapi import HTTPException, UploadFile, status
 
 ALLOWED_EXTENSIONS: dict[str, set[str]] = {
     "avatar": {"jpg", "jpeg", "png", "webp"},
-    "material": {"pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "txt"},
+    "media": {"jpg", "jpeg", "png", "webp", "mp4", "webm", "mov"},
+    "material": {"pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "txt", "jpg", "jpeg", "png", "webp", "gif"},
     "submission": {"pdf", "doc", "docx", "txt", "zip"},
     "video": {"mp4", "webm", "mov"},
     "export": {"csv", "xlsx", "pdf"},
@@ -14,6 +15,7 @@ ALLOWED_EXTENSIONS: dict[str, set[str]] = {
 
 MAX_FILE_SIZE_BYTES: dict[str, int] = {
     "avatar": 5 * 1024 * 1024,
+    "media": 500 * 1024 * 1024,
     "material": 50 * 1024 * 1024,
     "submission": 50 * 1024 * 1024,
     "video": 500 * 1024 * 1024,

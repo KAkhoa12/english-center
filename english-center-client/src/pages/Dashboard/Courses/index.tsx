@@ -18,14 +18,18 @@ import { useCoursesCategoryStore } from "@/services/coursesCategory/coursesCateg
 import { useCoursesTagStore } from "@/services/coursesTag/coursesTag.store";
 import { PRIVATE_ROUTES } from "@/shared/routes";
 
-export const DashboardCoursesPage = () => {
+type DashboardCoursesPageProps = {
+  modeFilter?: CourseMode;
+};
+
+export const DashboardCoursesPage = ({ modeFilter }: DashboardCoursesPageProps) => {
   const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState("");
   const [searchKeyword, setSearchKeyword] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [status, setStatus] = useState<string>("all");
-  const [mode, setMode] = useState<string>("all");
+  const [mode, setMode] = useState<string>(modeFilter ?? "all");
   const [targetLevel, setTargetLevel] = useState<string>("all");
   const [categoryId, setCategoryId] = useState<string>("all");
   const [tagId, setTagId] = useState<string>("all");
@@ -49,7 +53,7 @@ export const DashboardCoursesPage = () => {
       page_size: pageSize,
       search: searchKeyword.trim() || undefined,
       status: status !== "all" ? status : undefined,
-      mode: mode !== "all" ? (mode as CourseMode) : undefined,
+      mode: modeFilter ?? (mode !== "all" ? (mode as CourseMode) : undefined),
       target_level: targetLevel !== "all" ? targetLevel : undefined,
       category_id: categoryId !== "all" ? categoryId : undefined,
       tag_id: tagId !== "all" ? tagId : undefined,
@@ -65,6 +69,7 @@ export const DashboardCoursesPage = () => {
     searchKeyword,
     status,
     mode,
+    modeFilter,
     targetLevel,
     categoryId,
     tagId,
@@ -77,8 +82,8 @@ export const DashboardCoursesPage = () => {
   return (
     <section>
       <DashboardListPageHeader
-        title="Danh sách khóa học"
-        description="Quản lý toàn bộ khóa học trong hệ thống"
+        title={modeFilter === "center" ? "Khóa học tại trung tâm" : modeFilter === "template" ? "Khóa học có sẵn" : "Danh sách khóa học"}
+        description={modeFilter === "center" ? "Quản lý các khóa học mở lớp tại trung tâm" : modeFilter === "template" ? "Quản lý các khóa học template/có sẵn" : "Quản lý toàn bộ khóa học trong hệ thống"}
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -132,7 +137,7 @@ export const DashboardCoursesPage = () => {
           </SelectContent>
         </Select>
 
-        <Select
+        {!modeFilter ? <Select
           value={mode}
           onValueChange={(value) => {
             setMode(value);
@@ -147,7 +152,7 @@ export const DashboardCoursesPage = () => {
             <SelectItem value="center">Khóa trung tâm</SelectItem>
             <SelectItem value="template">Khóa template</SelectItem>
           </SelectContent>
-        </Select>
+        </Select> : null}
 
         <Select
           value={targetLevel}

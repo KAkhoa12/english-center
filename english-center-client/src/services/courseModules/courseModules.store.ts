@@ -24,6 +24,7 @@ type CourseModulesState = {
   listModules: (courseId: string) => Promise<CourseModule[]>;
   getModule: (moduleId: string) => Promise<CourseModule>;
   updateModule: (moduleId: string, data: UpdateCourseModuleRequest) => Promise<CourseModule>;
+  uploadModuleMedia: (moduleId: string, file: File) => Promise<CourseModule>;
   deleteModule: (moduleId: string) => Promise<void>;
   clearSelectedModule: () => void;
   clearError: () => void;
@@ -59,6 +60,16 @@ export const useCourseModulesStore = create<CourseModulesState>()((set) => ({
   updateModule: async (moduleId, data) => {
     const response = await courseModulesApi.updateModule(moduleId, data);
     const module = unwrap(response, "Cap nhat module that bai");
+    set((state) => ({
+      modules: state.modules.map((item) => (item.id === module.id ? module : item)),
+      selectedModule: state.selectedModule?.id === module.id ? module : state.selectedModule,
+    }));
+    return module;
+  },
+
+  uploadModuleMedia: async (moduleId, file) => {
+    const response = await courseModulesApi.uploadModuleMedia(moduleId, file);
+    const module = unwrap(response, "Tai media module that bai");
     set((state) => ({
       modules: state.modules.map((item) => (item.id === module.id ? module : item)),
       selectedModule: state.selectedModule?.id === module.id ? module : state.selectedModule,

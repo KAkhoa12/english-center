@@ -9,6 +9,7 @@ import DashboardCourseCategoriesPage from "@/pages/Dashboard/CourseCategories";
 import DashboardCoursesPage from "@/pages/Dashboard/Courses";
 import DashboardCourseCreatePage from "@/pages/Dashboard/Courses/Create";
 import DashboardCourseEditPage from "@/pages/Dashboard/Courses/Edit";
+import DashboardCourseStatisticsPage from "@/pages/Dashboard/Courses/Statistics";
 import DashboardCourseTagsPage from "@/pages/Dashboard/CourseTags";
 import DashboardHomePage from "@/pages/Dashboard/Home";
 import DashboardCashflowPage from "@/pages/Dashboard/Cashflow";
@@ -31,10 +32,14 @@ import DashboardPermissionsPage from "@/pages/Dashboard/Permissions";
 import DashboardPermissionCreatePage from "@/pages/Dashboard/Permissions/Create";
 import DashboardPermissionEditPage from "@/pages/Dashboard/Permissions/Edit";
 import DashboardMessagesPage from "@/pages/Dashboard/Messages";
+import DashboardProfilePage from "@/pages/Dashboard/Profile";
 import DashboardResultsPage from "@/pages/Dashboard/Results";
 import DashboardRolesPage from "@/pages/Dashboard/Roles";
 import DashboardRoleCreatePage from "@/pages/Dashboard/Roles/Create";
 import DashboardRoleEditPage from "@/pages/Dashboard/Roles/Edit";
+import DashboardRoomsPage from "@/pages/Dashboard/Rooms";
+import DashboardRoomCreatePage from "@/pages/Dashboard/Rooms/Create";
+import DashboardRoomEditPage from "@/pages/Dashboard/Rooms/Edit";
 import DashboardSchedulePage from "@/pages/Dashboard/Schedule";
 import DashboardStaffPage from "@/pages/Dashboard/Staff";
 import DashboardStaffCreatePage from "@/pages/Dashboard/Staff/Create";
@@ -46,6 +51,8 @@ import DashboardTeachersPage from "@/pages/Dashboard/Teachers";
 import DashboardTeacherCreatePage from "@/pages/Dashboard/Teachers/Create";
 import DashboardTeacherEditPage from "@/pages/Dashboard/Teachers/Edit";
 import DashboardTeachingSchedulePage from "@/pages/Dashboard/TeachingSchedule";
+import DashboardSessionsPage from "@/pages/Dashboard/Sessions";
+import DashboardSessionDetailPage from "@/pages/Dashboard/Sessions/Detail";
 import FavoritesPage from "@/pages/Favorites";
 import MyCoursesPage from "@/pages/MyCourses";
 import MyInvoicesPage from "@/pages/MyInvoices";
@@ -64,6 +71,30 @@ export const privateRoutes: RouteObject[] = [
             element: <DashboardHomePage />,
           },
           {
+            path: PRIVATE_ROUTES.DASHBOARD_PROFILE,
+            element: (
+              <DashboardAccessGuard allowedRoles={["admin", "staff", "teacher", "student"]}>
+                <DashboardProfilePage />
+              </DashboardAccessGuard>
+            ),
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_MY_COURSES,
+            element: (
+              <DashboardAccessGuard allowedRoles={["admin", "staff", "teacher", "student"]}>
+                <MyCoursesPage />
+              </DashboardAccessGuard>
+            ),
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_MY_INVOICES,
+            element: (
+              <DashboardAccessGuard allowedRoles={["admin", "staff", "teacher", "student"]}>
+                <MyInvoicesPage />
+              </DashboardAccessGuard>
+            ),
+          },
+          {
             path: PRIVATE_ROUTES.DASHBOARD_COURSES,
             element: (
               <DashboardAccessGuard
@@ -71,6 +102,44 @@ export const privateRoutes: RouteObject[] = [
                 requiredPermissions={["course.create", "course.update", "course.delete"]}
               >
                 <DashboardCoursesPage />
+              </DashboardAccessGuard>
+            ),
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_CENTER_COURSES,
+            element: (
+              <DashboardAccessGuard
+                allowedRoles={["admin", "staff"]}
+                requiredPermissions={["course.create", "course.update", "course.delete"]}
+              >
+                <DashboardCoursesPage modeFilter="center" />
+              </DashboardAccessGuard>
+            ),
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_TEMPLATE_COURSES,
+            element: (
+              <DashboardAccessGuard
+                allowedRoles={["admin", "staff"]}
+                requiredPermissions={["course.create", "course.update", "course.delete"]}
+              >
+                <DashboardCoursesPage modeFilter="template" />
+              </DashboardAccessGuard>
+            ),
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_CENTER_COURSES_STATISTICS,
+            element: (
+              <DashboardAccessGuard allowedRoles={["admin", "staff"]}>
+                <DashboardCourseStatisticsPage mode="center" />
+              </DashboardAccessGuard>
+            ),
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_TEMPLATE_COURSES_STATISTICS,
+            element: (
+              <DashboardAccessGuard allowedRoles={["admin", "staff"]}>
+                <DashboardCourseStatisticsPage mode="template" />
               </DashboardAccessGuard>
             ),
           },
@@ -329,6 +398,22 @@ export const privateRoutes: RouteObject[] = [
             ),
           },
           {
+            path: PRIVATE_ROUTES.DASHBOARD_SESSIONS,
+            element: (
+              <DashboardAccessGuard allowedRoles={["admin", "teacher"]} requiredPermissions={["class_session.read"]}>
+                <DashboardSessionsPage />
+              </DashboardAccessGuard>
+            ),
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_SESSIONS_DETAIL,
+            element: (
+              <DashboardAccessGuard allowedRoles={["admin", "teacher"]} requiredPermissions={["class_session.read"]}>
+                <DashboardSessionDetailPage />
+              </DashboardAccessGuard>
+            ),
+          },
+          {
             path: PRIVATE_ROUTES.DASHBOARD_ATTENDANCE,
             element: (
               <DashboardAccessGuard allowedRoles={["admin", "staff", "teacher", "student"]}>
@@ -352,6 +437,30 @@ export const privateRoutes: RouteObject[] = [
                 requiredPermissions={["assignment_type.read"]}
               >
                 <DashboardAssignmentTypesPage />
+              </DashboardAccessGuard>
+            ),
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_ROOMS,
+            element: (
+              <DashboardAccessGuard allowedRoles={["admin", "staff"]} requiredPermissions={["room.read"]}>
+                <DashboardRoomsPage />
+              </DashboardAccessGuard>
+            ),
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_ROOMS_CREATE,
+            element: (
+              <DashboardAccessGuard allowedRoles={["admin", "staff"]} requiredPermissions={["room.create"]}>
+                <DashboardRoomCreatePage />
+              </DashboardAccessGuard>
+            ),
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_ROOMS_EDIT,
+            element: (
+              <DashboardAccessGuard allowedRoles={["admin", "staff"]} requiredPermissions={["room.update"]}>
+                <DashboardRoomEditPage />
               </DashboardAccessGuard>
             ),
           },
@@ -414,14 +523,6 @@ export const privateRoutes: RouteObject[] = [
           {
             path: PUBLIC_ROUTES.PAYMENT,
             element: <PaymentPage />,
-          },
-          {
-            path: PUBLIC_ROUTES.MY_COURSES,
-            element: <MyCoursesPage />,
-          },
-          {
-            path: PUBLIC_ROUTES.MY_INVOICES,
-            element: <MyInvoicesPage />,
           },
         ],
       },

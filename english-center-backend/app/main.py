@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1 import (
     attendance,
     attendance_reports,
+    ai_chat,
     assignment_attachments,
     assignment_grades,
     assignment_question_options,
@@ -13,6 +14,8 @@ from app.api.v1 import (
     assignments,
     auth,
     cart,
+    chat,
+    class_session_media,
     class_sessions,
     classes,
     course_categories,
@@ -96,6 +99,8 @@ app.include_router(teachers.router, prefix=settings.API_V1_PREFIX)
 app.include_router(staff.router, prefix=settings.API_V1_PREFIX)
 app.include_router(files.router, prefix=settings.API_V1_PREFIX)
 app.include_router(cart.router, prefix=settings.API_V1_PREFIX)
+app.include_router(chat.router, prefix=settings.API_V1_PREFIX)
+app.include_router(ai_chat.router, prefix=settings.API_V1_PREFIX)
 app.include_router(wishlist.router, prefix=settings.API_V1_PREFIX)
 app.include_router(orders.router, prefix=settings.API_V1_PREFIX)
 app.include_router(invoices.router, prefix=settings.API_V1_PREFIX)
@@ -104,6 +109,7 @@ app.include_router(enrollments.router, prefix=settings.API_V1_PREFIX)
 app.include_router(rooms.router, prefix=settings.API_V1_PREFIX)
 app.include_router(classes.router, prefix=settings.API_V1_PREFIX)
 app.include_router(class_sessions.router, prefix=settings.API_V1_PREFIX)
+app.include_router(class_session_media.router, prefix=settings.API_V1_PREFIX)
 app.include_router(attendance.router, prefix=settings.API_V1_PREFIX)
 app.include_router(attendance_reports.router, prefix=settings.API_V1_PREFIX)
 app.include_router(assignments.router, prefix=settings.API_V1_PREFIX)

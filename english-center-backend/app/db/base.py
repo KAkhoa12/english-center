@@ -11,8 +11,9 @@ from app.models.assignment_type import AssignmentType
 from app.models.assignment_question import AssignmentQuestion, AssignmentQuestionOption
 from app.models.submission_answer import SubmissionAnswer, SubmissionAnswerMedia
 from app.models.class_model import CourseClass
-from app.models.class_session import ClassSession
+from app.models.class_session import ClassSession, ClassSessionMedia
 from app.models.class_student import ClassStudent
+from app.models.chat import ChatMessage, ChatMessageAttachment, Conversation, ConversationParticipant
 from app.models.commerce import (
     Cart,
     CartItem,
@@ -69,6 +70,11 @@ __all__ = [
     "CourseClass",
     "ClassStudent",
     "ClassSession",
+    "ClassSessionMedia",
+    "Conversation",
+    "ConversationParticipant",
+    "ChatMessage",
+    "ChatMessageAttachment",
     "Attendance",
     "Assignment",
     "AssignmentType",

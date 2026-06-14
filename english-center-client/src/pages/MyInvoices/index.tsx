@@ -23,7 +23,7 @@ export default function MyInvoicesPage() {
   }, [myInvoices]);
 
   return (
-    <section className="bg-gray-50 pb-24 pt-32">
+    <section className="bg-gray-50 pb-10">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mb-8">
           <p className="mb-2 text-sm font-semibold uppercase tracking-[0.18em] text-brand-500">

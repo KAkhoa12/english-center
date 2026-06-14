@@ -2,6 +2,7 @@ import { DashboardTablePagination } from "@/components/Dashboard/Comon";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { ClassItem } from "@/services/classes/classes.type";
 import type { Pagination } from "@/shared/types/response";
+import { classStatusOptions, classTypeOptions, labelOf } from "./classOptions";
 
 type Props = {
   data: ClassItem[];
@@ -16,10 +17,32 @@ export const ClassesListTable = ({ data, loading = false, pagination, onPageChan
   <div>
     <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
       <Table>
-        <TableHeader className="bg-gray-50"><TableRow><TableHead>Ten lop</TableHead><TableHead>Khoa hoc</TableHead><TableHead>Giang vien</TableHead><TableHead>Si so</TableHead><TableHead>Trang thai</TableHead><TableHead className="text-right">Thao tac</TableHead></TableRow></TableHeader>
+        <TableHeader className="bg-gray-50">
+          <TableRow>
+            <TableHead>Tên lớp</TableHead>
+            <TableHead>Khóa học</TableHead>
+            <TableHead>Giáo viên</TableHead>
+            <TableHead>Loại lớp</TableHead>
+            <TableHead>Sĩ số</TableHead>
+            <TableHead>Trạng thái</TableHead>
+            <TableHead className="text-right">Thao tác</TableHead>
+          </TableRow>
+        </TableHeader>
         <TableBody>
-          {loading ? <TableRow><TableCell colSpan={6} className="py-8 text-center text-gray-500">Dang tai du lieu...</TableCell></TableRow> : data.length === 0 ? <TableRow><TableCell colSpan={6} className="py-8 text-center text-gray-500">Khong co du lieu</TableCell></TableRow> : data.map((item) => (
-            <TableRow key={item.id}><TableCell className="font-medium">{item.name}</TableCell><TableCell>{item.course?.name ?? "-"}</TableCell><TableCell>{item.teacher?.full_name ?? "-"}</TableCell><TableCell>{item.current_students_count}/{item.max_students}</TableCell><TableCell>{item.status}</TableCell><TableCell className="text-right"><button type="button" onClick={() => onEdit(item)} className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm hover:bg-gray-50">Sua</button></TableCell></TableRow>
+          {loading ? (
+            <TableRow><TableCell colSpan={7} className="py-8 text-center text-gray-500">Đang tải dữ liệu...</TableCell></TableRow>
+          ) : data.length === 0 ? (
+            <TableRow><TableCell colSpan={7} className="py-8 text-center text-gray-500">Không có dữ liệu</TableCell></TableRow>
+          ) : data.map((item) => (
+            <TableRow key={item.id} className="cursor-pointer" onClick={() => onEdit(item)}>
+              <TableCell className="font-medium">{item.name}</TableCell>
+              <TableCell>{item.course?.name ?? "-"}</TableCell>
+              <TableCell>{item.teacher?.full_name ?? "-"}</TableCell>
+              <TableCell>{labelOf(classTypeOptions, item.class_type)}</TableCell>
+              <TableCell>{item.current_students_count}/{item.max_students}</TableCell>
+              <TableCell>{labelOf(classStatusOptions, item.status)}</TableCell>
+              <TableCell className="text-right"><button type="button" onClick={() => onEdit(item)} className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm hover:bg-gray-50">Sửa</button></TableCell>
+            </TableRow>
           ))}
         </TableBody>
       </Table>

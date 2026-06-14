@@ -4,7 +4,7 @@ import axios from "axios";
 
 const getErrorResponse = <T>(error: unknown): ApiResponse<T> => {
   if (axios.isAxiosError<ApiResponse<T>>(error) && error.response?.data) {
-    return error.response.data;
+    return { ...error.response.data, statusCode: error.response.status };
   }
 
   throw error;
@@ -26,6 +26,13 @@ export const apiClient = {
   },
 
   post: async <T, D = unknown>(url: string, data?: D): Promise<ApiResponse<T>> => {
+    return httpClient
+      .post<ApiResponse<T>>(url, data)
+      .then((response) => response.data)
+      .catch(getErrorResponse<T>);
+  },
+
+  postForm: async <T>(url: string, data: FormData): Promise<ApiResponse<T>> => {
     return httpClient
       .post<ApiResponse<T>>(url, data)
       .then((response) => response.data)

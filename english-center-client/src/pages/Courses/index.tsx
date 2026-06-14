@@ -81,8 +81,8 @@ export default function CoursesPage() {
                   </div>
                   <button
                     type="button"
-                    aria-label={`Xem ${course.name} - ${course.id}`}
-                    onClick={() => navigate(`/course/${course.id}`)}
+                    aria-label={`Xem ${course.name}`}
+                    onClick={() => navigate(`/course/${course.slug || course.id}`)}
                     className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-50 text-brand-500 transition-all hover:bg-brand-500 hover:text-white"
                   >
                     <ArrowRight className="h-5 w-5" />

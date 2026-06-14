@@ -191,3 +191,6 @@ Anh đưa source
 
 Cách tải dự án về máy cá nhân:
 * Không được download về
+
+
+Lỗi không tạo lịch trùng từ các lớp

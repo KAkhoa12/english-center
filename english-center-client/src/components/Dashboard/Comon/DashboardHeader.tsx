@@ -1,4 +1,5 @@
-import { Bell, ChevronDown, Home, LogOut, Menu, Search } from "lucide-react";
+import { Bell, Bot, ChevronDown, Home, LogOut, Menu, Search } from "lucide-react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   DropdownMenu,
@@ -8,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuthStore } from "@/services/auth/auth.store";
+import { DashboardAiChatSheet } from "./DashboardAiChatSheet";
 import { DashboardBrand } from "./DashboardBrand";
 
 type DashboardHeaderProps = {
@@ -16,6 +18,7 @@ type DashboardHeaderProps = {
 
 export const DashboardHeader = ({ onOpenSidebar }: DashboardHeaderProps) => {
   const navigate = useNavigate();
+  const [aiOpen, setAiOpen] = useState(false);
   const infoUser = useAuthStore((state) => state.me);
   const logout = useAuthStore((state) => state.logout);
   const displayName =
@@ -64,6 +67,15 @@ export const DashboardHeader = ({ onOpenSidebar }: DashboardHeaderProps) => {
             <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-white bg-coral-500" />
           </button>
 
+          <button
+            type="button"
+            aria-label="Mở trợ lý AI"
+            onClick={() => setAiOpen(true)}
+            className="relative rounded-2xl border border-brand-100 bg-brand-50 p-3 text-brand-600 shadow-sm transition-colors hover:bg-brand-100"
+          >
+            <Bot className="h-5 w-5" />
+          </button>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -105,6 +117,7 @@ export const DashboardHeader = ({ onOpenSidebar }: DashboardHeaderProps) => {
           </DropdownMenu>
         </div>
       </div>
+      <DashboardAiChatSheet open={aiOpen} onOpenChange={setAiOpen} />
     </header>
   );
 };

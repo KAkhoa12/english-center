@@ -19,6 +19,12 @@ export const courseModulesApi = {
   updateModule: (moduleId: string, data: UpdateCourseModuleRequest) =>
     apiClient.patch<CourseModule, UpdateCourseModuleRequest>(`/course-modules/${moduleId}`, data),
 
+  uploadModuleMedia: (moduleId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiClient.postForm<CourseModule>(`/course-modules/${moduleId}/media`, formData);
+  },
+
   deleteModule: (moduleId: string) =>
     apiClient.delete<void>(`/course-modules/${moduleId}`),
 };

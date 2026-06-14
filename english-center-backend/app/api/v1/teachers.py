@@ -21,7 +21,7 @@ router = APIRouter(prefix="/teachers", tags=["teachers"])
 def _teacher_dict(teacher, user):
     return {
         "id": str(teacher.id),
-        "user": user_to_dict(user, include_meta=False),
+        "user": user_to_dict(user, include_meta=True),
         "specialization": teacher.specialization,
         "bio": teacher.bio,
         "experience_years": teacher.experience_years,
@@ -85,4 +85,3 @@ def update_teacher_avatar(teacher_id: str, file: UploadFile = File(...), db: Ann
 def delete_teacher(teacher_id: str, db: Annotated[Session, Depends(get_db)]):
     TeacherService(db).soft_delete_teacher(teacher_id)
     return api_response(True, "Teacher deleted successfully", None, None)
-

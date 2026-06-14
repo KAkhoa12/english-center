@@ -8,6 +8,7 @@ import type {
   CourseListItem,
   CourseOutcome,
   CourseRequirement,
+  CourseStatistic,
   CreateCourseOutcomeRequest,
   CreateCourseRequest,
   CreateCourseRequirementRequest,
@@ -28,11 +29,14 @@ type CoursesState = {
   selectedCourse: CourseDetail | null;
   requirements: CourseRequirement[];
   outcomes: CourseOutcome[];
+  statistics: CourseStatistic[];
   isLoading: boolean;
   error: string | null;
 
   listCourses: (query?: ListCoursesQuery) => Promise<CourseListItem[]>;
   getCourse: (courseId: string) => Promise<CourseDetail>;
+  getCourseBySlug: (slug: string) => Promise<CourseDetail>;
+  getCourseStatistics: (mode: "center" | "template") => Promise<CourseStatistic[]>;
   createCourse: (data: CreateCourseRequest) => Promise<CourseDetail>;
   updateCourse: (courseId: string, data: UpdateCourseRequest) => Promise<CourseDetail>;
   uploadCourseThumbnail: (courseId: string, file: File) => Promise<void>;
@@ -55,6 +59,7 @@ export const useCoursesStore = create<CoursesState>()((set) => ({
   selectedCourse: null,
   requirements: [],
   outcomes: [],
+  statistics: [],
   isLoading: false,
   error: null,
 
@@ -70,6 +75,27 @@ export const useCoursesStore = create<CoursesState>()((set) => ({
     const course = unwrap(response, "Lay thong tin khoa hoc that bai");
     set({ selectedCourse: course, requirements: course.requirements ?? [], outcomes: course.outcomes ?? [] });
     return course;
+  },
+
+  getCourseBySlug: async (slug) => {
+    const response = await coursesApi.getCourseBySlug(slug);
+    const course = unwrap(response, "Lay thong tin khoa hoc that bai");
+    set({ selectedCourse: course, requirements: course.requirements ?? [], outcomes: course.outcomes ?? [] });
+    return course;
+  },
+
+  getCourseStatistics: async (mode) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await coursesApi.getCourseStatistics(mode);
+      const statistics = unwrap(response, "Lay thong ke khoa hoc that bai");
+      set({ statistics, isLoading: false });
+      return statistics;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Lay thong ke khoa hoc that bai";
+      set({ isLoading: false, error: message });
+      throw new Error(message);
+    }
   },
 
   createCourse: async (data) => {

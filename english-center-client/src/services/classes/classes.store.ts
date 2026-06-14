@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { ApiResponse } from "@/shared/types/response";
+import type { ApiResponse, Pagination } from "@/shared/types/response";
 import { classesApi } from "./classes.api";
 import type {
   AddStudentToClassRequest,
@@ -24,6 +24,7 @@ type ClassesState = {
   classes: ClassItem[];
   selectedClass: ClassItem | null;
   classStudents: ClassStudentItem[];
+  classStudentsPagination: Pagination | null;
   isLoading: boolean;
   error: string | null;
 
@@ -33,6 +34,7 @@ type ClassesState = {
   updateClass: (classId: string, data: ClassUpdateRequest) => Promise<ClassItem>;
   deleteClass: (classId: string) => Promise<void>;
   listCourseClasses: (courseId: string, query?: ListCourseClassesQuery) => Promise<ClassItem[]>;
+  listPublicCourseClasses: (courseId: string, query?: ListCourseClassesQuery) => Promise<ClassItem[]>;
   listStudentClasses: (studentId: string, query?: ListStudentClassesQuery) => Promise<ClassItem[]>;
   listClassStudents: (classId: string, query?: ListClassStudentsQuery) => Promise<ClassStudentItem[]>;
   addStudentToClass: (classId: string, data: AddStudentToClassRequest) => Promise<ClassStudentItem>;
@@ -46,13 +48,15 @@ export const useClassesStore = create<ClassesState>()((set) => ({
   classes: [],
   selectedClass: null,
   classStudents: [],
+  classStudentsPagination: null,
   isLoading: false,
   error: null,
 
   listClasses: async (query) => {
+    set({ isLoading: true, error: null });
     const response = await classesApi.listClasses(query);
     const classes = unwrap(response, "Lay danh sach lop hoc that bai");
-    set({ classes });
+    set({ classes, isLoading: false });
     return classes;
   },
 
@@ -97,6 +101,13 @@ export const useClassesStore = create<ClassesState>()((set) => ({
     return classes;
   },
 
+  listPublicCourseClasses: async (courseId, query) => {
+    const response = await classesApi.listPublicCourseClasses(courseId, query);
+    const classes = unwrap(response, "Lay danh sach lop theo khoa hoc that bai");
+    set({ classes });
+    return classes;
+  },
+
   listStudentClasses: async (studentId, query) => {
     const response = await classesApi.listStudentClasses(studentId, query);
     const classes = unwrap(response, "Lay danh sach lop cua hoc vien that bai");
@@ -105,9 +116,10 @@ export const useClassesStore = create<ClassesState>()((set) => ({
   },
 
   listClassStudents: async (classId, query) => {
+    set({ isLoading: true, error: null });
     const response = await classesApi.listClassStudents(classId, query);
     const classStudents = unwrap(response, "Lay danh sach hoc vien trong lop that bai");
-    set({ classStudents });
+    set({ classStudents, classStudentsPagination: response.pagination ?? null, isLoading: false });
     return classStudents;
   },
 
@@ -150,6 +162,6 @@ export const useClassesStore = create<ClassesState>()((set) => ({
     }));
   },
 
-  clearSelectedClass: () => set({ selectedClass: null, classStudents: [] }),
+  clearSelectedClass: () => set({ selectedClass: null, classStudents: [], classStudentsPagination: null }),
   clearError: () => set({ error: null }),
 }));

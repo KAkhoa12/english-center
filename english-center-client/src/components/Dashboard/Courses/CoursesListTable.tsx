@@ -71,7 +71,7 @@ export const CoursesListTable = ({
             </TableRow>
           ) : (
             data.map((row) => (
-              <TableRow key={row.id}>
+              <TableRow key={row.id} className="cursor-pointer" onClick={() => navigate(`/dashboard/courses/${row.id}/edit`)}>
                 <TableCell className="font-medium text-gray-900">{row.code}</TableCell>
                 <TableCell>{row.name}</TableCell>
                 <TableCell>

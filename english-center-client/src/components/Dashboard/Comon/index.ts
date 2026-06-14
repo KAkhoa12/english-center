@@ -9,3 +9,5 @@ export { DashboardRowActions } from "./DashboardRowActions";
 export { DashboardTablePagination } from "./DashboardTablePagination";
 export { DashboardCourseThumbnailField } from "./DashboardCourseThumbnailField";
 export { DashboardConfirmDeleteDialog } from "./DashboardConfirmDeleteDialog";
+export { DashboardDateInput } from "./DashboardDateInput";
+export { DashboardAiChatSheet } from "./DashboardAiChatSheet";

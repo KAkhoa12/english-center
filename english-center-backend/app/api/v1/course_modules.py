@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.response import api_response
@@ -8,6 +8,7 @@ from app.db.session import get_db
 from app.dependencies.permissions import require_permission
 from app.schemas.course import CourseModuleCreate, CourseModuleUpdate
 from app.services.course_service import CourseModuleService
+from app.utils.file import get_upload_file_size, validate_file_extension, validate_file_size
 
 router = APIRouter(tags=["course-modules"])
 
@@ -38,6 +39,16 @@ def update_module(module_id: str, payload: CourseModuleUpdate, db: Annotated[Ses
     service = CourseModuleService(db)
     module = service.update_module(module_id, payload)
     return api_response(True, "Course module updated successfully", service._module_dict(module), None)
+
+
+@router.post("/course-modules/{module_id}/media", dependencies=[Depends(require_permission("course_module.update"))])
+def upload_module_media(module_id: str, db: Annotated[Session, Depends(get_db)], file: UploadFile = File(...)):
+    size = get_upload_file_size(file)
+    validate_file_extension(file.filename or "file", "media")
+    validate_file_size(size, "media")
+    service = CourseModuleService(db)
+    module = service.upload_module_media(module_id, file=file, file_size=size)
+    return api_response(True, "Course module media uploaded successfully", service.module_detail_dict(module), None)
 
 
 @router.delete("/course-modules/{module_id}", dependencies=[Depends(require_permission("course_module.delete"))])

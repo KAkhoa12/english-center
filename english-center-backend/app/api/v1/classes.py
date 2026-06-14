@@ -66,6 +66,24 @@ def delete_class(class_id: str, db: Annotated[Session, Depends(get_db)]):
     return api_response(True, "Class deleted successfully", None, None)
 
 
+@router.get("/public/courses/{course_id}/classes")
+def get_public_course_classes(
+    course_id: str,
+    db: Annotated[Session, Depends(get_db)],
+    page: int = Query(1),
+    page_size: int = Query(10),
+    search: str | None = None,
+    sort_by: str | None = None,
+    sort_order: str = Query("desc", pattern="^(asc|desc)$"),
+    status: str | None = None,
+    class_type: str | None = None,
+):
+    query = PaginationParams(page=page, page_size=page_size, search=search, sort_by=sort_by, sort_order=sort_order)
+    service = ClassService(db)
+    items, total = service.get_classes_by_course(course_id, query, status, class_type)
+    return api_response(True, "Course classes retrieved successfully", [service.class_list_dict(item) for item in items], build_pagination(page, page_size, total))
+
+
 @router.get("/courses/{course_id}/classes", dependencies=[Depends(require_permission("class.read"))])
 def get_course_classes(
     course_id: str,

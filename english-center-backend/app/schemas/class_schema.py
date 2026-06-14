@@ -12,6 +12,7 @@ def _not_blank(value: str) -> str:
 class ClassCreate(BaseModel):
     course_id: str
     teacher_id: str | None = None
+    room_id: str | None = None
     name: str
     code: str | None = None
     class_type: str
@@ -34,6 +35,7 @@ class ClassCreate(BaseModel):
 
 class ClassUpdate(BaseModel):
     teacher_id: str | None = None
+    room_id: str | None = None
     name: str | None = None
     code: str | None = None
     class_type: str | None = None

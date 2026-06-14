@@ -43,6 +43,17 @@ export const assignmentsApi = {
       appendQuery(`/classes/${classId}/assignments`, query)
     ),
 
+  createLessonAssignment: (lessonId: string, data: AssignmentCreateRequest) =>
+    apiClient.post<Assignment, AssignmentCreateRequest>(
+      `/lessons/${lessonId}/assignments`,
+      data
+    ),
+
+  listLessonAssignments: (lessonId: string, query?: ListAssignmentsQuery) =>
+    apiClient.getWithMeta<Assignment[]>(
+      appendQuery(`/lessons/${lessonId}/assignments`, query)
+    ),
+
   getAssignment: (assignmentId: string) =>
     apiClient.get<Assignment>(`/assignments/${assignmentId}`),
 
