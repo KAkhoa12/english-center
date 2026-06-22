@@ -8,9 +8,10 @@ from app.core.response import api_response, build_pagination
 from app.db.session import get_db
 from app.dependencies.permissions import require_permission
 from app.models.rbac.user import User
-from app.schemas.assignment import AssignmentCreate, AssignmentUpdate
+from app.schemas.assignment import AssignmentCreate, AssignmentFromTemplateRequest, AssignmentUpdate
 from app.schemas.common import PaginationParams
 from app.services.assignment_service import AssignmentService
+from app.types.roles import AssignmentPermission
 
 router = APIRouter(tags=["assignments"])
 
@@ -20,7 +21,7 @@ def create_assignment(
     class_id: str,
     payload: AssignmentCreate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: User = Depends(require_permission("assignment.create")),
+    current_user: User = Depends(require_permission(AssignmentPermission.CREATE)),
 ):
     service = AssignmentService(db)
     item = service.create_assignment(class_id, payload, current_user)
@@ -32,7 +33,7 @@ def create_lesson_assignment(
     lesson_id: str,
     payload: AssignmentCreate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: User = Depends(require_permission("assignment.create")),
+    current_user: User = Depends(require_permission(AssignmentPermission.CREATE)),
 ):
     service = AssignmentService(db)
     item = service.create_lesson_assignment(lesson_id, payload, current_user)
@@ -43,7 +44,7 @@ def create_lesson_assignment(
 def list_class_assignments(
     class_id: str,
     db: Annotated[Session, Depends(get_db)],
-    current_user: User = Depends(require_permission("assignment.read")),
+    current_user: User = Depends(require_permission(AssignmentPermission.READ)),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
     search: str | None = None,
@@ -66,7 +67,7 @@ def list_class_assignments(
 def list_lesson_assignments(
     lesson_id: str,
     db: Annotated[Session, Depends(get_db)],
-    current_user: User = Depends(require_permission("assignment.read")),
+    current_user: User = Depends(require_permission(AssignmentPermission.READ)),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
     search: str | None = None,
@@ -81,11 +82,114 @@ def list_lesson_assignments(
     return api_response(True, "Lesson assignments retrieved successfully", [service.assignment_dict(item, current_user) for item in items], build_pagination(page, page_size, total))
 
 
+@router.post("/assignments/available")
+def create_available_assignment(
+    payload: AssignmentCreate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: User = Depends(require_permission(AssignmentPermission.CREATE)),
+):
+    service = AssignmentService(db)
+    item = service.create_available_assignment(payload, current_user)
+    return api_response(True, "Available assignment created successfully", service.assignment_dict(item, current_user, detail=True), None)
+
+
+@router.get("/assignments/available")
+def list_available_assignments(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: User = Depends(require_permission(AssignmentPermission.READ)),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    search: str | None = None,
+    sort_by: str | None = None,
+    sort_order: str = Query("desc", pattern="^(asc|desc)$"),
+    status: str | None = None,
+    assignment_type_id: str | None = None,
+    due_from: datetime | None = None,
+    due_to: datetime | None = None,
+):
+    query = PaginationParams(page=page, page_size=page_size, search=search, sort_by=sort_by, sort_order=sort_order)
+    service = AssignmentService(db)
+    items, total = service.get_available_assignments(query, current_user, status, assignment_type_id, due_from, due_to)
+    return api_response(True, "Available assignments retrieved successfully", [service.assignment_dict(item, current_user) for item in items], build_pagination(page, page_size, total))
+
+
+@router.get("/assignments/available/{assignment_id}")
+def get_available_assignment(
+    assignment_id: str,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: User = Depends(require_permission(AssignmentPermission.READ)),
+):
+    service = AssignmentService(db)
+    item = service.get_available_assignment_by_id(assignment_id, current_user)
+    return api_response(True, "Available assignment retrieved successfully", service.assignment_dict(item, current_user, detail=True), None)
+
+
+@router.patch("/assignments/available/{assignment_id}")
+def update_available_assignment(
+    assignment_id: str,
+    payload: AssignmentUpdate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: User = Depends(require_permission(AssignmentPermission.UPDATE)),
+):
+    service = AssignmentService(db)
+    item = service.update_available_assignment(assignment_id, payload, current_user)
+    return api_response(True, "Available assignment updated successfully", service.assignment_dict(item, current_user, detail=True), None)
+
+
+@router.delete("/assignments/available/{assignment_id}")
+def delete_available_assignment(
+    assignment_id: str,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: User = Depends(require_permission(AssignmentPermission.DELETE)),
+):
+    AssignmentService(db).soft_delete_available_assignment(assignment_id, current_user)
+    return api_response(True, "Available assignment deleted successfully", None, None)
+
+
+@router.post("/classes/{class_id}/assignments/from-template/{template_assignment_id}")
+def create_class_assignment_from_template(
+    class_id: str,
+    template_assignment_id: str,
+    payload: AssignmentFromTemplateRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: User = Depends(require_permission(AssignmentPermission.CREATE)),
+):
+    service = AssignmentService(db)
+    item = service.create_assignment_from_template(class_id, template_assignment_id, payload, current_user)
+    return api_response(True, "Assignment created from template successfully", service.assignment_dict(item, current_user, detail=True), None)
+
+
+@router.post("/sessions/{session_id}/assignments/from-template/{template_assignment_id}")
+def create_session_assignment_from_template(
+    session_id: str,
+    template_assignment_id: str,
+    payload: AssignmentFromTemplateRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: User = Depends(require_permission(AssignmentPermission.CREATE)),
+):
+    service = AssignmentService(db)
+    item = service.create_session_assignment_from_template(session_id, template_assignment_id, payload, current_user)
+    return api_response(True, "Session assignment created from template successfully", service.assignment_dict(item, current_user, detail=True), None)
+
+
+@router.post("/lessons/{lesson_id}/assignments/from-template/{template_assignment_id}")
+def create_lesson_assignment_from_template(
+    lesson_id: str,
+    template_assignment_id: str,
+    payload: AssignmentFromTemplateRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: User = Depends(require_permission(AssignmentPermission.CREATE)),
+):
+    service = AssignmentService(db)
+    item = service.create_lesson_assignment_from_template(lesson_id, template_assignment_id, payload, current_user)
+    return api_response(True, "Lesson assignment created from template successfully", service.assignment_dict(item, current_user, detail=True), None)
+
+
 @router.get("/assignments/{assignment_id}")
 def get_assignment(
     assignment_id: str,
     db: Annotated[Session, Depends(get_db)],
-    current_user: User = Depends(require_permission("assignment.read")),
+    current_user: User = Depends(require_permission(AssignmentPermission.READ)),
 ):
     service = AssignmentService(db)
     item = service.get_assignment_by_id(assignment_id)
@@ -98,7 +202,7 @@ def update_assignment(
     assignment_id: str,
     payload: AssignmentUpdate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: User = Depends(require_permission("assignment.update")),
+    current_user: User = Depends(require_permission(AssignmentPermission.UPDATE)),
 ):
     service = AssignmentService(db)
     item = service.update_assignment(assignment_id, payload, current_user)
@@ -109,7 +213,7 @@ def update_assignment(
 def delete_assignment(
     assignment_id: str,
     db: Annotated[Session, Depends(get_db)],
-    current_user: User = Depends(require_permission("assignment.delete")),
+    current_user: User = Depends(require_permission(AssignmentPermission.DELETE)),
 ):
     AssignmentService(db).soft_delete_assignment(assignment_id, current_user)
     return api_response(True, "Assignment deleted successfully", None, None)
@@ -119,7 +223,7 @@ def delete_assignment(
 def publish_assignment(
     assignment_id: str,
     db: Annotated[Session, Depends(get_db)],
-    current_user: User = Depends(require_permission("assignment.update")),
+    current_user: User = Depends(require_permission(AssignmentPermission.UPDATE)),
 ):
     service = AssignmentService(db)
     item = service.publish_assignment(assignment_id, current_user)
@@ -130,7 +234,7 @@ def publish_assignment(
 def close_assignment(
     assignment_id: str,
     db: Annotated[Session, Depends(get_db)],
-    current_user: User = Depends(require_permission("assignment.update")),
+    current_user: User = Depends(require_permission(AssignmentPermission.UPDATE)),
 ):
     service = AssignmentService(db)
     item = service.close_assignment(assignment_id, current_user)
@@ -140,7 +244,7 @@ def close_assignment(
 @router.get("/students/me/assignments")
 def my_assignments(
     db: Annotated[Session, Depends(get_db)],
-    current_user: User = Depends(require_permission("assignment.read")),
+    current_user: User = Depends(require_permission(AssignmentPermission.READ)),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
     search: str | None = None,

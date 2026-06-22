@@ -1,6 +1,5 @@
 import {
   BookOpenCheck,
-  CalendarDays,
   CheckCircle2,
   Clock3,
   Globe2,
@@ -9,7 +8,6 @@ import {
   MapPin,
   PlayCircle,
   ShoppingCart,
-  Star,
   Trophy,
   Users,
 } from "lucide-react";
@@ -23,13 +21,6 @@ import { useClassesStore } from "@/services/classes/classes.store";
 import type { ClassItem } from "@/services/classes/classes.type";
 import { useCoursesStore } from "@/services/courses/courses.store";
 import { useWishlistStore } from "@/services/wishlist/wishlist.store";
-
-const overviewItems = [
-  { icon: Clock3, label: "Thời lượng", field: "duration" },
-  { icon: CalendarDays, label: "Lịch khai giảng", value: "Mỗi tuần" },
-  { icon: Globe2, label: "Hình thức", field: "mode" },
-  { icon: Users, label: "Số bài học", field: "lessons" },
-];
 
 const formatDate = (value: string | null) =>
   value ? new Date(value).toLocaleDateString("vi-VN") : "Đang cập nhật";
@@ -90,6 +81,7 @@ export default function CourseDetailPage() {
       page_size: 20,
       sort_by: "start_date",
       sort_order: "asc",
+      status:"planned"
     }).catch((error) => {
       setClassLoadError(error instanceof Error ? error.message : "Không thể tải danh sách lớp");
     });
@@ -165,6 +157,21 @@ export default function CourseDetailPage() {
   const isFavorited = isAuthenticated ? favorited[selectedCourse.id] ?? false : false;
   const isCenterCourse = selectedCourse.mode === "center";
   const selectedClass = classes.find((item) => item.id === selectedClassId);
+  const overviewItems = [
+    { icon: Globe2, label: "Hình thức", value: modeLabel(selectedCourse.mode) },
+    { icon: GraduationCap, label: "Trình độ", value: selectedCourse.target_level || "Tổng quát" },
+    isCenterCourse
+      ? {
+          icon: Clock3,
+          label: "Số buổi",
+          value: selectedCourse.total_sessions ? `${selectedCourse.total_sessions} buổi` : "Đang cập nhật",
+        }
+      : {
+          icon: Users,
+          label: "Số bài học",
+          value: `${selectedCourse.lessons_count ?? 0} bài học`,
+        },
+  ];
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-brand-700 via-brand-500 to-brand-300 pb-24 pt-28">
@@ -225,19 +232,7 @@ export default function CourseDetailPage() {
                       {item.label}
                     </p>
                     <p className="text-sm font-semibold text-gray-800">
-                      {item.field === "duration"
-                        ? selectedCourse.duration_weeks
-                          ? `${selectedCourse.duration_weeks} tuần`
-                          : "Đang cập nhật"
-                        : item.field === "mode"
-                          ? selectedCourse.mode === "template"
-                            ? "Khóa tự học"
-                            : selectedCourse.mode === "center"
-                              ? "Học tại trung tâm"
-                              : "Đang cập nhật"
-                          : item.field === "lessons"
-                            ? `${selectedCourse.lessons_count ?? 0} bài học`
-                            : item.value}
+                      {item.value}
                     </p>
                   </div>
                 ))}
@@ -260,6 +255,24 @@ export default function CourseDetailPage() {
                   ))}
                 </ul>
               </div>
+
+              <div className="mt-7 border-t border-gray-100 pt-6">
+                <h2 className="mb-3 text-lg font-semibold text-gray-900">Kết quả đầu ra</h2>
+                <ul className="space-y-2">
+                  {(selectedCourse.outcomes?.length
+                    ? selectedCourse.outcomes
+                        .slice()
+                        .sort((a, b) => a.order_index - b.order_index)
+                        .map((o) => o.outcome_text)
+                    : ["Nâng phản xạ nghe nói tự nhiên", "Mở rộng từ vựng theo chủ đề", "Tự tin trình bày ý kiến", "Sẵn sàng luyện thi chuyên sâu"]
+                  ).map((item) => (
+                    <li key={item} className="flex items-start gap-2 text-sm text-gray-600">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </article>
 
@@ -273,13 +286,6 @@ export default function CourseDetailPage() {
                   <p className="mt-1 text-3xl font-bold text-brand-600">
                     {selectedCourse.price.toLocaleString("vi-VN")}
                     <span className="ml-1 text-xs font-normal text-gray-400">VNĐ</span>
-                  </p>
-                </div>
-                <div className="rounded-xl bg-amber-50 px-3 py-2 text-right">
-                  <p className="text-xs text-amber-600">Đánh giá</p>
-                  <p className="flex items-center gap-1 text-sm font-semibold text-amber-600">
-                    <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                    5/5
                   </p>
                 </div>
               </div>
@@ -312,7 +318,7 @@ export default function CourseDetailPage() {
                     {selectedCourse.category?.name || "Đang cập nhật"}
                   </span>
                 </p>
-                <p className="flex items-center justify-between text-gray-600">
+                {isCenterCourse ? <p className="flex items-center justify-between text-gray-600">
                   <span className="inline-flex items-center gap-2">
                     <Trophy className="h-4 w-4 text-brand-500" />
                     Số buổi
@@ -320,7 +326,7 @@ export default function CourseDetailPage() {
                   <span className="font-medium text-gray-800">
                     {selectedCourse.total_sessions ? `${selectedCourse.total_sessions} buổi` : "Đang cập nhật"}
                   </span>
-                </p>
+                </p> : null}
               </div>
 
               {isCenterCourse ? (
@@ -380,7 +386,6 @@ export default function CourseDetailPage() {
                             </div>
                             <div className="mt-3 grid gap-2 text-xs text-gray-500 sm:grid-cols-2">
                               <span>Khai giảng: {formatDate(classItem.start_date)}</span>
-                              <span>Kết thúc: {formatDate(classItem.end_date)}</span>
                               <span>Loại lớp: {classItem.class_type}</span>
                               <span>Giáo viên: {classItem.teacher?.full_name || "Đang cập nhật"}</span>
                             </div>
@@ -427,7 +432,7 @@ export default function CourseDetailPage() {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+            {!isCenterCourse ? <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
               <h3 className="mb-3 text-lg font-semibold text-gray-900">Nội dung khóa học</h3>
               <ul className="mb-4 space-y-2">
                 {(selectedCourse.modules?.length
@@ -443,23 +448,7 @@ export default function CourseDetailPage() {
                   </li>
                 ))}
               </ul>
-
-              <h3 className="mb-3 text-lg font-semibold text-gray-900">Kết quả đầu ra</h3>
-              <ul className="space-y-2">
-                {(selectedCourse.outcomes?.length
-                  ? selectedCourse.outcomes
-                      .slice()
-                      .sort((a, b) => a.order_index - b.order_index)
-                      .map((o) => o.outcome_text)
-                  : ["Nâng phản xạ nghe nói tự nhiên", "Mở rộng từ vựng theo chủ đề", "Tự tin trình bày ý kiến", "Sẵn sàng luyện thi chuyên sâu"]
-                ).map((item) => (
-                  <li key={item} className="flex gap-2 text-sm text-gray-600">
-                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            </div> : null}
           </aside>
         </div>
       </div>

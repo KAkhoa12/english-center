@@ -90,7 +90,6 @@ class Course(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         index=True,
     )
     output_goal: Mapped[str | None] = mapped_column(Text, nullable=True)
-    duration_weeks: Mapped[int | None] = mapped_column(Integer, nullable=True)
     total_sessions: Mapped[int | None] = mapped_column(Integer, nullable=True)
     price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
     status: Mapped[CourseStatus] = mapped_column(

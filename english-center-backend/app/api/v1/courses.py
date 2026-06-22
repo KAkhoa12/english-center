@@ -43,6 +43,7 @@ def list_courses(
     target_level: str | None = None,
     category_id: str | None = None,
     tag_id: str | None = None,
+    tag_ids: list[str] | None = Query(None),
     min_price: float | None = None,
     max_price: float | None = None,
 ):
@@ -54,6 +55,7 @@ def list_courses(
         target_level=target_level,
         category_id=category_id,
         tag_id=tag_id,
+        tag_ids=tag_ids,
         min_price=min_price,
         max_price=max_price,
     )

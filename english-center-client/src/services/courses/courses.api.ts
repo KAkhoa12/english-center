@@ -23,6 +23,10 @@ const appendQuery = (url: string, query?: Record<string, unknown>): string => {
 
   Object.entries(query).forEach(([key, value]) => {
     if (value === undefined || value === null || value === "") return;
+    if (Array.isArray(value)) {
+      value.filter(Boolean).forEach((item) => params.append(key, String(item)));
+      return;
+    }
     params.set(key, String(value));
   });
 

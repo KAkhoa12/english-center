@@ -48,6 +48,7 @@ export const PRIVATE_ROUTES = {
   DASHBOARD_RESULTS: "/dashboard/results",
   DASHBOARD_CERTIFICATES: "/dashboard/certificates",
   DASHBOARD_MESSAGES: "/dashboard/messages",
+  DASHBOARD_GUEST_ENROLLMENTS: "/dashboard/guest-enrollments",
   DASHBOARD_TEACHERS: "/dashboard/teachers",
   DASHBOARD_TEACHERS_CREATE: "/dashboard/teachers/create",
   DASHBOARD_TEACHERS_EDIT: "/dashboard/teachers/:teacherId/edit",

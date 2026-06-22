@@ -7,7 +7,6 @@ export type WishlistCourse = {
   description: string | null;
   target_level: string | null;
   total_sessions: number | null;
-  duration_weeks: number | null;
   price: number;
   status: string;
   thumbnail_url: string | null;

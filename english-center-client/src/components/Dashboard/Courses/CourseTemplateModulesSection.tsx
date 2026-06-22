@@ -90,7 +90,7 @@ export const CourseTemplateModulesSection = ({ courseId }: CourseTemplateModules
   const { listAssignmentTypes } = useAssignmentTypesStore();
 
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false);
-  const [lessonDialogOpen, setLessonDialogOpen] = useState(false);
+  const [lessonPanelOpen, setLessonPanelOpen] = useState(false);
   const [editingModule, setEditingModule] = useState<CourseModule | null>(null);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
   const [prefillModuleId, setPrefillModuleId] = useState<string>("");
@@ -163,7 +163,7 @@ export const CourseTemplateModulesSection = ({ courseId }: CourseTemplateModules
       order_index: String(lessonsByModule[moduleId]?.length ?? 0),
       status: "draft",
     });
-    setLessonDialogOpen(true);
+    setLessonPanelOpen(true);
   };
 
   const openEditLesson = (lesson: Lesson) => {
@@ -179,7 +179,7 @@ export const CourseTemplateModulesSection = ({ courseId }: CourseTemplateModules
       order_index: String(lesson.order_index),
       status: lesson.status || "draft",
     });
-    setLessonDialogOpen(true);
+    setLessonPanelOpen(true);
   };
 
   const refreshLessons = async () => {
@@ -232,16 +232,18 @@ export const CourseTemplateModulesSection = ({ courseId }: CourseTemplateModules
         order_index: Number(lessonForm.order_index || 0),
         status: lessonForm.status,
       };
-      const lesson = editingLesson
+      let lesson = editingLesson
         ? await updateLesson(editingLesson.id, payload)
         : await createLesson(courseId, payload);
 
       if (lessonFile) {
-        await uploadLessonThumbnail(lesson.id, lessonFile);
+        lesson = await uploadLessonThumbnail(lesson.id, lessonFile);
       }
 
       await refreshLessons();
-      setLessonDialogOpen(false);
+      setEditingLesson(lesson);
+      setLessonFile(null);
+      setLessonPanelOpen(true);
       toast.success(editingLesson ? "Cập nhật bài học thành công" : "Thêm bài học thành công");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Lưu bài học thất bại");
@@ -266,44 +268,37 @@ export const CourseTemplateModulesSection = ({ courseId }: CourseTemplateModules
         </div>
       </div>
 
-      <div className="mt-5 space-y-4">
-        {modules.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-gray-200 p-8 text-center text-sm text-gray-500">
-            Chưa có module. Hãy thêm module đầu tiên cho khóa template.
-          </div>
-        ) : (
-          modules.map((module) => (
-            <details key={module.id} className="group rounded-2xl border border-gray-100 p-4" open>
-              <summary className="flex cursor-pointer list-none items-start justify-between gap-3">
-                <div className="flex gap-3">
-                  <MediaPreview media={module.media} />
-                  <div>
+      <div className="mt-5 grid gap-5 xl:grid-cols-12">
+        <aside className="space-y-3 xl:col-span-3">
+          {modules.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500">
+              Chưa có module. Hãy thêm module đầu tiên cho khóa template.
+            </div>
+          ) : (
+            modules.map((module) => (
+              <details key={module.id} className="group rounded-2xl border border-gray-100 bg-gray-50/60 p-3" open>
+                <summary className="flex cursor-pointer list-none items-start justify-between gap-2">
+                  <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h4 className="font-semibold text-gray-900">{module.title}</h4>
+                      <h4 className="truncate text-sm font-semibold text-gray-900">{module.title}</h4>
                       <Badge className={module.status === "active" ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-600"}>
-                        {module.status === "active" ? "Đang mở" : "Tạm ẩn"}
+                        {module.status === "active" ? "Mở" : "Ẩn"}
                       </Badge>
                     </div>
-                    <p className="mt-1 text-sm text-gray-500">{module.description || "Chưa có mô tả"}</p>
                     <p className="mt-1 text-xs text-gray-400">{lessonsByModule[module.id]?.length ?? 0} bài học</p>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button type="button" variant="outline" size="sm" onClick={(event) => {
-                    event.preventDefault();
-                    openCreateLesson(module.id);
-                  }}>
+                  <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-gray-400 transition-transform group-open:rotate-180" />
+                </summary>
+
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <Button type="button" variant="outline" size="sm" onClick={() => openCreateLesson(module.id)}>
                     <Plus className="h-4 w-4" />
                     Bài học
                   </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={(event) => {
-                    event.preventDefault();
-                    openEditModule(module);
-                  }}>
+                  <Button type="button" variant="outline" size="sm" onClick={() => openEditModule(module)}>
                     <Pencil className="h-4 w-4" />
                   </Button>
-                  <Button type="button" variant="destructive" size="sm" onClick={async (event) => {
-                    event.preventDefault();
+                  <Button type="button" variant="destructive" size="sm" onClick={async () => {
                     try {
                       await deleteModule(module.id);
                       toast.success("Xóa module thành công");
@@ -313,34 +308,155 @@ export const CourseTemplateModulesSection = ({ courseId }: CourseTemplateModules
                   }}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
-                  <ChevronDown className="mt-1 h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
                 </div>
-              </summary>
 
-              <div className="mt-4 space-y-3">
-                {(lessonsByModule[module.id] ?? []).length === 0 ? (
-                  <p className="rounded-xl bg-gray-50 px-3 py-3 text-sm text-gray-500">Module này chưa có bài học.</p>
-                ) : (
-                  lessonsByModule[module.id].map((lesson) => (
-                    <LessonCard
-                      key={lesson.id}
-                      lesson={lesson}
-                      onEdit={() => openEditLesson(lesson)}
-                      onDelete={async () => {
-                        try {
-                          await deleteLesson(lesson.id);
-                          toast.success("Xóa bài học thành công");
-                        } catch {
-                          toast.error("Xóa bài học thất bại");
-                        }
-                      }}
-                    />
-                  ))
-                )}
+                <div className="mt-3 space-y-2">
+                  {(lessonsByModule[module.id] ?? []).length === 0 ? (
+                    <p className="rounded-xl bg-white px-3 py-3 text-xs text-gray-500">Module này chưa có bài học.</p>
+                  ) : (
+                    lessonsByModule[module.id].map((lesson) => {
+                      const selected = editingLesson?.id === lesson.id;
+                      return (
+                        <div
+                          key={lesson.id}
+                          className={`rounded-xl border px-3 py-2 ${
+                            selected ? "border-brand-200 bg-brand-50" : "border-gray-100 bg-white"
+                          }`}
+                        >
+                          <button type="button" className="w-full text-left" onClick={() => openEditLesson(lesson)}>
+                            <div className="flex items-start justify-between gap-2">
+                              <p className={`text-sm font-medium ${selected ? "text-brand-700" : "text-gray-800"}`}>
+                                {lesson.title}
+                              </p>
+                              <Badge className={lesson.status === "published" ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-600"}>
+                                {lesson.status}
+                              </Badge>
+                            </div>
+                            <p className="mt-1 text-xs text-gray-500">
+                              {lesson.estimated_duration_minutes ? `${lesson.estimated_duration_minutes} phút` : "Chưa có thời lượng"}
+                            </p>
+                          </button>
+                          <div className="mt-2 flex justify-end">
+                            <Button type="button" variant="ghost" size="sm" onClick={async () => {
+                              try {
+                                await deleteLesson(lesson.id);
+                                if (editingLesson?.id === lesson.id) {
+                                  setEditingLesson(null);
+                                  setLessonPanelOpen(false);
+                                  setLessonFile(null);
+                                }
+                                toast.success("Xóa bài học thành công");
+                              } catch {
+                                toast.error("Xóa bài học thất bại");
+                              }
+                            }}>
+                              <Trash2 className="h-4 w-4" />
+                              Xóa
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </details>
+            ))
+          )}
+        </aside>
+
+        <section className="xl:col-span-9">
+          {!lessonPanelOpen ? (
+            <div className="flex min-h-[420px] items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-8 text-center">
+              <div>
+                <p className="text-base font-semibold text-gray-900">Chọn một bài học để chỉnh sửa</p>
+                <p className="mt-2 text-sm text-gray-500">
+                  Bấm vào bài học ở danh sách bên trái hoặc thêm bài học mới từ một module.
+                </p>
               </div>
-            </details>
-          ))
-        )}
+            </div>
+          ) : (
+            <div className="space-y-5 rounded-2xl border border-gray-100 bg-white p-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h4 className="text-base font-semibold text-gray-900">
+                    {editingLesson ? "Chỉnh sửa bài học" : "Thêm bài học"}
+                  </h4>
+                  <p className="mt-1 text-sm text-gray-500">Chỉnh nội dung bài học, media và trạng thái xuất bản.</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" onClick={() => {
+                    setLessonPanelOpen(false);
+                    setEditingLesson(null);
+                    setLessonFile(null);
+                  }}>
+                    Đóng
+                  </Button>
+                  <Button type="button" onClick={() => void handleSaveLesson()}>Lưu bài học</Button>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <FieldLabel>Module</FieldLabel>
+                  <Select value={lessonForm.module_id || prefillModuleId} onValueChange={(value) => setLessonForm((prev) => ({ ...prev, module_id: value }))}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Chọn module" /></SelectTrigger>
+                    <SelectContent>
+                      {modules.map((module) => <SelectItem key={module.id} value={module.id}>{module.title}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <FieldLabel>Trạng thái</FieldLabel>
+                  <Select value={lessonForm.status} onValueChange={(value) => setLessonForm((prev) => ({ ...prev, status: value }))}>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {lessonStatuses.map((status) => <SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5 md:col-span-2">
+                  <FieldLabel>Tên bài học</FieldLabel>
+                  <Input value={lessonForm.title} onChange={(event) => setLessonForm((prev) => ({ ...prev, title: event.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <FieldLabel>Thứ tự</FieldLabel>
+                  <Input type="number" min={0} value={lessonForm.order_index} onChange={(event) => setLessonForm((prev) => ({ ...prev, order_index: event.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <FieldLabel>Thời lượng ước tính (phút)</FieldLabel>
+                  <Input type="number" min={0} value={lessonForm.estimated_duration_minutes} onChange={(event) => setLessonForm((prev) => ({ ...prev, estimated_duration_minutes: event.target.value }))} />
+                </div>
+                <div className="space-y-1.5 md:col-span-2">
+                  <FieldLabel>Mô tả ngắn</FieldLabel>
+                  <Textarea value={lessonForm.description} rows={3} onChange={(event) => setLessonForm((prev) => ({ ...prev, description: event.target.value }))} />
+                </div>
+                <div className="space-y-1.5 md:col-span-2">
+                  <FieldLabel>Nội dung bài học</FieldLabel>
+                  <Textarea value={lessonForm.content} rows={10} onChange={(event) => setLessonForm((prev) => ({ ...prev, content: event.target.value }))} />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <FieldLabel>Ảnh hoặc video bài học</FieldLabel>
+                  {editingLesson ? <MediaPreview media={editingLesson.thumbnail} /> : null}
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <Upload className="h-4 w-4" />
+                    {lessonFile ? lessonFile.name : "Chọn file"}
+                    <input type="file" accept="image/*,video/*" className="hidden" onChange={(event) => setLessonFile(event.target.files?.[0] ?? null)} />
+                  </label>
+                </div>
+              </div>
+
+              {editingLesson ? (
+                <div className="border-t border-gray-100 pt-5">
+                  <LessonAssignmentsPanel lesson={editingLesson} />
+                </div>
+              ) : (
+                <p className="rounded-xl border border-dashed border-gray-200 p-4 text-sm text-gray-500">
+                  Lưu bài học trước khi thêm bài tập và câu hỏi.
+                </p>
+              )}
+            </div>
+          )}
+        </section>
       </div>
 
       <Dialog open={moduleDialogOpen} onOpenChange={setModuleDialogOpen}>
@@ -388,109 +504,9 @@ export const CourseTemplateModulesSection = ({ courseId }: CourseTemplateModules
         </DialogContent>
       </Dialog>
 
-      <Dialog open={lessonDialogOpen} onOpenChange={setLessonDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>{editingLesson ? "Chỉnh sửa bài học" : "Thêm bài học"}</DialogTitle>
-            <DialogDescription>Chỉnh nội dung bài học, media và trạng thái xuất bản.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <FieldLabel>Module</FieldLabel>
-              <Select value={lessonForm.module_id || prefillModuleId} onValueChange={(value) => setLessonForm((prev) => ({ ...prev, module_id: value }))}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Chọn module" /></SelectTrigger>
-                <SelectContent>
-                  {modules.map((module) => <SelectItem key={module.id} value={module.id}>{module.title}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <FieldLabel>Trạng thái</FieldLabel>
-              <Select value={lessonForm.status} onValueChange={(value) => setLessonForm((prev) => ({ ...prev, status: value }))}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {lessonStatuses.map((status) => <SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5 md:col-span-2">
-              <FieldLabel>Tên bài học</FieldLabel>
-              <Input value={lessonForm.title} onChange={(event) => setLessonForm((prev) => ({ ...prev, title: event.target.value }))} />
-            </div>
-            <div className="space-y-1.5">
-              <FieldLabel>Thứ tự</FieldLabel>
-              <Input type="number" min={0} value={lessonForm.order_index} onChange={(event) => setLessonForm((prev) => ({ ...prev, order_index: event.target.value }))} />
-            </div>
-            <div className="space-y-1.5">
-              <FieldLabel>Thời lượng ước tính (phút)</FieldLabel>
-              <Input type="number" min={0} value={lessonForm.estimated_duration_minutes} onChange={(event) => setLessonForm((prev) => ({ ...prev, estimated_duration_minutes: event.target.value }))} />
-            </div>
-            <div className="space-y-1.5 md:col-span-2">
-              <FieldLabel>Mô tả ngắn</FieldLabel>
-              <Textarea value={lessonForm.description} rows={3} onChange={(event) => setLessonForm((prev) => ({ ...prev, description: event.target.value }))} />
-            </div>
-            <div className="space-y-1.5 md:col-span-2">
-              <FieldLabel>Nội dung bài học</FieldLabel>
-              <Textarea value={lessonForm.content} rows={8} onChange={(event) => setLessonForm((prev) => ({ ...prev, content: event.target.value }))} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <FieldLabel>Ảnh hoặc video bài học</FieldLabel>
-              {editingLesson ? <MediaPreview media={editingLesson.thumbnail} /> : null}
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                <Upload className="h-4 w-4" />
-                {lessonFile ? lessonFile.name : "Chọn file"}
-                <input type="file" accept="image/*,video/*" className="hidden" onChange={(event) => setLessonFile(event.target.files?.[0] ?? null)} />
-              </label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setLessonDialogOpen(false)}>Hủy</Button>
-            <Button type="button" onClick={() => void handleSaveLesson()}>Lưu bài học</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
-
-const LessonCard = ({ lesson, onEdit, onDelete }: { lesson: Lesson; onEdit: () => void; onDelete: () => Promise<void> }) => (
-  <details className="group rounded-xl bg-gray-50 p-3">
-    <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-      <div className="flex items-center gap-3">
-        <MediaPreview media={lesson.thumbnail} />
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-semibold text-gray-900">{lesson.title}</p>
-            <Badge className={lesson.status === "published" ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-600"}>
-              {lesson.status}
-            </Badge>
-          </div>
-          <p className="mt-1 text-xs text-gray-500">
-            {lesson.estimated_duration_minutes ? `${lesson.estimated_duration_minutes} phút` : "Chưa có thời lượng"}
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={(event) => {
-          event.preventDefault();
-          onEdit();
-        }}>
-          <Pencil className="h-4 w-4" />
-        </Button>
-        <Button type="button" variant="destructive" size="sm" onClick={(event) => {
-          event.preventDefault();
-          void onDelete();
-        }}>
-          <Trash2 className="h-4 w-4" />
-        </Button>
-        <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
-      </div>
-    </summary>
-    <div className="mt-3 border-t border-gray-200 pt-3">
-      <LessonAssignmentsPanel lesson={lesson} />
-    </div>
-  </details>
-);
 
 const LessonAssignmentsPanel = ({ lesson }: { lesson: Lesson }) => {
   const { createLessonAssignment, listLessonAssignments, updateAssignment, deleteAssignment } = useAssignmentsStore();

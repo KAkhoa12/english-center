@@ -10,14 +10,15 @@ def _not_blank(value: str) -> str:
 
 
 class ClassSessionCreate(BaseModel):
+    class_schedule_id: str
     teacher_id: str | None = None
     lesson_id: str | None = None
     room_id: str | None = None
     title: str
     description: str | None = None
     session_date: date
-    start_time: time
-    end_time: time
+    override_start_time: time | None = None
+    override_end_time: time | None = None
     mode: str
     meeting_url: str | None = None
     note: str | None = None
@@ -29,20 +30,23 @@ class ClassSessionCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_times(self) -> "ClassSessionCreate":
-        if self.end_time <= self.start_time:
+        if (self.override_start_time is None) != (self.override_end_time is None):
+            raise ValueError("override_start_time and override_end_time must be provided together")
+        if self.override_start_time and self.override_end_time and self.override_end_time <= self.override_start_time:
             raise ValueError("end_time must be greater than start_time")
         return self
 
 
 class ClassSessionUpdate(BaseModel):
+    class_schedule_id: str | None = None
     teacher_id: str | None = None
     lesson_id: str | None = None
     room_id: str | None = None
     title: str | None = None
     description: str | None = None
     session_date: date | None = None
-    start_time: time | None = None
-    end_time: time | None = None
+    override_start_time: time | None = None
+    override_end_time: time | None = None
     mode: str | None = None
     meeting_url: str | None = None
     status: str | None = None
@@ -50,17 +54,18 @@ class ClassSessionUpdate(BaseModel):
 
     @model_validator(mode="after")
     def validate_times(self) -> "ClassSessionUpdate":
-        if self.start_time and self.end_time and self.end_time <= self.start_time:
+        override_fields = {"override_start_time", "override_end_time"} & self.model_fields_set
+        if override_fields and (self.override_start_time is None) != (self.override_end_time is None):
+            raise ValueError("override_start_time and override_end_time must be provided together")
+        if self.override_start_time and self.override_end_time and self.override_end_time <= self.override_start_time:
             raise ValueError("end_time must be greater than start_time")
         return self
 
 
 class ClassSessionBulkCreate(BaseModel):
     start_date: date
-    weekdays: list[int] = Field(min_length=1)
+    class_schedule_ids: list[str] = Field(min_length=1)
     weeks: int = Field(ge=1)
-    start_time: time
-    end_time: time
     mode: str
     meeting_url: str | None = None
     room_id: str | None = None
@@ -69,17 +74,3 @@ class ClassSessionBulkCreate(BaseModel):
     title_prefix: str = "Buổi"
     description: str | None = None
     note: str | None = None
-
-    @field_validator("weekdays")
-    @classmethod
-    def validate_weekdays(cls, value: list[int]) -> list[int]:
-        invalid = [item for item in value if item < 0 or item > 6]
-        if invalid:
-            raise ValueError("weekdays must be between 0 and 6")
-        return sorted(set(value))
-
-    @model_validator(mode="after")
-    def validate_time_range(self) -> "ClassSessionBulkCreate":
-        if self.end_time <= self.start_time:
-            raise ValueError("end_time must be greater than start_time")
-        return self

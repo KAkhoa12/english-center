@@ -16,8 +16,17 @@ export const hasAnyRole = (me: MeResponse | null, roles?: AppRole[]) => {
   return roles.some((role) => hasRole(me, role));
 };
 
-export const hasPermission = (me: MeResponse | null, permission: string) =>
-  Boolean(me?.permissions?.includes(permission));
+export const hasPermission = (me: MeResponse | null, permission: string) => {
+  const permissions = me?.permissions ?? [];
+  if (permissions.includes(permission) || permissions.includes("admin.all")) return true;
+  const resource = permission.split(".").slice(0, -1).join(".");
+  return Boolean(resource && permissions.includes(`${resource}.all`));
+};
+
+export const hasAnyPermission = (me: MeResponse | null, permissions?: string[]) => {
+  if (!permissions?.length) return true;
+  return permissions.some((permission) => hasPermission(me, permission));
+};
 
 export const hasRequiredPermissions = (
   me: MeResponse | null,

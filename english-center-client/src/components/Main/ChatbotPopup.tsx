@@ -1,13 +1,86 @@
 import { Bot, Loader2, MessageCircle, Send, User, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { useAiChatStore } from "@/services/aiChat/aiChat.store";
+
+const renderInlineMarkdown = (text: string, keyPrefix: string): ReactNode[] =>
+  text.split(/(\*\*[^*]+\*\*|__[^_]+__|`[^`]+`)/g).map((part, index) => {
+    const key = `${keyPrefix}-${index}`;
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={key} className="font-semibold text-gray-900">{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("__") && part.endsWith("__")) {
+      return <strong key={key} className="font-semibold text-gray-900">{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return <code key={key} className="rounded bg-gray-100 px-1 py-0.5 text-xs text-gray-800">{part.slice(1, -1)}</code>;
+    }
+    return part;
+  });
+
+const renderMarkdownMessage = (content: string) => {
+  const blocks = content.split(/\n{2,}/).filter((block) => block.trim());
+
+  return (
+    <div className="space-y-2">
+      {blocks.map((block, blockIndex) => {
+        const lines = block.split("\n").filter((line) => line.trim());
+        const heading = lines.length === 1 ? lines[0].match(/^(#{1,3})\s+(.+)$/) : null;
+        const isBulletList = lines.every((line) => /^[-*]\s+/.test(line.trim()));
+        const isNumberedList = lines.every((line) => /^\d+[.)]\s+/.test(line.trim()));
+
+        if (heading) {
+          return (
+            <p key={`heading-${blockIndex}`} className="text-sm font-semibold text-gray-900">
+              {renderInlineMarkdown(heading[2], `heading-${blockIndex}`)}
+            </p>
+          );
+        }
+
+        if (isBulletList) {
+          return (
+            <ul key={`list-${blockIndex}`} className="ml-4 list-disc space-y-1">
+              {lines.map((line, lineIndex) => (
+                <li key={`bullet-${blockIndex}-${lineIndex}`}>
+                  {renderInlineMarkdown(line.trim().replace(/^[-*]\s+/, ""), `bullet-${blockIndex}-${lineIndex}`)}
+                </li>
+              ))}
+            </ul>
+          );
+        }
+
+        if (isNumberedList) {
+          return (
+            <ol key={`list-${blockIndex}`} className="ml-4 list-decimal space-y-1">
+              {lines.map((line, lineIndex) => (
+                <li key={`number-${blockIndex}-${lineIndex}`}>
+                  {renderInlineMarkdown(line.trim().replace(/^\d+[.)]\s+/, ""), `number-${blockIndex}-${lineIndex}`)}
+                </li>
+              ))}
+            </ol>
+          );
+        }
+
+        return (
+          <p key={`paragraph-${blockIndex}`}>
+            {lines.map((line, lineIndex) => (
+              <span key={`line-${blockIndex}-${lineIndex}`}>
+                {lineIndex > 0 ? <br /> : null}
+                {renderInlineMarkdown(line, `line-${blockIndex}-${lineIndex}`)}
+              </span>
+            ))}
+          </p>
+        );
+      })}
+    </div>
+  );
+};
 
 export default function ChatbotPopup() {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const { messages, isStreaming, sendMessage } = useAiChatStore();
+  const { messages, isStreaming, sendMessage, ensureSession } = useAiChatStore();
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -18,6 +91,16 @@ export default function ChatbotPopup() {
     if (!content) return;
     setDraft("");
     void sendMessage(content, "home");
+  };
+
+  const handleToggle = () => {
+    setOpen((value) => {
+      const nextOpen = !value;
+      if (nextOpen && !localStorage.getItem("advisor_session_id")) {
+        void ensureSession();
+      }
+      return nextOpen;
+    });
   };
 
   return (
@@ -56,13 +139,17 @@ export default function ChatbotPopup() {
                   </span>
                 ) : null}
                 <div
-                  className={`max-w-[78%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm leading-relaxed ${
+                  className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
                     message.role === "user"
-                      ? "rounded-br-md bg-brand-500 text-white"
+                      ? "whitespace-pre-wrap rounded-br-md bg-brand-500 text-white"
                       : "rounded-bl-md bg-white text-gray-700 shadow-sm"
                   }`}
                 >
-                  {message.content || <Loader2 className="h-4 w-4 animate-spin text-brand-500" />}
+                  {message.content ? (
+                    message.role === "assistant" ? renderMarkdownMessage(message.content) : message.content
+                  ) : (
+                    <Loader2 className="h-4 w-4 animate-spin text-brand-500" />
+                  )}
                 </div>
                 {message.role === "user" ? (
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-500/10 text-brand-600">
@@ -99,7 +186,7 @@ export default function ChatbotPopup() {
       <button
         type="button"
         aria-label="Mo chatbot AI"
-        onClick={() => setOpen((value) => !value)}
+        onClick={handleToggle}
         className="mt-3 ml-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-500 text-white shadow-xl shadow-brand-500/35 transition-all hover:scale-105 hover:bg-brand-600"
       >
         <MessageCircle className="h-6 w-6" />

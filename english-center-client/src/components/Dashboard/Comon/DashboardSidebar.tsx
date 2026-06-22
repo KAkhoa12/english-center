@@ -256,6 +256,12 @@ const navItems: NavItem[] = [
     allowedRoles: ["admin", "staff", "teacher", "student"],
   },
   {
+    label: "Khách vãng lai",
+    icon: UserRound,
+    href: PRIVATE_ROUTES.DASHBOARD_GUEST_ENROLLMENTS,
+    allowedRoles: ["admin"],
+  },
+  {
     label: "Cá nhân",
     icon: UserRound,
     allowedRoles: ["admin", "staff", "teacher", "student"],

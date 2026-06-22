@@ -136,7 +136,6 @@ class CartService:
             "name": class_obj.name,
             "code": class_obj.code,
             "start_date": class_obj.start_date,
-            "end_date": class_obj.end_date,
             "status": class_obj.status.value,
         }
 
@@ -313,7 +312,6 @@ class OrderSerializer:
             "name": class_obj.name,
             "code": class_obj.code,
             "start_date": class_obj.start_date,
-            "end_date": class_obj.end_date,
             "status": class_obj.status.value,
         }
 
@@ -385,7 +383,6 @@ class InvoiceService:
             "name": class_obj.name,
             "code": class_obj.code,
             "start_date": class_obj.start_date,
-            "end_date": class_obj.end_date,
             "status": class_obj.status.value,
         }
 
@@ -678,6 +675,12 @@ class EnrollmentService(AccessMixin):
     def get_enrollments(self, query: PaginationParams, user: User) -> tuple[list[CourseEnrollment], int]:
         filtered_user_id = None if self.can_access_all(user, "order.all") else str(user.id)
         items = self.enrollment_repo.list_filtered(filtered_user_id)
+        total = len(items)
+        items = items[(query.page - 1) * query.page_size : query.page * query.page_size]
+        return items, total
+
+    def get_my_enrollments(self, query: PaginationParams, user: User) -> tuple[list[CourseEnrollment], int]:
+        items = self.enrollment_repo.list_filtered(str(user.id))
         total = len(items)
         items = items[(query.page - 1) * query.page_size : query.page * query.page_size]
         return items, total

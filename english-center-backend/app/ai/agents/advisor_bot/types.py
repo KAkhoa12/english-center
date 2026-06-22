@@ -1,0 +1,10 @@
+class AdvisorNodes:
+    PLANNER_NODE = "planner_node"
+    EXTRACT_TASK_NODE = "extract_task_node"
+    RESPONSE_NODE = "response_node"
+    GENERAL_NODE = "general_node"
+    SEARCH_COURSE_NODE = "search_course_node"
+    COURSE_INFO_NODE = "course_info_node"
+    CLASS_INFO_NODE = "class_info_node"
+    UPCOMING_CLASSES_NODE = "upcoming_classes_node"
+    ENROLLMENTS_NODE = "enrollments_node"

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { DashboardCourseThumbnailField } from "@/components/Dashboard/Comon";
+import { CourseClassSchedulesSection } from "@/components/Dashboard/Courses/CourseClassSchedulesSection";
 import { CourseCenterClassesSection } from "@/components/Dashboard/Courses/CourseCenterClassesSection";
 import CourseBasicInfoForm from "@/components/Dashboard/Courses/CourseBasicInfoForm";
 import CourseOutcomesEditor from "@/components/Dashboard/Courses/CourseOutcomesEditor";
@@ -194,14 +195,18 @@ export default function DashboardCourseEditPage() {
         ) : null}
 
         {activeTab === "content" && selectedCourse?.mode === "center" ? (
-          <CourseCenterClassesSection
-            courseId={courseId}
-            classes={classes}
-            onCreateClass={async (payload) => {
-              await createClass(payload);
-            }}
-            onDeleteClass={deleteClass}
-          />
+          <div className="space-y-5">
+            <CourseClassSchedulesSection classes={classes} />
+            <CourseCenterClassesSection
+              courseId={courseId}
+              courseName={selectedCourse.name}
+              classes={classes}
+              onCreateClass={async (payload) => {
+                await createClass(payload);
+              }}
+              onDeleteClass={deleteClass}
+            />
+          </div>
         ) : null}
       </div>
     </section>

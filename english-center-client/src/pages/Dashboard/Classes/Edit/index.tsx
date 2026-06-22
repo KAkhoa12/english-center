@@ -23,7 +23,6 @@ const emptyForm: ClassFormState = {
   classType: "offline",
   maxStudents: 20,
   startDate: "",
-  endDate: "",
   status: "planned",
 };
 
@@ -55,7 +54,6 @@ export default function DashboardClassEditPage() {
         classType: item.class_type,
         maxStudents: item.max_students,
         startDate: item.start_date ?? "",
-        endDate: item.end_date ?? "",
         status: item.status,
       });
     }).catch(() => toast.error("Không thể tải lớp học"));
@@ -82,7 +80,6 @@ export default function DashboardClassEditPage() {
         class_type: form.classType,
         max_students: form.maxStudents,
         start_date: form.startDate || null,
-        end_date: form.endDate || null,
         status: form.status,
       });
       toast.success("Cập nhật lớp học thành công");

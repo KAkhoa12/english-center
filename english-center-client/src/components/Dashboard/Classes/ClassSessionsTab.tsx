@@ -94,8 +94,8 @@ export function ClassSessionsTab({ classItem }: ClassSessionsTabProps) {
   };
 
   const handleCreateBulk = async (data: BulkCreateClassSessionsRequest) => {
-    if (!data.weekdays.length) {
-      toast.error("Vui lòng chọn ít nhất một ngày học");
+    if (!data.class_schedule_ids.length) {
+      toast.error("Vui lòng chọn ít nhất một lịch học trong tuần");
       return;
     }
     try {
@@ -119,7 +119,7 @@ export function ClassSessionsTab({ classItem }: ClassSessionsTabProps) {
         <Button type="button" variant="outline" onClick={() => setAutoDialogOpen(true)}>Tạo tự động</Button>
       </div>
       <ClassSessionsTable data={sessions} loading={isLoading} pagination={pagination} onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} onEdit={(item) => { setEditing(item); setDialogOpen(true); }} onDelete={setDeleting} />
-      <ClassSessionDialog open={dialogOpen} session={editing} teacherOptions={teacherOptions} lessonOptions={lessonOptions} roomOptions={roomOptions} onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditing(null); }} onSubmit={handleSubmit} />
+      <ClassSessionDialog open={dialogOpen} session={editing} schedules={classItem.schedules ?? []} teacherOptions={teacherOptions} lessonOptions={lessonOptions} roomOptions={roomOptions} onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditing(null); }} onSubmit={handleSubmit} />
       <ClassSessionAutoCreateDialog open={autoDialogOpen} classItem={classItem} teacherOptions={teacherOptions} lessonOptions={lessonOptions} roomOptions={roomOptions} onOpenChange={setAutoDialogOpen} onSubmit={handleCreateBulk} />
       <DashboardConfirmDeleteDialog open={Boolean(deleting)} title="Xóa lịch học" description={`Bạn có chắc chắn muốn xóa lịch ${deleting?.title ?? "này"}?`} onOpenChange={(open) => !open && setDeleting(null)} onConfirm={handleDelete} />
     </div>

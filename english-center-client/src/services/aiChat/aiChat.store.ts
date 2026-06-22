@@ -10,10 +10,15 @@ const welcomeMessage: AiChatMessage = {
   content: "Xin chao, minh la tro ly AI cua StarEnglish. Ban can tu van gi hom nay?",
 };
 
+const sessionStorageKey = "advisor_session_id";
+
 type AiChatState = {
   messages: AiChatMessage[];
+  sessionId: string | null;
   isStreaming: boolean;
   error: string | null;
+  createSession: () => Promise<string>;
+  ensureSession: () => Promise<string>;
   sendMessage: (content: string, context: "home" | "dashboard") => Promise<void>;
   reset: () => void;
   clearError: () => void;
@@ -21,8 +26,25 @@ type AiChatState = {
 
 export const useAiChatStore = create<AiChatState>()((set, get) => ({
   messages: [welcomeMessage],
+  sessionId: localStorage.getItem(sessionStorageKey),
   isStreaming: false,
   error: null,
+
+  createSession: async () => {
+    const sessionId = await aiChatApi.createSession();
+    localStorage.setItem(sessionStorageKey, sessionId);
+    set({ sessionId });
+    return sessionId;
+  },
+
+  ensureSession: async () => {
+    const currentSessionId = get().sessionId || localStorage.getItem(sessionStorageKey);
+    if (currentSessionId) {
+      if (get().sessionId !== currentSessionId) set({ sessionId: currentSessionId });
+      return currentSessionId;
+    }
+    return get().createSession();
+  },
 
   sendMessage: async (content, context) => {
     const text = content.trim();
@@ -47,8 +69,15 @@ export const useAiChatStore = create<AiChatState>()((set, get) => ({
     }));
 
     try {
+      const sessionId = await get().ensureSession();
+
       await aiChatApi.streamChat(
-        { message: text, context },
+        {
+          message: text,
+          context,
+          session_id: sessionId,
+          client_message_id: userMessage.id,
+        },
         {
           onToken: (token) => {
             set((state) => ({
@@ -79,6 +108,9 @@ export const useAiChatStore = create<AiChatState>()((set, get) => ({
     }
   },
 
-  reset: () => set({ messages: [welcomeMessage], isStreaming: false, error: null }),
+  reset: () => {
+    localStorage.removeItem(sessionStorageKey);
+    set({ messages: [welcomeMessage], sessionId: null, isStreaming: false, error: null });
+  },
   clearError: () => set({ error: null }),
 }));

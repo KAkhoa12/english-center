@@ -34,6 +34,7 @@ type CoursesState = {
   error: string | null;
 
   listCourses: (query?: ListCoursesQuery) => Promise<CourseListItem[]>;
+  listCoursesRaw: (query?: ListCoursesQuery) => Promise<CourseListItem[]>;
   getCourse: (courseId: string) => Promise<CourseDetail>;
   getCourseBySlug: (slug: string) => Promise<CourseDetail>;
   getCourseStatistics: (mode: "center" | "template") => Promise<CourseStatistic[]>;
@@ -68,6 +69,11 @@ export const useCoursesStore = create<CoursesState>()((set) => ({
     const courses = unwrap(response, "Lay danh sach khoa hoc that bai");
     set({ courses, pagination: response.pagination ?? null });
     return courses;
+  },
+
+  listCoursesRaw: async (query) => {
+    const response = await coursesApi.listCourses(query);
+    return unwrap(response, "Lay danh sach khoa hoc that bai");
   },
 
   getCourse: async (courseId) => {

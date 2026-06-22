@@ -109,6 +109,15 @@ export type AssignmentUpdateRequest = {
   allow_late_submission?: boolean | null;
 };
 
+export type AssignmentFromTemplateRequest = {
+  session_id?: string | null;
+  lesson_id?: string | null;
+  title?: string | null;
+  status?: AssignmentStatus | null;
+  due_at?: string | null;
+  allow_late_submission?: boolean | null;
+};
+
 export type AssignmentAttachmentCreateRequest = {
   title?: string | null;
   description?: string | null;

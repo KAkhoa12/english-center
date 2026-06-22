@@ -52,8 +52,8 @@ type InfoFormState = {
   lessonId: string | null;
   roomId: string | null;
   sessionDate: string;
-  startTime: string;
-  endTime: string;
+  overrideStartTime: string;
+  overrideEndTime: string;
   mode: string;
   meetingUrl: string;
   status: string;
@@ -68,7 +68,7 @@ export default function DashboardSessionDetailPage() {
   const { selectedSession, getSession, updateSession, clearSelectedSession } = useClassSessionsStore();
   const { attendance, getSessionAttendance, updateAttendance, markAttendance } = useAttendanceStore();
   const { mediaBySessionId, listMedia, uploadMedia, deleteMedia } = useClassSessionMediaStore();
-  const { assignments, listClassAssignments } = useAssignmentsStore();
+  const { assignments, availableAssignments, listClassAssignments, listAvailableAssignments, createSessionAssignmentFromTemplate } = useAssignmentsStore();
   const { teachers, listTeachers } = useTeachersStore();
   const { rooms, listRooms } = useRoomsStore();
   const { lessons, listLessons } = useLessonsStore();
@@ -76,11 +76,16 @@ export default function DashboardSessionDetailPage() {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadDescription, setUploadDescription] = useState("");
+  const [templateAssignmentId, setTemplateAssignmentId] = useState<string | null>(null);
 
   const sessionMedia = useMemo(() => mediaBySessionId[sessionId] ?? [], [mediaBySessionId, sessionId]);
   const teacherOptions = useMemo<SearchableOption[]>(() => teachers.map((teacher) => ({ value: teacher.id, label: teacher.user.full_name, description: teacher.user.email })), [teachers]);
   const roomOptions = useMemo<SearchableOption[]>(() => rooms.map((room) => ({ value: room.id, label: room.name, description: room.location })), [rooms]);
   const lessonOptions = useMemo<SearchableOption[]>(() => lessons.map((lesson) => ({ value: lesson.id, label: lesson.title, description: lesson.module?.title })), [lessons]);
+  const templateAssignmentOptions = useMemo<SearchableOption[]>(
+    () => availableAssignments.map((assignment) => ({ value: assignment.id, label: assignment.title, description: assignment.assignment_type?.name ?? assignment.status })),
+    [availableAssignments],
+  );
 
   useEffect(() => {
     if (!sessionId) return;
@@ -96,8 +101,8 @@ export default function DashboardSessionDetailPage() {
       lessonId: selectedSession.lesson_id,
       roomId: selectedSession.room_id,
       sessionDate: selectedSession.session_date,
-      startTime: formatTime(selectedSession.start_time),
-      endTime: formatTime(selectedSession.end_time),
+      overrideStartTime: selectedSession.override_start_time?.slice(0, 5) ?? "",
+      overrideEndTime: selectedSession.override_end_time?.slice(0, 5) ?? "",
       mode: selectedSession.mode,
       meetingUrl: selectedSession.meeting_url ?? "",
       status: selectedSession.status,
@@ -132,6 +137,11 @@ export default function DashboardSessionDetailPage() {
     void listClassAssignments(selectedSession.class_id, { page: 1, page_size: 100, session_id: selectedSession.id }).catch((error) => toast.error(error instanceof Error ? error.message : "Không thể tải bài tập"));
   }, [activeTab, listClassAssignments, selectedSession]);
 
+  useEffect(() => {
+    if (activeTab !== "assignments") return;
+    void listAvailableAssignments({ page: 1, page_size: 100 }).catch((error) => toast.error(error instanceof Error ? error.message : "Không thể tải bài tập có sẵn"));
+  }, [activeTab, listAvailableAssignments]);
+
   const refreshAttendance = () => {
     if (!sessionId) return Promise.resolve([]);
     return getSessionAttendance(sessionId, { page: 1, page_size: 100 });
@@ -157,15 +167,16 @@ export default function DashboardSessionDetailPage() {
   };
 
   const handleSaveInfo = async () => {
-    if (!infoForm || !sessionId) return;
+    if (!infoForm || !sessionId || !selectedSession) return;
     const payload: UpdateClassSessionRequest = {
       title: infoForm.title.trim(),
       teacher_id: infoForm.teacherId,
       lesson_id: infoForm.lessonId,
       room_id: infoForm.mode === "offline" ? infoForm.roomId : null,
       session_date: infoForm.sessionDate,
-      start_time: infoForm.startTime,
-      end_time: infoForm.endTime,
+      class_schedule_id: selectedSession.class_schedule_id,
+      override_start_time: infoForm.overrideStartTime || null,
+      override_end_time: infoForm.overrideEndTime || null,
       mode: infoForm.mode,
       meeting_url: infoForm.mode === "online" ? infoForm.meetingUrl.trim() || null : null,
       status: infoForm.status,
@@ -206,6 +217,23 @@ export default function DashboardSessionDetailPage() {
       toast.success("Đã xóa tài liệu");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Xóa tài liệu thất bại");
+    }
+  };
+
+  const handleCreateAssignmentFromTemplate = async () => {
+    if (!sessionId || !templateAssignmentId) {
+      toast.error("Vui lòng chọn bài tập có sẵn");
+      return;
+    }
+    try {
+      await createSessionAssignmentFromTemplate(sessionId, templateAssignmentId, {});
+      setTemplateAssignmentId(null);
+      if (selectedSession?.class_id) {
+        await listClassAssignments(selectedSession.class_id, { page: 1, page_size: 100, session_id: selectedSession.id });
+      }
+      toast.success("Đã tạo bài tập từ mẫu");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Tạo bài tập từ mẫu thất bại");
     }
   };
 
@@ -269,8 +297,8 @@ export default function DashboardSessionDetailPage() {
                 )}
                 <label className="space-y-2 text-sm font-medium text-gray-700">Ngày học<DashboardDateInput value={infoForm.sessionDate} onChange={(sessionDate) => updateInfoForm({ sessionDate })} /></label>
                 <div className="grid grid-cols-2 gap-3">
-                  <label className="space-y-2 text-sm font-medium text-gray-700">Bắt đầu<Input type="time" value={infoForm.startTime} onChange={(event) => updateInfoForm({ startTime: event.target.value })} /></label>
-                  <label className="space-y-2 text-sm font-medium text-gray-700">Kết thúc<Input type="time" value={infoForm.endTime} onChange={(event) => updateInfoForm({ endTime: event.target.value })} /></label>
+                  <label className="space-y-2 text-sm font-medium text-gray-700">Override bắt đầu<Input type="time" value={infoForm.overrideStartTime} onChange={(event) => updateInfoForm({ overrideStartTime: event.target.value })} /></label>
+                  <label className="space-y-2 text-sm font-medium text-gray-700">Override kết thúc<Input type="time" value={infoForm.overrideEndTime} onChange={(event) => updateInfoForm({ overrideEndTime: event.target.value })} /></label>
                 </div>
                 <label className="space-y-2 text-sm font-medium text-gray-700">Trạng thái<Select value={infoForm.status} onValueChange={(status) => updateInfoForm({ status })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{sessionStatusOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></label>
                 <label className="space-y-2 text-sm font-medium text-gray-700 md:col-span-2">Mô tả<Textarea value={infoForm.description} onChange={(event) => updateInfoForm({ description: event.target.value })} /></label>
@@ -363,6 +391,20 @@ export default function DashboardSessionDetailPage() {
 
       {activeTab === "assignments" ? (
         <SectionCard title="Bài tập của buổi học">
+          <div className="mb-5 rounded-2xl border border-gray-100 bg-gray-50 p-4">
+            <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+              <SearchableSelect
+                value={templateAssignmentId}
+                options={templateAssignmentOptions}
+                placeholder="Chọn bài tập có sẵn để tạo cho buổi học"
+                searchPlaceholder="Tìm bài tập có sẵn..."
+                onChange={setTemplateAssignmentId}
+              />
+              <Button type="button" onClick={() => void handleCreateAssignmentFromTemplate()}>
+                Tạo từ mẫu
+              </Button>
+            </div>
+          </div>
           {assignments.length === 0 ? (
             <p className="text-sm text-gray-500">Chưa có bài tập nào gắn với buổi học này.</p>
           ) : (

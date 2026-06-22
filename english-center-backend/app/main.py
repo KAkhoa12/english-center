@@ -17,6 +17,7 @@ from app.api.v1 import (
     chat,
     class_session_media,
     class_sessions,
+    class_schedules,
     classes,
     course_categories,
     course_modules,
@@ -24,12 +25,14 @@ from app.api.v1 import (
     courses,
     enrollments,
     files,
+    guest_enrollments,
     invoices,
     lesson_materials,
     lessons,
     orders,
     payments,
     permissions,
+    profile,
     roles,
     rooms,
     staff,
@@ -47,6 +50,7 @@ from app.db.base import Base
 from app.db.session import SessionLocal, engine
 from app.middlewares.auth_token_middleware import AccessTokenValidationMiddleware
 from app.seed.seed_initial_data import seed_defaults
+from app.vector_db.seed import seed_qdrant_collections
 
 app = FastAPI(title=settings.APP_NAME)
 app.add_middleware(
@@ -89,11 +93,17 @@ def create_tables_and_seed_on_startup() -> None:
     finally:
         db.close()
 
+    try:
+        seed_qdrant_collections()
+    except Exception as exc:
+        print(f"Qdrant seed skipped: {exc}")
+
 
 app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
 app.include_router(users.router, prefix=settings.API_V1_PREFIX)
 app.include_router(roles.router, prefix=settings.API_V1_PREFIX)
 app.include_router(permissions.router, prefix=settings.API_V1_PREFIX)
+app.include_router(profile.router, prefix=settings.API_V1_PREFIX)
 app.include_router(students.router, prefix=settings.API_V1_PREFIX)
 app.include_router(teachers.router, prefix=settings.API_V1_PREFIX)
 app.include_router(staff.router, prefix=settings.API_V1_PREFIX)
@@ -106,8 +116,10 @@ app.include_router(orders.router, prefix=settings.API_V1_PREFIX)
 app.include_router(invoices.router, prefix=settings.API_V1_PREFIX)
 app.include_router(payments.router, prefix=settings.API_V1_PREFIX)
 app.include_router(enrollments.router, prefix=settings.API_V1_PREFIX)
+app.include_router(guest_enrollments.router, prefix=settings.API_V1_PREFIX)
 app.include_router(rooms.router, prefix=settings.API_V1_PREFIX)
 app.include_router(classes.router, prefix=settings.API_V1_PREFIX)
+app.include_router(class_schedules.router, prefix=settings.API_V1_PREFIX)
 app.include_router(class_sessions.router, prefix=settings.API_V1_PREFIX)
 app.include_router(class_session_media.router, prefix=settings.API_V1_PREFIX)
 app.include_router(attendance.router, prefix=settings.API_V1_PREFIX)

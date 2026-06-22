@@ -60,7 +60,6 @@ export type CourseListItem = {
   slug: string;
   description: string | null;
   target_level: TargetLevel | null;
-  duration_weeks: number | null;
   total_sessions: number | null;
   price: number;
   status: CourseStatus;
@@ -120,7 +119,6 @@ export type CreateCourseRequest = {
   mode?: CourseMode;
   target_level?: TargetLevel | null;
   output_goal?: string | null;
-  duration_weeks?: number | null;
   total_sessions?: number | null;
   price?: number;
   status?: CourseStatus;
@@ -139,7 +137,6 @@ export type UpdateCourseRequest = {
   mode?: CourseMode | null;
   target_level?: TargetLevel | null;
   output_goal?: string | null;
-  duration_weeks?: number | null;
   total_sessions?: number | null;
   price?: number | null;
   status?: CourseStatus | null;
@@ -157,6 +154,7 @@ export type ListCoursesQuery = {
   target_level?: TargetLevel;
   category_id?: string;
   tag_id?: string;
+  tag_ids?: string[];
   min_price?: number;
   max_price?: number;
 };

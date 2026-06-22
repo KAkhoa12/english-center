@@ -13,7 +13,6 @@ export type ClassFormState = {
   classType: string;
   maxStudents: number;
   startDate: string;
-  endDate: string;
   status: string;
 };
 
@@ -63,12 +62,8 @@ export function ClassFormFields({ value, courseOptions, teacherOptions, roomOpti
         <Input type="number" min={1} value={value.maxStudents} onChange={(event) => update({ maxStudents: Number(event.target.value || 1) })} />
       </label>
       <label className="space-y-2 text-sm font-medium text-gray-700">
-        Ngày bắt đầu
+        Ngày khai giảng
         <DashboardDateInput value={value.startDate} onChange={(startDate) => update({ startDate })} />
-      </label>
-      <label className="space-y-2 text-sm font-medium text-gray-700">
-        Ngày kết thúc
-        <DashboardDateInput value={value.endDate} onChange={(endDate) => update({ endDate })} />
       </label>
       <label className="space-y-2 text-sm font-medium text-gray-700">
         Trạng thái

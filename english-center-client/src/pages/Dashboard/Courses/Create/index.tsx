@@ -33,7 +33,6 @@ export const DashboardCourseCreatePage = () => {
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [mode, setMode] = useState<"center" | "template">("center");
   const [targetLevel, setTargetLevel] = useState("A1");
-  const [durationWeeks, setDurationWeeks] = useState("");
   const [totalSessions, setTotalSessions] = useState("");
   const [price, setPrice] = useState("");
   const [status, setStatus] = useState("active");
@@ -71,7 +70,6 @@ export const DashboardCourseCreatePage = () => {
         category_id: categoryId,
         mode,
         target_level: targetLevel || null,
-        duration_weeks: durationWeeks.trim() ? Number(durationWeeks) : null,
         total_sessions: totalSessions.trim() ? Number(totalSessions) : null,
         price: price.trim() ? Number(price) : 0,
         status,
@@ -169,16 +167,6 @@ export const DashboardCourseCreatePage = () => {
               </Select>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Thời lượng (tuần)</label>
-              <Input
-                type="number"
-                min={0}
-                value={durationWeeks}
-                onChange={(e) => setDurationWeeks(e.target.value)}
-                placeholder="Thời lượng (tuần)"
-              />
-            </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-gray-700">Tổng số buổi</label>
               <Input

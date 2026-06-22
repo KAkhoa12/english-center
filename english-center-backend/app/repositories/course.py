@@ -30,6 +30,7 @@ class CourseRepository(BaseRepository[Course]):
         target_level: CourseTargetLevel | None = None,
         category_id: str | None = None,
         tag_id: str | None = None,
+        tag_ids: list[str] | None = None,
         min_price: float | None = None,
         max_price: float | None = None,
     ) -> list[Course]:
@@ -54,4 +55,11 @@ class CourseRepository(BaseRepository[Course]):
                 CourseTagMapping.tag_id == tag_id,
                 CourseTagMapping.deleted_at.is_(None),
             )
+        if tag_ids:
+            stmt = stmt.join(CourseTagMapping, CourseTagMapping.course_id == Course.id).where(
+                CourseTagMapping.tag_id.in_(tag_ids),
+                CourseTagMapping.deleted_at.is_(None),
+            )
+        if tag_id or tag_ids:
+            stmt = stmt.distinct()
         return list(self.db.execute(stmt).scalars().all())

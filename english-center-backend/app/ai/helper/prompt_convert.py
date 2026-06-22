@@ -5,7 +5,7 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, BaseMessage
 
 
-PROMPT_ROOT = Path(__file__).resolve().parents[1] / "prompts"
+PROMPT_ROOT = Path(__file__).resolve().parents[1] / "agents"
 
 
 _jinja_env = Environment(

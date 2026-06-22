@@ -14,7 +14,7 @@ from app.models.assignment import (
 )
 from app.models.assignment_type import AssignmentType, AssignmentTypeStatus
 from app.models.class_model import ClassStatus, ClassType, CourseClass
-from app.models.class_session import ClassSession, SessionMode, SessionStatus
+from app.models.class_session import ClassSchedule, ClassScheduleName, ClassSession, SessionMode, SessionStatus
 from app.models.class_student import ClassEnrollmentStatus, ClassStudent
 from app.core.security import hash_password
 from app.models.course import (
@@ -64,6 +64,8 @@ PERMISSIONS = [
     "class_student.create", "class_student.read", "class_student.update", "class_student.delete", "class_student.all",
     "room.create", "room.read", "room.update", "room.delete", "room.all",
     "class_session.create", "class_session.read", "class_session.update", "class_session.delete", "class_session.all",
+    "class_session.sheadual.teacher.view", "class_sesion.sheadual.view",
+    "class_session.schedule.teacher.view", "class_session.schedule.view",
     "attendance.create", "attendance.read", "attendance.update", "attendance.delete", "attendance.all",
     "attendance_report.read", "attendance_report.all",
     "assignment.create", "assignment.read", "assignment.update", "assignment.delete", "assignment.all",
@@ -81,6 +83,8 @@ ROLE_PERMISSION_CODES = {
         "course.all", "course_category.all", "course_tag.all", "course_module.all", "lesson.all", "lesson_material.all",
         "cart.read", "wishlist.read", "order.all", "invoice.all", "payment.all", "sepay.read",
         "class.all", "class_student.all", "room.all", "class_session.all", "attendance.all", "attendance_report.all",
+        "class_session.sheadual.teacher.view", "class_sesion.sheadual.view",
+        "class_session.schedule.teacher.view", "class_session.schedule.view",
         "assignment.all", "assignment_attachment.all", "assignment_submission.read", "assignment_grade.read",
     ],
     "teacher": [
@@ -218,7 +222,6 @@ def seed_course_samples(db: Session) -> None:
                 category_id=default_category.id,
                 mode=CourseMode.center,
                 target_level=level,
-                duration_weeks=duration,
                 total_sessions=sessions,
                 price=price,
                 status=CourseStatus.active,
@@ -342,7 +345,6 @@ def seed_academic_samples(db: Session, roles: dict[str, Role]) -> None:
             class_type=ClassType.offline,
             max_students=20,
             start_date=date(2026, 6, 1),
-            end_date=date(2026, 8, 30),
             status=ClassStatus.ongoing,
         )
         db.add(ielts_class)
@@ -360,7 +362,6 @@ def seed_academic_samples(db: Session, roles: dict[str, Role]) -> None:
             class_type=ClassType.hybrid,
             max_students=25,
             start_date=date(2026, 6, 7),
-            end_date=date(2026, 8, 16),
             status=ClassStatus.planned,
         )
         db.add(toeic_class)
@@ -378,7 +379,35 @@ def seed_academic_samples(db: Session, roles: dict[str, Role]) -> None:
         ("Buổi 2: Grammar Foundation", date(2026, 6, 3), time(18, 0), time(20, 0), lesson_rows[1].id if len(lesson_rows) > 1 else None),
         ("Buổi 3: Listening Practice", date(2026, 6, 8), time(18, 0), time(20, 0), lesson_rows[2].id if len(lesson_rows) > 2 else None),
     ]
+    schedule_names = {
+        0: ClassScheduleName.t2,
+        1: ClassScheduleName.t3,
+        2: ClassScheduleName.t4,
+        3: ClassScheduleName.t5,
+        4: ClassScheduleName.t6,
+        5: ClassScheduleName.t7,
+        6: ClassScheduleName.cn,
+    }
     for title, session_date, start_time, end_time, lesson_id in session_payloads:
+        schedule_name = schedule_names[session_date.weekday()]
+        schedule = db.execute(
+            select(ClassSchedule).where(
+                ClassSchedule.class_id == ielts_class.id,
+                ClassSchedule.schedule_name == schedule_name,
+                ClassSchedule.start_time == start_time,
+                ClassSchedule.end_time == end_time,
+                ClassSchedule.deleted_at.is_(None),
+            )
+        ).scalar_one_or_none()
+        if not schedule:
+            schedule = ClassSchedule(
+                class_id=ielts_class.id,
+                schedule_name=schedule_name,
+                start_time=start_time,
+                end_time=end_time,
+            )
+            db.add(schedule)
+            db.flush()
         exists = db.execute(
             select(ClassSession).where(
                 ClassSession.class_id == ielts_class.id,
@@ -390,13 +419,12 @@ def seed_academic_samples(db: Session, roles: dict[str, Role]) -> None:
             db.add(
                 ClassSession(
                     class_id=ielts_class.id,
+                    class_schedule_id=schedule.id,
                     teacher_id=teacher_profile.id,
                     lesson_id=lesson_id,
                     room_id=rooms["Room A101"].id,
                     title=title,
                     session_date=session_date,
-                    start_time=start_time,
-                    end_time=end_time,
                     mode=SessionMode.offline,
                     status=SessionStatus.scheduled,
                 )

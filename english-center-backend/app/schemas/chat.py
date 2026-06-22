@@ -60,3 +60,5 @@ class ChatConversationResponse(BaseModel):
 class AiChatStreamRequest(BaseModel):
     message: str = Field(min_length=1)
     context: str | None = None
+    session_id: str = Field(min_length=1)
+    client_message_id: str | None = None

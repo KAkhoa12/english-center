@@ -11,6 +11,7 @@ from app.models.student import Student
 from app.models.teacher import Teacher
 from app.models.rbac.user import User
 from app.repositories.class_session import ClassSessionRepository
+from app.repositories.class_schedule import ClassScheduleRepository
 from app.repositories.class_student import ClassStudentRepository
 from app.repositories.course import CourseRepository
 from app.repositories.course_class import CourseClassRepository
@@ -83,6 +84,7 @@ class ClassService(AcademicAccessMixin):
         self.class_repo = CourseClassRepository(db)
         self.class_student_repo = ClassStudentRepository(db)
         self.class_session_repo = ClassSessionRepository(db)
+        self.class_schedule_repo = ClassScheduleRepository(db)
         self.course_repo = CourseRepository(db)
         self.room_repo = RoomRepository(db)
         self.user_repo = UserRepository(db)
@@ -114,7 +116,7 @@ class ClassService(AcademicAccessMixin):
         return room
 
     def _basic_course_dict(self, course: Course) -> dict[str, Any]:
-        return {"id": str(course.id), "name": course.name, "code": course.code, "duration_weeks": course.duration_weeks}
+        return {"id": str(course.id), "name": course.name, "code": course.code}
 
     def _basic_teacher_dict(self, teacher: Teacher | None) -> dict[str, Any] | None:
         if not teacher:
@@ -165,13 +167,22 @@ class ClassService(AcademicAccessMixin):
             "max_students": class_obj.max_students,
             "current_students_count": self.count_students(str(class_obj.id)),
             "start_date": class_obj.start_date,
-            "end_date": class_obj.end_date,
             "status": class_obj.status.value,
             "course": self._basic_course_dict(course),
             "teacher": self._basic_teacher_dict(teacher),
             "room": self._basic_room_dict(room),
             "created_at": class_obj.created_at,
             "updated_at": class_obj.updated_at,
+            "schedules": [
+                {
+                    "id": str(schedule.id),
+                    "class_id": str(schedule.class_id),
+                    "schedule_name": schedule.schedule_name.value,
+                    "start_time": schedule.start_time,
+                    "end_time": schedule.end_time,
+                }
+                for schedule in self.class_schedule_repo.list_by_class_id(str(class_obj.id))
+            ],
         }
 
     def class_detail_dict(self, class_obj: CourseClass) -> dict[str, Any]:
@@ -200,7 +211,6 @@ class ClassService(AcademicAccessMixin):
             class_type=class_type,
             max_students=payload.max_students,
             start_date=payload.start_date,
-            end_date=payload.end_date,
             status=status,
         )
         created = self.class_repo.create(class_obj)
@@ -259,7 +269,7 @@ class ClassService(AcademicAccessMixin):
             class_obj.teacher_id = str(teacher.id) if teacher else None
         if payload.room_id is not None:
             class_obj.room_id = str(room.id) if room else None
-        for field in ["max_students", "start_date", "end_date"]:
+        for field in ["max_students", "start_date"]:
             value = getattr(payload, field)
             if value is not None:
                 setattr(class_obj, field, value)
@@ -269,8 +279,6 @@ class ClassService(AcademicAccessMixin):
         if payload.status is not None:
             status = _enum_required(ClassStatus, payload.status, "class status")
             class_obj.status = status
-        if class_obj.end_date and class_obj.start_date and class_obj.start_date > class_obj.end_date:
-            raise HTTPException(status_code=400, detail="start_date must be less than or equal to end_date")
         if class_obj.max_students < self.count_students(str(class_obj.id)):
             raise HTTPException(status_code=400, detail="max_students cannot be less than current students count")
         updated = self.class_repo.update(class_obj)

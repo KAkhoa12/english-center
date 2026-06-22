@@ -27,7 +27,6 @@ export default function CourseBasicInfoForm({
   const [categoryId, setCategoryId] = useState("");
   const [mode, setMode] = useState<CourseMode>("center");
   const [targetLevel, setTargetLevel] = useState("");
-  const [durationWeeks, setDurationWeeks] = useState("");
   const [totalSessions, setTotalSessions] = useState("");
   const [price, setPrice] = useState("");
   const [status, setStatus] = useState("active");
@@ -42,11 +41,6 @@ export default function CourseBasicInfoForm({
     setCategoryId(course.category_id ?? course.category?.id ?? "");
     setMode(course.mode ?? "center");
     setTargetLevel(course.target_level ?? "");
-    setDurationWeeks(
-      course.duration_weeks === null || course.duration_weeks === undefined
-        ? ""
-        : String(course.duration_weeks),
-    );
     setTotalSessions(
       course.total_sessions === null || course.total_sessions === undefined
         ? ""
@@ -67,7 +61,6 @@ export default function CourseBasicInfoForm({
       category_id: categoryId || null,
       mode,
       target_level: targetLevel.trim() || null,
-      duration_weeks: durationWeeks.trim() ? Number(durationWeeks) : null,
       total_sessions: totalSessions.trim() ? Number(totalSessions) : null,
       price: price.trim() ? Number(price) : null,
       status,
@@ -124,16 +117,17 @@ export default function CourseBasicInfoForm({
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-medium text-gray-700">Trình độ mục tiêu</label>
-          <Input value={targetLevel} onChange={(e) => setTargetLevel(e.target.value)} />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700">Thời lượng (tuần)</label>
-          <Input
-            type="number"
-            min={0}
-            value={durationWeeks}
-            onChange={(e) => setDurationWeeks(e.target.value)}
-          />
+          <Select value={targetLevel || "none"} onValueChange={(value) => setTargetLevel(value === "none" ? "" : value)}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Chọn trình độ" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Chưa chọn</SelectItem>
+              {["A0", "A1", "A2", "B1", "B2", "C1", "C2"].map((level) => (
+                <SelectItem key={level} value={level}>{level}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-medium text-gray-700">Tổng số buổi</label>

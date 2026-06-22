@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import { DashboardListPageHeader } from "@/components/Dashboard/Comon/DashboardListPageHeader";
 import { CoursesListTable } from "@/components/Dashboard/Courses/CoursesListTable";
+import { MultiSelectBadge } from "@/components/MultiSelectBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -32,7 +33,7 @@ export const DashboardCoursesPage = ({ modeFilter }: DashboardCoursesPageProps) 
   const [mode, setMode] = useState<string>(modeFilter ?? "all");
   const [targetLevel, setTargetLevel] = useState<string>("all");
   const [categoryId, setCategoryId] = useState<string>("all");
-  const [tagId, setTagId] = useState<string>("all");
+  const [tagIds, setTagIds] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [minPrice, setMinPrice] = useState("");
@@ -56,7 +57,7 @@ export const DashboardCoursesPage = ({ modeFilter }: DashboardCoursesPageProps) 
       mode: modeFilter ?? (mode !== "all" ? (mode as CourseMode) : undefined),
       target_level: targetLevel !== "all" ? targetLevel : undefined,
       category_id: categoryId !== "all" ? categoryId : undefined,
-      tag_id: tagId !== "all" ? tagId : undefined,
+      tag_ids: tagIds.length ? tagIds : undefined,
       sort_by: sortBy || undefined,
       sort_order: sortOrder,
       min_price: minPrice.trim() ? Number(minPrice) : undefined,
@@ -72,7 +73,7 @@ export const DashboardCoursesPage = ({ modeFilter }: DashboardCoursesPageProps) 
     modeFilter,
     targetLevel,
     categoryId,
-    tagId,
+    tagIds,
     sortBy,
     sortOrder,
     minPrice,
@@ -194,25 +195,17 @@ export const DashboardCoursesPage = ({ modeFilter }: DashboardCoursesPageProps) 
           </SelectContent>
         </Select>
 
-        <Select
-          value={tagId}
-          onValueChange={(value) => {
-            setTagId(value);
+        <MultiSelectBadge
+          value={tagIds}
+          onChange={(value) => {
+            setTagIds(value);
             setPage(1);
           }}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Tag khóa học" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tất cả tag</SelectItem>
-            {tags.map((tag) => (
-              <SelectItem key={tag.id} value={tag.id}>
-                {tag.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          options={tags.map((tag) => ({ label: tag.name, value: tag.id }))}
+          placeholder="Tất cả tag"
+          searchPlaceholder="Tìm tag khóa học"
+          emptyText="Không có tag"
+        />
 
         <Input
           type="number"
@@ -279,7 +272,7 @@ export const DashboardCoursesPage = ({ modeFilter }: DashboardCoursesPageProps) 
               setMode("all");
               setTargetLevel("all");
               setCategoryId("all");
-              setTagId("all");
+              setTagIds([]);
               setSortBy("created_at");
               setSortOrder("desc");
               setMinPrice("");

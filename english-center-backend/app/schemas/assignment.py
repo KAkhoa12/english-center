@@ -42,6 +42,20 @@ class AssignmentUpdate(BaseModel):
     allow_late_submission: bool | None = None
 
 
+class AssignmentFromTemplateRequest(BaseModel):
+    session_id: str | None = None
+    lesson_id: str | None = None
+    title: str | None = None
+    status: str | None = None
+    due_at: datetime | None = None
+    allow_late_submission: bool | None = None
+
+    @field_validator("title")
+    @classmethod
+    def validate_optional_title(cls, value: str | None) -> str | None:
+        return _not_blank(value) if value is not None else value
+
+
 class AssignmentAttachmentCreate(BaseModel):
     title: str | None = None
     description: str | None = None

@@ -44,6 +44,7 @@ from app.schemas.assignment import (
     AssignmentAttachmentCreate,
     AssignmentAttachmentUpdate,
     AssignmentCreate,
+    AssignmentFromTemplateRequest,
     AssignmentUpdate,
     AssignmentGradeCreate,
     AssignmentGradeUpdate,
@@ -227,6 +228,172 @@ class AssignmentService(AssignmentAccessMixin):
         )
         self.assert_can_manage_assignment(assignment, current_user)
         created = self.assignment_repo.create(assignment)
+        self.db.commit()
+        return created
+
+    def _is_available_assignment(self, assignment: Assignment) -> bool:
+        return not assignment.class_id and not assignment.lesson_id and not assignment.session_id
+
+    def _assert_available_assignment(self, assignment: Assignment) -> None:
+        if not self._is_available_assignment(assignment):
+            raise HTTPException(status_code=400, detail="Assignment is not an available assignment")
+
+    def create_available_assignment(self, payload: AssignmentCreate, current_user: User) -> Assignment:
+        self._get_assignment_type(payload.assignment_type_id)
+        assignment = Assignment(
+            class_id=None,
+            session_id=None,
+            lesson_id=None,
+            title=payload.title.strip(),
+            description=payload.description,
+            instruction=payload.instruction,
+            assignment_type_id=payload.assignment_type_id,
+            status=_enum_required(AssignmentStatus, payload.status, "assignment status"),
+            max_score=payload.max_score,
+            due_at=payload.due_at,
+            allow_late_submission=payload.allow_late_submission,
+            created_by=str(current_user.id),
+        )
+        self.assert_can_manage_assignment(assignment, current_user)
+        created = self.assignment_repo.create(assignment)
+        self.db.commit()
+        return created
+
+    def get_available_assignments(
+        self,
+        query: PaginationParams,
+        current_user: User,
+        status: str | None = None,
+        assignment_type_id: str | None = None,
+        due_from: datetime | None = None,
+        due_to: datetime | None = None,
+    ) -> tuple[list[Assignment], int]:
+        if not self.has_any_permission(current_user, "admin.all", "assignment.all", "assignment.read", "assignment.update", "assignment.create"):
+            raise HTTPException(status_code=403, detail="Permission denied")
+        return self.assignment_repo.list_available(
+            query=query,
+            status=_enum_required(AssignmentStatus, status, "assignment status") if status else None,
+            assignment_type_id=assignment_type_id,
+            due_from=due_from,
+            due_to=due_to,
+        )
+
+    def get_available_assignment_by_id(self, assignment_id: str, current_user: User) -> Assignment:
+        assignment = self.get_assignment_by_id(assignment_id)
+        self._assert_available_assignment(assignment)
+        self.assert_can_read_assignment(assignment, current_user)
+        return assignment
+
+    def update_available_assignment(self, assignment_id: str, payload: AssignmentUpdate, current_user: User) -> Assignment:
+        assignment = self.get_assignment_by_id(assignment_id)
+        self._assert_available_assignment(assignment)
+        if payload.session_id is not None or payload.lesson_id is not None:
+            raise HTTPException(status_code=400, detail="Available assignment must not link to session or lesson")
+        return self.update_assignment(assignment_id, payload, current_user)
+
+    def soft_delete_available_assignment(self, assignment_id: str, current_user: User) -> None:
+        assignment = self.get_assignment_by_id(assignment_id)
+        self._assert_available_assignment(assignment)
+        self.soft_delete_assignment(assignment_id, current_user)
+
+    def _build_assignment_from_template(
+        self,
+        template: Assignment,
+        current_user: User,
+        class_id: str | None = None,
+        session_id: str | None = None,
+        lesson_id: str | None = None,
+        payload: AssignmentFromTemplateRequest | None = None,
+    ) -> Assignment:
+        payload = payload or AssignmentFromTemplateRequest()
+        return Assignment(
+            class_id=class_id,
+            session_id=session_id,
+            lesson_id=lesson_id,
+            title=(payload.title or template.title).strip(),
+            description=template.description,
+            instruction=template.instruction,
+            assignment_type_id=template.assignment_type_id,
+            status=_enum_required(AssignmentStatus, payload.status, "assignment status") if payload.status else template.status,
+            max_score=template.max_score,
+            due_at=payload.due_at if payload.due_at is not None else template.due_at,
+            allow_late_submission=payload.allow_late_submission if payload.allow_late_submission is not None else template.allow_late_submission,
+            created_by=str(current_user.id),
+        )
+
+    def _clone_assignment_children(self, template: Assignment, target: Assignment, current_user: User) -> None:
+        for attachment in self.assignment_attachment_repo.list_by_assignment_id(str(template.id)):
+            self.assignment_attachment_repo.create(
+                AssignmentAttachment(
+                    assignment_id=target.id,
+                    title=attachment.title,
+                    description=attachment.description,
+                    file_bucket=attachment.file_bucket,
+                    file_object_name=attachment.file_object_name,
+                    external_url=attachment.external_url,
+                    content_type=attachment.content_type,
+                    file_size=attachment.file_size,
+                    attachment_type=attachment.attachment_type,
+                    order_index=attachment.order_index,
+                    uploaded_by=str(current_user.id),
+                )
+            )
+        for question in self.assignment_question_repo.list_by_assignment_id(str(template.id)):
+            cloned_question = self.assignment_question_repo.create(
+                AssignmentQuestion(
+                    assignment_id=target.id,
+                    question_type=question.question_type,
+                    question_text=question.question_text,
+                    score=question.score,
+                    order_index=question.order_index,
+                    is_required=question.is_required,
+                )
+            )
+            for option in self.assignment_question_option_repo.list_by_question_id(str(question.id)):
+                self.assignment_question_option_repo.create(
+                    AssignmentQuestionOption(
+                        question_id=cloned_question.id,
+                        option_text=option.option_text,
+                        is_correct=option.is_correct,
+                        order_index=option.order_index,
+                    )
+                )
+
+    def create_assignment_from_template(self, class_id: str, template_assignment_id: str, payload: AssignmentFromTemplateRequest, current_user: User) -> Assignment:
+        template = self.get_available_assignment_by_id(template_assignment_id, current_user)
+        class_obj = ClassService(self.db).get_class_by_id(class_id)
+        session_id = payload.session_id
+        lesson_id = payload.lesson_id
+        self._validate_class_links(class_obj, session_id, lesson_id)
+        assignment = self._build_assignment_from_template(template, current_user, str(class_obj.id), session_id, lesson_id, payload)
+        self.assert_can_manage_assignment(assignment, current_user)
+        created = self.assignment_repo.create(assignment)
+        self._clone_assignment_children(template, created, current_user)
+        self.db.commit()
+        return created
+
+    def create_session_assignment_from_template(self, session_id: str, template_assignment_id: str, payload: AssignmentFromTemplateRequest, current_user: User) -> Assignment:
+        template = self.get_available_assignment_by_id(template_assignment_id, current_user)
+        session = self.class_session_repo.get_active_by_id(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Class session not found")
+        class_obj = ClassService(self.db).get_class_by_id(str(session.class_id))
+        lesson_id = payload.lesson_id or str(session.lesson_id) if session.lesson_id else payload.lesson_id
+        self._validate_class_links(class_obj, str(session.id), lesson_id)
+        assignment = self._build_assignment_from_template(template, current_user, str(class_obj.id), str(session.id), lesson_id, payload)
+        self.assert_can_manage_assignment(assignment, current_user)
+        created = self.assignment_repo.create(assignment)
+        self._clone_assignment_children(template, created, current_user)
+        self.db.commit()
+        return created
+
+    def create_lesson_assignment_from_template(self, lesson_id: str, template_assignment_id: str, payload: AssignmentFromTemplateRequest, current_user: User) -> Assignment:
+        template = self.get_available_assignment_by_id(template_assignment_id, current_user)
+        lesson = self._get_template_lesson(lesson_id)
+        assignment = self._build_assignment_from_template(template, current_user, None, None, str(lesson.id), payload)
+        self.assert_can_manage_assignment(assignment, current_user)
+        created = self.assignment_repo.create(assignment)
+        self._clone_assignment_children(template, created, current_user)
         self.db.commit()
         return created
 

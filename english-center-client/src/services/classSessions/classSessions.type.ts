@@ -41,6 +41,16 @@ export type SessionMediaRef = {
   order_index: number;
 };
 
+export type ClassScheduleName = "T2" | "T3" | "T4" | "T5" | "T6" | "T7" | "CN";
+
+export type ClassScheduleRef = {
+  id: string;
+  class_id: string;
+  schedule_name: ClassScheduleName;
+  start_time: string;
+  end_time: string;
+};
+
 export type ClassSession = {
   id: string;
   class_id: string;
@@ -50,8 +60,12 @@ export type ClassSession = {
   title: string;
   description: string | null;
   session_date: string;
+  class_schedule_id: string;
+  schedule: ClassScheduleRef | null;
   start_time: string;
   end_time: string;
+  override_start_time: string | null;
+  override_end_time: string | null;
   mode: string;
   meeting_url: string | null;
   status: string;
@@ -66,14 +80,15 @@ export type ClassSession = {
 };
 
 export type CreateClassSessionRequest = {
+  class_schedule_id: string;
   teacher_id?: string | null;
   lesson_id?: string | null;
   room_id?: string | null;
   title: string;
   description?: string | null;
   session_date: string;
-  start_time: string;
-  end_time: string;
+  override_start_time?: string | null;
+  override_end_time?: string | null;
   mode: string;
   meeting_url?: string | null;
   note?: string | null;
@@ -81,10 +96,8 @@ export type CreateClassSessionRequest = {
 
 export type BulkCreateClassSessionsRequest = {
   start_date: string;
-  weekdays: number[];
+  class_schedule_ids: string[];
   weeks: number;
-  start_time: string;
-  end_time: string;
   mode: string;
   meeting_url?: string | null;
   room_id?: string | null;
@@ -96,14 +109,15 @@ export type BulkCreateClassSessionsRequest = {
 };
 
 export type UpdateClassSessionRequest = {
+  class_schedule_id?: string | null;
   teacher_id?: string | null;
   lesson_id?: string | null;
   room_id?: string | null;
   title?: string | null;
   description?: string | null;
   session_date?: string | null;
-  start_time?: string | null;
-  end_time?: string | null;
+  override_start_time?: string | null;
+  override_end_time?: string | null;
   mode?: string | null;
   meeting_url?: string | null;
   status?: string | null;

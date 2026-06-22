@@ -1,4 +1,5 @@
 from app.models.base import Base
+from app.models.agent_state import AgentState, ChatSessionMessage
 from app.models.attendance import Attendance
 from app.models.assignment import (
     Assignment,
@@ -11,9 +12,10 @@ from app.models.assignment_type import AssignmentType
 from app.models.assignment_question import AssignmentQuestion, AssignmentQuestionOption
 from app.models.submission_answer import SubmissionAnswer, SubmissionAnswerMedia
 from app.models.class_model import CourseClass
-from app.models.class_session import ClassSession, ClassSessionMedia
+from app.models.class_session import ClassSchedule, ClassSession, ClassSessionMedia
 from app.models.class_student import ClassStudent
 from app.models.chat import ChatMessage, ChatMessageAttachment, Conversation, ConversationParticipant
+from app.models.guest_enrollment import GuestEnrollment
 from app.models.commerce import (
     Cart,
     CartItem,
@@ -69,6 +71,7 @@ __all__ = [
     "Room",
     "CourseClass",
     "ClassStudent",
+    "ClassSchedule",
     "ClassSession",
     "ClassSessionMedia",
     "Conversation",
@@ -96,4 +99,7 @@ __all__ = [
     "Payment",
     "SePayIPNLog",
     "CourseEnrollment",
+    "AgentState",
+    "ChatSessionMessage",
+    "GuestEnrollment",
 ]

@@ -9,6 +9,7 @@ import type {
   AssignmentAttachmentCreateRequest,
   AssignmentAttachmentUpdateRequest,
   AssignmentCreateRequest,
+  AssignmentFromTemplateRequest,
   AssignmentGrade,
   AssignmentGradeCreateRequest,
   AssignmentGradeUpdateRequest,
@@ -27,6 +28,7 @@ const unwrap = <T>(response: ApiResponse<T>, fallbackMessage: string): T => {
 
 type AssignmentsState = {
   assignments: Assignment[];
+  availableAssignments: Assignment[];
   submissions: AssignmentSubmission[];
   attachments: AssignmentAttachment[];
   grades: AssignmentGrade[];
@@ -40,6 +42,14 @@ type AssignmentsState = {
   listClassAssignments: (classId: string, query?: ListAssignmentsQuery) => Promise<Assignment[]>;
   createLessonAssignment: (lessonId: string, data: AssignmentCreateRequest) => Promise<Assignment>;
   listLessonAssignments: (lessonId: string, query?: ListAssignmentsQuery) => Promise<Assignment[]>;
+  createAvailableAssignment: (data: AssignmentCreateRequest) => Promise<Assignment>;
+  listAvailableAssignments: (query?: ListAssignmentsQuery) => Promise<Assignment[]>;
+  getAvailableAssignment: (assignmentId: string) => Promise<Assignment>;
+  updateAvailableAssignment: (assignmentId: string, data: AssignmentUpdateRequest) => Promise<Assignment>;
+  deleteAvailableAssignment: (assignmentId: string) => Promise<void>;
+  createClassAssignmentFromTemplate: (classId: string, templateAssignmentId: string, data?: AssignmentFromTemplateRequest) => Promise<Assignment>;
+  createSessionAssignmentFromTemplate: (sessionId: string, templateAssignmentId: string, data?: AssignmentFromTemplateRequest) => Promise<Assignment>;
+  createLessonAssignmentFromTemplate: (lessonId: string, templateAssignmentId: string, data?: AssignmentFromTemplateRequest) => Promise<Assignment>;
   getAssignment: (assignmentId: string) => Promise<Assignment>;
   updateAssignment: (assignmentId: string, data: AssignmentUpdateRequest) => Promise<Assignment>;
   deleteAssignment: (assignmentId: string) => Promise<void>;
@@ -68,6 +78,7 @@ type AssignmentsState = {
 
 export const useAssignmentsStore = create<AssignmentsState>()((set) => ({
   assignments: [],
+  availableAssignments: [],
   submissions: [],
   attachments: [],
   grades: [],
@@ -103,6 +114,67 @@ export const useAssignmentsStore = create<AssignmentsState>()((set) => ({
     const assignments = unwrap(response, "Lay danh sach bai tap bai hoc that bai");
     set({ assignments, pagination: response.pagination ?? null });
     return assignments;
+  },
+
+  createAvailableAssignment: async (data) => {
+    const response = await assignmentsApi.createAvailableAssignment(data);
+    const assignment = unwrap(response, "Tao bai tap co san that bai");
+    set((state) => ({ availableAssignments: [assignment, ...state.availableAssignments], selectedAssignment: assignment }));
+    return assignment;
+  },
+
+  listAvailableAssignments: async (query) => {
+    const response = await assignmentsApi.listAvailableAssignments(query);
+    const assignments = unwrap(response, "Lay danh sach bai tap co san that bai");
+    set({ availableAssignments: assignments, pagination: response.pagination ?? null });
+    return assignments;
+  },
+
+  getAvailableAssignment: async (assignmentId) => {
+    const response = await assignmentsApi.getAvailableAssignment(assignmentId);
+    const assignment = unwrap(response, "Lay bai tap co san that bai");
+    set({ selectedAssignment: assignment });
+    return assignment;
+  },
+
+  updateAvailableAssignment: async (assignmentId, data) => {
+    const response = await assignmentsApi.updateAvailableAssignment(assignmentId, data);
+    const assignment = unwrap(response, "Cap nhat bai tap co san that bai");
+    set((state) => ({
+      availableAssignments: state.availableAssignments.map((item) => (item.id === assignment.id ? assignment : item)),
+      selectedAssignment: state.selectedAssignment?.id === assignment.id ? assignment : state.selectedAssignment,
+    }));
+    return assignment;
+  },
+
+  deleteAvailableAssignment: async (assignmentId) => {
+    const response = await assignmentsApi.deleteAvailableAssignment(assignmentId);
+    unwrap(response, "Xoa bai tap co san that bai");
+    set((state) => ({
+      availableAssignments: state.availableAssignments.filter((item) => item.id !== assignmentId),
+      selectedAssignment: state.selectedAssignment?.id === assignmentId ? null : state.selectedAssignment,
+    }));
+  },
+
+  createClassAssignmentFromTemplate: async (classId, templateAssignmentId, data = {}) => {
+    const response = await assignmentsApi.createClassAssignmentFromTemplate(classId, templateAssignmentId, data);
+    const assignment = unwrap(response, "Tao bai tap tu mau that bai");
+    set((state) => ({ assignments: [assignment, ...state.assignments], selectedAssignment: assignment }));
+    return assignment;
+  },
+
+  createSessionAssignmentFromTemplate: async (sessionId, templateAssignmentId, data = {}) => {
+    const response = await assignmentsApi.createSessionAssignmentFromTemplate(sessionId, templateAssignmentId, data);
+    const assignment = unwrap(response, "Tao bai tap buoi hoc tu mau that bai");
+    set((state) => ({ assignments: [assignment, ...state.assignments], selectedAssignment: assignment }));
+    return assignment;
+  },
+
+  createLessonAssignmentFromTemplate: async (lessonId, templateAssignmentId, data = {}) => {
+    const response = await assignmentsApi.createLessonAssignmentFromTemplate(lessonId, templateAssignmentId, data);
+    const assignment = unwrap(response, "Tao bai tap bai hoc tu mau that bai");
+    set((state) => ({ assignments: [assignment, ...state.assignments], selectedAssignment: assignment }));
+    return assignment;
   },
 
   getAssignment: async (assignmentId) => {

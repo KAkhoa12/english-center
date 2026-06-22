@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { ClassSession } from "@/services/classSessions/classSessions.type";
@@ -45,24 +46,63 @@ type PositionedSession = ClassSession & {
   overlapCount: number;
 };
 
-const overlap = (left: ClassSession, right: ClassSession) =>
-  parseMinutes(left.start_time) < parseMinutes(right.end_time) && parseMinutes(left.end_time) > parseMinutes(right.start_time);
+const byTime = (left: ClassSession, right: ClassSession) => {
+  const startDiff = parseMinutes(left.start_time) - parseMinutes(right.start_time);
+  if (startDiff !== 0) return startDiff;
+  return parseMinutes(left.end_time) - parseMinutes(right.end_time);
+};
 
-const withOverlap = (items: ClassSession[]): PositionedSession[] =>
-  items.map((item) => {
-    const overlaps = items.filter((other) => overlap(item, other)).sort((a, b) => parseMinutes(a.start_time) - parseMinutes(b.start_time));
-    return { ...item, overlapIndex: Math.max(0, overlaps.findIndex((other) => other.id === item.id)), overlapCount: Math.max(1, overlaps.length) };
+const assignClusterLanes = (cluster: ClassSession[]): PositionedSession[] => {
+  const laneEnds: number[] = [];
+  const positioned = cluster.map((session) => {
+    const start = parseMinutes(session.start_time);
+    const end = parseMinutes(session.end_time);
+    let laneIndex = laneEnds.findIndex((laneEnd) => laneEnd <= start);
+    if (laneIndex === -1) {
+      laneIndex = laneEnds.length;
+      laneEnds.push(end);
+    } else {
+      laneEnds[laneIndex] = end;
+    }
+    return { ...session, overlapIndex: laneIndex, overlapCount: 1 };
   });
+  const laneCount = Math.max(1, laneEnds.length);
+  return positioned.map((session) => ({ ...session, overlapCount: laneCount }));
+};
+
+const withOverlap = (items: ClassSession[]): PositionedSession[] => {
+  const sorted = [...items].sort(byTime);
+  const result: PositionedSession[] = [];
+  let cluster: ClassSession[] = [];
+  let clusterEnd = 0;
+
+  sorted.forEach((session) => {
+    const start = parseMinutes(session.start_time);
+    const end = parseMinutes(session.end_time);
+    if (!cluster.length || start < clusterEnd) {
+      cluster.push(session);
+      clusterEnd = Math.max(clusterEnd, end);
+      return;
+    }
+    result.push(...assignClusterLanes(cluster));
+    cluster = [session];
+    clusterEnd = end;
+  });
+
+  if (cluster.length) result.push(...assignClusterLanes(cluster));
+  return result.sort(byTime);
+};
 
 type WeeklyScheduleProps = {
   sessions: ClassSession[];
   weekDate: Date;
   loading?: boolean;
+  filters?: ReactNode;
   onWeekChange: (date: Date) => void;
   onSessionClick: (session: ClassSession) => void;
 };
 
-export function WeeklySchedule({ sessions, weekDate, loading = false, onWeekChange, onSessionClick }: WeeklyScheduleProps) {
+export function WeeklySchedule({ sessions, weekDate, loading = false, filters, onWeekChange, onSessionClick }: WeeklyScheduleProps) {
   const { start, end } = getWeekRange(weekDate);
   const days = Array.from({ length: 7 }, (_, index) => new Date(start.getTime() + index * dayMs));
   const hours = Array.from({ length: 24 }, (_, hour) => hour);
@@ -74,6 +114,7 @@ export function WeeklySchedule({ sessions, weekDate, loading = false, onWeekChan
           <h2 className="text-lg font-bold text-gray-950">Lịch tuần</h2>
           <p className="text-sm text-gray-500">{formatDateParam(start)} - {formatDateParam(end)}</p>
         </div>
+        {filters ? <div className="min-w-[260px] flex-1">{filters}</div> : <div />}
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => onWeekChange(new Date(start.getTime() - 7 * dayMs))}><ChevronLeft className="h-4 w-4" /> Tuần trước</Button>
           <Button variant="outline" onClick={() => onWeekChange(new Date(start.getTime() + 7 * dayMs))}>Tuần sau <ChevronRight className="h-4 w-4" /></Button>

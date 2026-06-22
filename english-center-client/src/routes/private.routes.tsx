@@ -21,6 +21,7 @@ import DashboardInvoiceEditPage from "@/pages/Dashboard/Invoices/Edit";
 import DashboardDocumentsPage from "@/pages/Dashboard/Documents";
 import DashboardDocumentCreatePage from "@/pages/Dashboard/Documents/Create";
 import DashboardDocumentEditPage from "@/pages/Dashboard/Documents/Edit";
+import DashboardGuestEnrollmentsPage from "@/pages/Dashboard/GuestEnrollments";
 import DashboardClassesPage from "@/pages/Dashboard/Classes";
 import DashboardClassCreatePage from "@/pages/Dashboard/Classes/Create";
 import DashboardClassEditPage from "@/pages/Dashboard/Classes/Edit";
@@ -504,6 +505,14 @@ export const privateRoutes: RouteObject[] = [
             element: (
               <DashboardAccessGuard allowedRoles={["admin", "staff", "teacher", "student"]}>
                 <DashboardMessagesPage />
+              </DashboardAccessGuard>
+            ),
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_GUEST_ENROLLMENTS,
+            element: (
+              <DashboardAccessGuard allowedRoles={["admin"]}>
+                <DashboardGuestEnrollmentsPage />
               </DashboardAccessGuard>
             ),
           },

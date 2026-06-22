@@ -6,9 +6,19 @@ export type EnrollmentStatus = string;
 export type SessionMode = string;
 export type SessionStatus = string;
 
-export type CourseRef = { id: string; name: string; code?: string; duration_weeks?: number | null };
+export type CourseRef = { id: string; name: string; code?: string };
 export type TeacherRef = UserRef & { id: string };
 export type RoomRef = { id: string; name: string; location?: string | null };
+export type ClassScheduleName = "T2" | "T3" | "T4" | "T5" | "T6" | "T7" | "CN";
+export type ClassSchedule = {
+  id: string;
+  class_id: string;
+  schedule_name: ClassScheduleName;
+  start_time: string;
+  end_time: string;
+  created_at?: string;
+  updated_at?: string;
+};
 
 export type ClassItem = {
   id: string;
@@ -21,7 +31,6 @@ export type ClassItem = {
   max_students: number;
   current_students_count: number;
   start_date: string | null;
-  end_date: string | null;
   status: ClassStatus;
   course: CourseRef;
   teacher: TeacherRef | null;
@@ -30,6 +39,7 @@ export type ClassItem = {
   updated_at: string;
   students_count?: number;
   sessions_count?: number;
+  schedules?: ClassSchedule[];
 };
 
 export type ClassStudentItem = {
@@ -54,8 +64,12 @@ export type ClassSessionItem = {
   title: string;
   description: string | null;
   session_date: string;
+  class_schedule_id: string;
+  schedule: ClassSchedule | null;
   start_time: string;
   end_time: string;
+  override_start_time: string | null;
+  override_end_time: string | null;
   mode: SessionMode;
   meeting_url: string | null;
   status: SessionStatus;
@@ -77,7 +91,6 @@ export type ClassCreateRequest = {
   class_type: ClassType;
   max_students: number;
   start_date?: string | null;
-  end_date?: string | null;
   status?: ClassStatus;
 };
 
@@ -89,7 +102,6 @@ export type ClassUpdateRequest = {
   class_type?: ClassType | null;
   max_students?: number | null;
   start_date?: string | null;
-  end_date?: string | null;
   status?: ClassStatus | null;
 };
 
@@ -144,28 +156,30 @@ export type ListStudentClassesQuery = {
 };
 
 export type ClassSessionCreateRequest = {
+  class_schedule_id: string;
   teacher_id?: string | null;
   lesson_id?: string | null;
   room_id?: string | null;
   title: string;
   description?: string | null;
   session_date: string;
-  start_time: string;
-  end_time: string;
+  override_start_time?: string | null;
+  override_end_time?: string | null;
   mode: SessionMode;
   meeting_url?: string | null;
   note?: string | null;
 };
 
 export type ClassSessionUpdateRequest = {
+  class_schedule_id?: string | null;
   teacher_id?: string | null;
   lesson_id?: string | null;
   room_id?: string | null;
   title?: string | null;
   description?: string | null;
   session_date?: string | null;
-  start_time?: string | null;
-  end_time?: string | null;
+  override_start_time?: string | null;
+  override_end_time?: string | null;
   mode?: SessionMode | null;
   meeting_url?: string | null;
   status?: SessionStatus | null;

@@ -1,5 +1,7 @@
 import { useAuthStore } from "@/services/auth/auth.store";
-import type { AiChatStreamRequest } from "./aiChat.type";
+import type { AiChatSessionResponse, AiChatStreamRequest } from "./aiChat.type";
+
+const sessionStorageKey = "advisor_session_id";
 
 type StreamCallbacks = {
   onToken: (token: string) => void;
@@ -24,15 +26,39 @@ const parseSseChunk = (chunk: string, callbacks: StreamCallbacks) => {
 };
 
 export const aiChatApi = {
+  createSession: async () => {
+    const token = useAuthStore.getState().accessToken;
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/chat/session`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Khong tao duoc phien Chat AI");
+    }
+
+    const data = (await response.json()) as { payload?: AiChatSessionResponse };
+    if (!data.payload?.session_id) {
+      throw new Error("Phien Chat AI khong hop le");
+    }
+    return data.payload.session_id;
+  },
+
   streamChat: async (payload: AiChatStreamRequest, callbacks: StreamCallbacks) => {
     const token = useAuthStore.getState().accessToken;
+    const sessionId = payload.session_id || localStorage.getItem(sessionStorageKey) || (await aiChatApi.createSession());
+    localStorage.setItem(sessionStorageKey, sessionId);
+
     const response = await fetch(`${import.meta.env.VITE_API_URL}/chat/stream`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, session_id: sessionId }),
     });
 
     if (!response.ok || !response.body) {

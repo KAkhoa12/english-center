@@ -159,7 +159,6 @@ class CourseSerializationMixin:
             "category": self._category_dict(category) if category else None,
             "mode": course.mode.value,
             "target_level": course.target_level.value if course.target_level else None,
-            "duration_weeks": course.duration_weeks,
             "total_sessions": course.total_sessions,
             "price": float(course.price),
             "status": course.status.value,
@@ -327,7 +326,6 @@ class CourseService(CourseSerializationMixin):
             mode=_enum(CourseMode, payload.mode, "mode"),
             target_level=_enum(CourseTargetLevel, payload.target_level, "target_level"),
             output_goal=payload.output_goal,
-            duration_weeks=payload.duration_weeks,
             total_sessions=payload.total_sessions,
             price=payload.price,
             status=_enum(CourseStatus, payload.status, "status"),
@@ -364,6 +362,7 @@ class CourseService(CourseSerializationMixin):
         target_level: str | None = None,
         category_id: str | None = None,
         tag_id: str | None = None,
+        tag_ids: list[str] | None = None,
         min_price: float | None = None,
         max_price: float | None = None,
     ) -> tuple[list[dict[str, Any]], int]:
@@ -373,7 +372,8 @@ class CourseService(CourseSerializationMixin):
             mode=_enum(CourseMode, mode, "mode") if mode else None,
             target_level=_enum(CourseTargetLevel, target_level, "target_level") if target_level else None,
             category_id=category_id,
-            tag_id=tag_id,
+            tag_id=tag_id if not tag_ids else None,
+            tag_ids=tag_ids,
             min_price=min_price,
             max_price=max_price,
         )
@@ -447,7 +447,6 @@ class CourseService(CourseSerializationMixin):
         for field in [
             "description",
             "output_goal",
-            "duration_weeks",
             "total_sessions",
             "price",
         ]:

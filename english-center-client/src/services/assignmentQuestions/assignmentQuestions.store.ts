@@ -16,6 +16,7 @@ const unwrap = <T>(response: ApiResponse<T>, fallbackMessage: string): T => {
 
 type AssignmentQuestionsState = {
   questions: AssignmentQuestion[];
+  questionsByAssignmentId: Record<string, AssignmentQuestion[]>;
   selectedQuestion: AssignmentQuestion | null;
   isLoading: boolean;
   error: string | null;
@@ -30,6 +31,7 @@ type AssignmentQuestionsState = {
 
 export const useAssignmentQuestionsStore = create<AssignmentQuestionsState>()((set) => ({
   questions: [],
+  questionsByAssignmentId: {},
   selectedQuestion: null,
   isLoading: false,
   error: null,
@@ -37,14 +39,27 @@ export const useAssignmentQuestionsStore = create<AssignmentQuestionsState>()((s
   createQuestion: async (assignmentId, data) => {
     const response = await assignmentQuestionsApi.createQuestion(assignmentId, data);
     const question = unwrap(response, "Tao cau hoi bai tap that bai");
-    set((state) => ({ questions: [...state.questions, question], selectedQuestion: question }));
+    set((state) => ({
+      questions: [...state.questions, question],
+      questionsByAssignmentId: {
+        ...state.questionsByAssignmentId,
+        [assignmentId]: [...(state.questionsByAssignmentId[assignmentId] ?? []), question],
+      },
+      selectedQuestion: question,
+    }));
     return question;
   },
 
   listQuestions: async (assignmentId) => {
     const response = await assignmentQuestionsApi.listQuestions(assignmentId);
     const questions = unwrap(response, "Lay danh sach cau hoi that bai");
-    set({ questions });
+    set((state) => ({
+      questions,
+      questionsByAssignmentId: {
+        ...state.questionsByAssignmentId,
+        [assignmentId]: questions,
+      },
+    }));
     return questions;
   },
 
@@ -53,6 +68,12 @@ export const useAssignmentQuestionsStore = create<AssignmentQuestionsState>()((s
     const question = unwrap(response, "Cap nhat cau hoi that bai");
     set((state) => ({
       questions: state.questions.map((item) => (item.id === question.id ? question : item)),
+      questionsByAssignmentId: Object.fromEntries(
+        Object.entries(state.questionsByAssignmentId).map(([assignmentId, items]) => [
+          assignmentId,
+          items.map((item) => (item.id === question.id ? question : item)),
+        ]),
+      ),
       selectedQuestion: state.selectedQuestion?.id === question.id ? question : state.selectedQuestion,
     }));
     return question;
@@ -63,6 +84,12 @@ export const useAssignmentQuestionsStore = create<AssignmentQuestionsState>()((s
     unwrap(response, "Xoa cau hoi that bai");
     set((state) => ({
       questions: state.questions.filter((item) => item.id !== questionId),
+      questionsByAssignmentId: Object.fromEntries(
+        Object.entries(state.questionsByAssignmentId).map(([assignmentId, items]) => [
+          assignmentId,
+          items.filter((item) => item.id !== questionId),
+        ]),
+      ),
       selectedQuestion: state.selectedQuestion?.id === questionId ? null : state.selectedQuestion,
     }));
   },

@@ -6,6 +6,7 @@ import type {
   AssignmentAttachmentCreateRequest,
   AssignmentAttachmentUpdateRequest,
   AssignmentCreateRequest,
+  AssignmentFromTemplateRequest,
   AssignmentGrade,
   AssignmentGradeCreateRequest,
   AssignmentGradeUpdateRequest,
@@ -46,6 +47,44 @@ export const assignmentsApi = {
   createLessonAssignment: (lessonId: string, data: AssignmentCreateRequest) =>
     apiClient.post<Assignment, AssignmentCreateRequest>(
       `/lessons/${lessonId}/assignments`,
+      data
+    ),
+
+  createAvailableAssignment: (data: AssignmentCreateRequest) =>
+    apiClient.post<Assignment, AssignmentCreateRequest>("/assignments/available", data),
+
+  listAvailableAssignments: (query?: ListAssignmentsQuery) =>
+    apiClient.getWithMeta<Assignment[]>(
+      appendQuery("/assignments/available", query)
+    ),
+
+  getAvailableAssignment: (assignmentId: string) =>
+    apiClient.get<Assignment>(`/assignments/available/${assignmentId}`),
+
+  updateAvailableAssignment: (assignmentId: string, data: AssignmentUpdateRequest) =>
+    apiClient.patch<Assignment, AssignmentUpdateRequest>(
+      `/assignments/available/${assignmentId}`,
+      data
+    ),
+
+  deleteAvailableAssignment: (assignmentId: string) =>
+    apiClient.delete<void>(`/assignments/available/${assignmentId}`),
+
+  createClassAssignmentFromTemplate: (classId: string, templateAssignmentId: string, data: AssignmentFromTemplateRequest) =>
+    apiClient.post<Assignment, AssignmentFromTemplateRequest>(
+      `/classes/${classId}/assignments/from-template/${templateAssignmentId}`,
+      data
+    ),
+
+  createSessionAssignmentFromTemplate: (sessionId: string, templateAssignmentId: string, data: AssignmentFromTemplateRequest) =>
+    apiClient.post<Assignment, AssignmentFromTemplateRequest>(
+      `/sessions/${sessionId}/assignments/from-template/${templateAssignmentId}`,
+      data
+    ),
+
+  createLessonAssignmentFromTemplate: (lessonId: string, templateAssignmentId: string, data: AssignmentFromTemplateRequest) =>
+    apiClient.post<Assignment, AssignmentFromTemplateRequest>(
+      `/lessons/${lessonId}/assignments/from-template/${templateAssignmentId}`,
       data
     ),
 

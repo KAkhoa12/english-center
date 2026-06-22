@@ -38,7 +38,6 @@ class CourseClass(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     max_students: Mapped[int] = mapped_column(Integer, nullable=False)
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[ClassStatus] = mapped_column(
         Enum(ClassStatus, name="class_status"),
         nullable=False,
