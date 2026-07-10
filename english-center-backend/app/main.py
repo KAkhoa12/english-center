@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,6 +27,7 @@ from app.api.v1 import (
     courses,
     enrollments,
     files,
+    media,
     guest_enrollments,
     invoices,
     lesson_materials,
@@ -45,13 +48,16 @@ from app.api.v1 import (
     wishlist,
 )
 from app.core.config import settings
+from app.core.logging import setup_logging
 from app.core.response import api_response, error_response
 from app.db.base import Base
 from app.db.session import SessionLocal, engine
 from app.middlewares.auth_token_middleware import AccessTokenValidationMiddleware
-from app.seed.seed_initial_data import seed_defaults
+# from app.seed.seed_initial_data import seed_defaults
 from app.vector_db.seed import seed_qdrant_collections
 from time import perf_counter
+
+logger = logging.getLogger(__name__)
 app = FastAPI(title=settings.APP_NAME)
 app.add_middleware(
     CORSMiddleware,
@@ -83,20 +89,29 @@ app.add_middleware(
 
 @app.on_event("startup")
 def create_tables_and_seed_on_startup() -> None:
+    setup_logging()
+
+    app_env = settings.APP_ENV.strip().lower()
+    should_seed_runtime_data = app_env in {"development", "dev", "local", "test", "testing"}
+
     # Auto-create missing tables for local/dev runs.
     # Base.metadata.create_all(bind=engine)
 
-    # Seed default roles/permissions and ensure admin has privileges.
-    db = SessionLocal()
-    try:
-        seed_defaults(db)
-    finally:
-        db.close()
+    if should_seed_runtime_data:
+        # Seed default roles/permissions and ensure admin has privileges.
+        db = SessionLocal()
+        try:
+            # seed_defaults(db)
+            print("data completed")
+        finally:
+            db.close()
 
-    try:
-        seed_qdrant_collections()
-    except Exception as exc:
-        print(f"Qdrant seed skipped: {exc}")
+        try:
+            seed_qdrant_collections()
+        except Exception as exc:
+            logger.warning("Qdrant seed skipped: %s", exc)
+    else:
+        logger.info("Skipping startup seed tasks in %s environment", settings.APP_ENV)
 
 
 app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
@@ -108,6 +123,7 @@ app.include_router(students.router, prefix=settings.API_V1_PREFIX)
 app.include_router(teachers.router, prefix=settings.API_V1_PREFIX)
 app.include_router(staff.router, prefix=settings.API_V1_PREFIX)
 app.include_router(files.router, prefix=settings.API_V1_PREFIX)
+app.include_router(media.router, prefix=settings.API_V1_PREFIX)
 app.include_router(cart.router, prefix=settings.API_V1_PREFIX)
 app.include_router(chat.router, prefix=settings.API_V1_PREFIX)
 app.include_router(ai_chat.router, prefix=settings.API_V1_PREFIX)
@@ -158,7 +174,8 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError):
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(_: Request, exc: Exception):
-    return error_response(message=f"Internal server error: {exc}", status_code=500)
+    logger.exception("Unhandled server error")
+    return error_response(message="Internal server error", status_code=500)
 
 
 @app.get("/")

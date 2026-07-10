@@ -63,14 +63,12 @@ class StorageService:
                 length=file_size,
                 content_type=file.content_type or "application/octet-stream",
             )
-            presigned_url = self.get_presigned_url(bucket_name, object_key)
             return {
                 "bucket": bucket_name,
                 "object_name": object_key,
                 "original_filename": file.filename or "",
                 "content_type": file.content_type,
                 "size": file_size,
-                "presigned_url": presigned_url,
             }
         except S3Error as exc:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Upload failed: {exc.code}") from exc

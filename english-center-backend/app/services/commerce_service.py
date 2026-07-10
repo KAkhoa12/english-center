@@ -26,7 +26,7 @@ from app.models.commerce import (
     PaymentMethod,
     PaymentProvider,
     PaymentStatus,
-    SePayIPNLog,
+    PaymentWebhookLog,
 )
 from app.models.course import CourseMode, CourseStatus
 from app.models import User
@@ -36,7 +36,7 @@ from app.repositories.course_class import CourseClassRepository
 from app.repositories.course_enrollment import CourseEnrollmentRepository
 from app.repositories.invoice import InvoiceItemRepository, InvoiceRepository
 from app.repositories.order import OrderItemRepository, OrderRepository
-from app.repositories.payment import PaymentRepository, SePayIPNLogRepository
+from app.repositories.payment import PaymentRepository, PaymentWebhookLogRepository
 from app.repositories.student import StudentRepository
 from app.repositories.class_student import ClassStudentRepository
 from app.schemas.commerce import CheckoutRequest
@@ -58,7 +58,14 @@ def parse_enum(enum_class: type, value: str, field_name: str) -> Any:
     try:
         return enum_class(value)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=f"Invalid {field_name}") from exc
+        try:
+            return enum_class[value]
+        except Exception as inner_exc:
+            lowered = value.strip().lower()
+            for member in enum_class:
+                if getattr(member, "value", None) == lowered or member.name.lower() == lowered:
+                    return member
+            raise HTTPException(status_code=400, detail=f"Invalid {field_name}") from inner_exc
 
 
 class AccessMixin:
@@ -325,7 +332,13 @@ class OrderSerializer:
             "amount": money(payment.amount),
             "currency": payment.currency,
             "checkout_url": payment.checkout_url,
+            "external_order_id": payment.external_order_id,
+            "external_transaction_id": payment.external_transaction_id,
+            "provider_payment_id": payment.provider_payment_id,
             "provider_transaction_id": payment.provider_transaction_id,
+            "paid_at": payment.paid_at,
+            "failed_at": payment.failed_at,
+            "cancelled_at": payment.cancelled_at,
         }
 
     def order_detail(self, order: Order) -> dict[str, Any]:
@@ -334,13 +347,12 @@ class OrderSerializer:
             "id": str(order.id),
             "user_id": str(order.user_id),
             "order_code": order.order_code,
-            "invoice_number": order.invoice_number,
+            "invoice_number": invoice.invoice_number if invoice else None,
             "status": order.status.value,
             "currency": order.currency,
             "subtotal_amount": money(order.subtotal_amount),
             "discount_amount": money(order.discount_amount),
             "total_amount": money(order.total_amount),
-            "payment_method": order.payment_method.value if order.payment_method else None,
             "items": [
                 {
                     "id": str(item.id),
@@ -397,8 +409,6 @@ class InvoiceService:
             "buyer_email": invoice.buyer_email,
             "buyer_phone": invoice.buyer_phone,
             "currency": invoice.currency,
-            "subtotal_amount": money(invoice.subtotal_amount),
-            "discount_amount": money(invoice.discount_amount),
             "total_amount": money(invoice.total_amount),
             "items": [
                 {
@@ -507,7 +517,6 @@ class OrderService(AccessMixin):
             student_id=student.id if student else None,
             cart_id=cart.id,
             order_code=self._next_code("ORD"),
-            invoice_number=self._next_code("INV"),
             status=OrderStatus.awaiting_payment,
             currency=settings.SEPAY_CURRENCY,
             subtotal_amount=subtotal,
@@ -533,7 +542,7 @@ class OrderService(AccessMixin):
         invoice = Invoice(
             order_id=order.id,
             user_id=user.id,
-            invoice_number=order.invoice_number,
+            invoice_number=self._next_code("INV"),
             invoice_status=InvoiceStatus.issued,
             issued_at=now(),
             buyer_name=payload.buyer_name or user.full_name,
@@ -541,8 +550,6 @@ class OrderService(AccessMixin):
             buyer_phone=payload.buyer_phone or user.phone,
             billing_address=payload.billing_address,
             currency=order.currency,
-            subtotal_amount=order.subtotal_amount,
-            discount_amount=order.discount_amount,
             total_amount=order.total_amount,
         )
         self.invoice_repo.create(invoice)
@@ -570,7 +577,11 @@ class OrderService(AccessMixin):
         return order
 
     def get_order_by_invoice_number(self, invoice_number: str) -> Order | None:
-        return self.order_repo.get_by_invoice_number(invoice_number)
+        invoice = self.invoice_repo.get_by_invoice_number(invoice_number)
+        return self.order_repo.get(str(invoice.order_id)) if invoice else None
+
+    def get_order_by_order_code(self, order_code: str) -> Order | None:
+        return self.order_repo.get_by_order_code(order_code)
 
     def assert_order_access(self, order: Order, user: User) -> None:
         if str(order.user_id) == str(user.id):
@@ -690,15 +701,13 @@ class PaymentService(AccessMixin):
     def __init__(self, db: Session) -> None:
         super().__init__(db)
         self.payment_repo = PaymentRepository(db)
-        self.log_repo = SePayIPNLogRepository(db)
+        self.log_repo = PaymentWebhookLogRepository(db)
 
     def _to_order_payment_method(self, method: PaymentMethod) -> OrderPaymentMethod:
         mapping = {
-            PaymentMethod.BANK_TRANSFER: OrderPaymentMethod.sepay_bank_transfer,
-            PaymentMethod.CARD: OrderPaymentMethod.sepay_card,
-            PaymentMethod.NAPAS_BANK_TRANSFER: OrderPaymentMethod.sepay_napas_bank_transfer,
-            PaymentMethod.MANUAL_CASH: OrderPaymentMethod.manual_cash,
-            PaymentMethod.MANUAL_BANK_TRANSFER: OrderPaymentMethod.manual_bank_transfer,
+            PaymentMethod.bank_transfer: OrderPaymentMethod.manual_bank_transfer,
+            PaymentMethod.cash: OrderPaymentMethod.manual_cash,
+            PaymentMethod.payment_gateway: OrderPaymentMethod.sepay_bank_transfer,
         }
         return mapping[method]
 
@@ -707,20 +716,22 @@ class PaymentService(AccessMixin):
         order: Order,
         invoice: Invoice | None,
         payment: Payment | None,
-        provider_transaction_id: str | None = None,
-        provider_payment_id: str | None = None,
+        external_transaction_id: str | None = None,
+        external_order_id: str | None = None,
     ) -> None:
         order.status = OrderStatus.paid
-        order.paid_at = order.paid_at or now()
+        order.completed_at = order.completed_at or now()
         if invoice:
             invoice.invoice_status = InvoiceStatus.paid
             invoice.paid_at = invoice.paid_at or now()
         if payment:
-            payment.status = PaymentStatus.approved
-            if provider_transaction_id:
-                payment.provider_transaction_id = provider_transaction_id
-            if provider_payment_id:
-                payment.provider_payment_id = provider_payment_id
+            payment.status = PaymentStatus.success
+            payment.paid_at = payment.paid_at or now()
+            if external_transaction_id:
+                payment.external_transaction_id = external_transaction_id
+                payment.provider_transaction_id = external_transaction_id
+            if external_order_id:
+                payment.external_order_id = external_order_id
         EnrollmentService(self.db).create_enrollments_from_order(order)
 
     async def create_sepay_payment(self, order_id: str, payment_method: str, user: User) -> Payment:
@@ -743,14 +754,13 @@ class PaymentService(AccessMixin):
             status=PaymentStatus.pending,
             amount=order.total_amount,
             currency=order.currency,
+            external_order_id=order.order_code,
             checkout_url=checkout["checkout_url"],
             raw_request=checkout["checkout_form_fields"],
-            raw_response=checkout["raw_response"],
+            raw_response={**checkout["raw_response"], "checkout_form_fields": checkout["checkout_form_fields"]},
         )
-        order.payment_method = self._to_order_payment_method(method)
         self.payment_repo.create(payment)
         self.db.commit()
-        payment.raw_response = {**(payment.raw_response or {}), "checkout_form_fields": checkout["checkout_form_fields"]}
         return payment
 
     def mark_order_paid_for_testing(
@@ -787,21 +797,26 @@ class PaymentService(AccessMixin):
                 order_id=order.id,
                 invoice_id=invoice.id,
                 user_id=order.user_id,
-                provider=PaymentProvider.manual,
+                provider=PaymentProvider.cash,
                 payment_method=method,
-                status=PaymentStatus.approved,
+                status=PaymentStatus.success,
                 amount=order.total_amount,
                 currency=order.currency,
+                external_order_id=order.order_code,
+                external_transaction_id=reference,
                 provider_transaction_id=reference,
                 raw_response={"manual_mark_paid": True, "reference": reference},
             )
             self.payment_repo.create(payment)
         else:
             payment.payment_method = method
+            payment.status = PaymentStatus.success
+            payment.external_order_id = order.order_code
+            payment.external_transaction_id = reference
+            payment.provider_transaction_id = reference
             payment.raw_response = {**(payment.raw_response or {}), "manual_mark_paid": True, "reference": reference}
 
-        order.payment_method = self._to_order_payment_method(method)
-        self._apply_paid_state(order, invoice, payment, provider_transaction_id=reference)
+        self._apply_paid_state(order, invoice, payment, external_transaction_id=reference, external_order_id=order.order_code)
         self.db.commit()
         self.db.refresh(order)
         return order
@@ -822,12 +837,11 @@ class PaymentService(AccessMixin):
     def handle_sepay_ipn(self, payload: dict[str, Any], headers: dict[str, str]) -> tuple[bool, int]:
         sepay = SePayService()
         parsed = sepay.parse_ipn_payload(payload)
-        log = SePayIPNLog(
-            invoice_number=parsed["invoice_number"],
-            notification_type=parsed["notification_type"],
-            sepay_order_id=parsed["sepay_order_id"],
-            sepay_transaction_id=parsed["sepay_transaction_id"],
-            transaction_status=parsed["transaction_status"],
+        log = PaymentWebhookLog(
+            provider=PaymentProvider.sepay,
+            external_order_id=parsed["external_order_id"],
+            external_transaction_id=parsed["external_transaction_id"],
+            event_type=parsed["event_type"],
             payload=payload,
             headers=dict(headers),
             is_valid=False,
@@ -837,33 +851,53 @@ class PaymentService(AccessMixin):
             log.error_message = "Invalid IPN secret"
             self.db.commit()
             return False, 401
-        order = OrderService(self.db).get_order_by_invoice_number(parsed["invoice_number"])
+        order_service = OrderService(self.db)
+        order = order_service.get_order_by_order_code(parsed["external_order_id"]) if parsed["external_order_id"] else None
+        if not order and parsed.get("invoice_number"):
+            order = order_service.get_order_by_invoice_number(parsed["invoice_number"])
         if not order:
             log.error_message = "Order not found"
             log.processed_at = now()
             self.db.commit()
             return True, 200
         invoice = OrderSerializer(self.db).invoice(str(order.id))
-        payment = self.payment_repo.get_latest_by_order_and_provider(str(order.id), PaymentProvider.sepay)
+        payment = self.payment_repo.get_by_external_transaction_id(parsed["external_transaction_id"]) or self.payment_repo.get_latest_by_order_and_provider(str(order.id), PaymentProvider.sepay)
         log.order_id = order.id
         log.payment_id = payment.id if payment else None
         if parsed["currency"] != order.currency or parsed["amount"] != Decimal(order.total_amount):
             log.error_message = "Invalid amount or currency"
             self.db.commit()
             return True, 200
-        duplicate = self.log_repo.has_valid_transaction(parsed["sepay_transaction_id"], str(log.id))
+        duplicate = self.log_repo.has_valid_event(PaymentProvider.sepay.value, parsed["external_transaction_id"], parsed["event_type"], str(log.id))
         if duplicate:
             log.is_valid = True
             log.processed_at = now()
             self.db.commit()
             return True, 200
         if sepay.is_paid_ipn(payload):
+            if payment is None:
+                payment = Payment(
+                    order_id=order.id,
+                    invoice_id=invoice.id if invoice else None,
+                    user_id=order.user_id,
+                    provider=PaymentProvider.sepay,
+                    payment_method=parse_enum(PaymentMethod, parsed.get("payment_method") or "payment_gateway", "payment method"),
+                    status=PaymentStatus.pending,
+                    amount=order.total_amount,
+                    currency=order.currency,
+                    external_order_id=parsed["external_order_id"] or order.order_code,
+                    external_transaction_id=parsed["external_transaction_id"],
+                    provider_transaction_id=parsed["external_transaction_id"],
+                    raw_response={"webhook_created": True},
+                )
+                self.payment_repo.create(payment)
+                log.payment_id = payment.id
             self._apply_paid_state(
                 order,
                 invoice,
                 payment,
-                provider_transaction_id=parsed["sepay_transaction_id"],
-                provider_payment_id=parsed["sepay_order_id"],
+                external_transaction_id=parsed["external_transaction_id"],
+                external_order_id=parsed["external_order_id"] or order.order_code,
             )
         log.is_valid = True
         log.processed_at = now()

@@ -16,10 +16,12 @@ class SePayService:
         return {"Authorization": f"Basic {token}", "Content-Type": "application/json"}
 
     async def create_checkout_payment(self, order: Any, payment_method: str) -> dict[str, Any]:
+        gateway_payment_method = payment_method.upper()
         form_fields = {
             "operation": "PURCHASE",
-            "payment_method": payment_method,
+            "payment_method": gateway_payment_method,
             "order_invoice_number": order.invoice_number,
+            "order_reference": order.order_code,
             "order_amount": str(order.total_amount),
             "currency": order.currency,
             "order_description": f"Thanh toán khóa học {order.order_code}",
@@ -27,7 +29,7 @@ class SePayService:
             "success_url": settings.SEPAY_SUCCESS_URL,
             "error_url": settings.SEPAY_ERROR_URL,
             "cancel_url": settings.SEPAY_CANCEL_URL,
-            "custom_data": json.dumps({"order_id": str(order.id), "user_id": str(order.user_id)}),
+            "custom_data": json.dumps({"order_id": str(order.id), "order_code": order.order_code, "user_id": str(order.user_id)}),
         }
         # SePay docs for Python do not publish an official SDK. This keeps the gateway boundary isolated.
         return {
@@ -52,12 +54,20 @@ class SePayService:
     def parse_ipn_payload(self, payload: dict[str, Any]) -> dict[str, Any]:
         order = payload.get("order") or {}
         transaction = payload.get("transaction") or {}
+        custom_data = payload.get("custom_data")
+        if isinstance(custom_data, str):
+            try:
+                custom_data = json.loads(custom_data)
+            except Exception:
+                custom_data = {}
+        if not isinstance(custom_data, dict):
+            custom_data = {}
         return {
-            "notification_type": payload.get("notification_type"),
-            "invoice_number": order.get("order_invoice_number"),
-            "sepay_order_id": order.get("id"),
-            "sepay_transaction_id": transaction.get("transaction_id") or transaction.get("id"),
+            "event_type": payload.get("notification_type"),
+            "external_order_id": custom_data.get("order_code"),
+            "external_transaction_id": transaction.get("transaction_id") or transaction.get("id"),
             "transaction_status": transaction.get("transaction_status"),
+            "invoice_number": order.get("order_invoice_number"),
             "amount": Decimal(str(transaction.get("transaction_amount") or order.get("order_amount") or "0")),
             "currency": transaction.get("transaction_currency") or order.get("order_currency"),
             "payment_method": transaction.get("payment_method"),
@@ -65,4 +75,4 @@ class SePayService:
 
     def is_paid_ipn(self, payload: dict[str, Any]) -> bool:
         parsed = self.parse_ipn_payload(payload)
-        return parsed["notification_type"] == "ORDER_PAID" and parsed["transaction_status"] == "APPROVED"
+        return parsed["event_type"] == "ORDER_PAID" and parsed["transaction_status"] == "APPROVED"

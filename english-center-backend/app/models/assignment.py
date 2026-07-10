@@ -48,6 +48,9 @@ class Assignment(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     instruction: Mapped[str | None] = mapped_column(Text, nullable=True)
     assignment_type_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("assignment_types.id"), nullable=False, index=True)
+    duration_time: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    content: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    total_attempt: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     status: Mapped[AssignmentStatus] = mapped_column(
         Enum(AssignmentStatus, name="assignment_status"),
         nullable=False,
@@ -66,18 +69,14 @@ class AssignmentAttachment(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     assignment_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("assignments.id"), nullable=False, index=True)
     title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    file_bucket: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    file_object_name: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    external_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
-    content_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    file_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    media_id: Mapped[str | None] = mapped_column(UUID(as_uuid=True), ForeignKey("media.id"), nullable=True, index=True)
+    location_folder: Mapped[str | None] = mapped_column(String(255), nullable=True)
     attachment_type: Mapped[AssignmentAttachmentType] = mapped_column(
         Enum(AssignmentAttachmentType, name="assignment_attachment_type"),
         nullable=False,
         default=AssignmentAttachmentType.file,
     )
     order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    uploaded_by: Mapped[str | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
 class AssignmentSubmission(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -87,7 +86,7 @@ class AssignmentSubmission(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     assignment_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("assignments.id"), nullable=False, index=True)
     student_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("students.id"), nullable=False, index=True)
     user_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[AssignmentSubmissionStatus] = mapped_column(
         Enum(AssignmentSubmissionStatus, name="assignment_submission_status"),
         nullable=False,

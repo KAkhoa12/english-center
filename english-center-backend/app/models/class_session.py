@@ -1,7 +1,7 @@
 import enum
 from datetime import date, time
 
-from sqlalchemy import Date, Enum, ForeignKey, Integer, String, Text, Time, UniqueConstraint
+from sqlalchemy import Boolean, Date, Enum, ForeignKey, Integer, String, Text, Time, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -36,6 +36,7 @@ class ClassSchedule(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
 
     class_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("classes.id"), nullable=False, index=True)
+    shift_number: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     schedule_name: Mapped[ClassScheduleName] = mapped_column(
         Enum(ClassScheduleName, name="class_schedule_name", values_callable=lambda enum_cls: [item.value for item in enum_cls]),
         nullable=False,
@@ -50,8 +51,6 @@ class ClassSession(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     class_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("classes.id"), nullable=False, index=True)
     class_schedule_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("class_schedules.id"), nullable=False, index=True)
-    teacher_id: Mapped[str | None] = mapped_column(UUID(as_uuid=True), ForeignKey("teachers.id"), nullable=True, index=True)
-    lesson_id: Mapped[str | None] = mapped_column(UUID(as_uuid=True), ForeignKey("lessons.id"), nullable=True)
     room_id: Mapped[str | None] = mapped_column(UUID(as_uuid=True), ForeignKey("rooms.id"), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -71,6 +70,14 @@ class ClassSession(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         index=True,
     )
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class ClassSessionTeacher(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "class_sessions_teachers"
+
+    class_session_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("class_sessions.id"), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    is_primary_teacher: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
 
 class ClassSessionMedia(Base, UUIDPrimaryKeyMixin, TimestampMixin):

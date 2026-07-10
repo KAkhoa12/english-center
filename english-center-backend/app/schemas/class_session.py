@@ -11,8 +11,6 @@ def _not_blank(value: str) -> str:
 
 class ClassSessionCreate(BaseModel):
     class_schedule_id: str
-    teacher_id: str | None = None
-    lesson_id: str | None = None
     room_id: str | None = None
     title: str
     description: str | None = None
@@ -39,8 +37,6 @@ class ClassSessionCreate(BaseModel):
 
 class ClassSessionUpdate(BaseModel):
     class_schedule_id: str | None = None
-    teacher_id: str | None = None
-    lesson_id: str | None = None
     room_id: str | None = None
     title: str | None = None
     description: str | None = None
@@ -69,8 +65,6 @@ class ClassSessionBulkCreate(BaseModel):
     mode: str
     meeting_url: str | None = None
     room_id: str | None = None
-    teacher_id: str | None = None
-    lesson_id: str | None = None
     title_prefix: str = "Buổi"
     description: str | None = None
     note: str | None = None

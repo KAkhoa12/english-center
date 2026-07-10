@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.commerce import Payment, PaymentProvider, SePayIPNLog
+from app.models.commerce import Payment, PaymentProvider, PaymentWebhookLog
 from app.repositories.base import BaseRepository
 
 
@@ -24,6 +24,14 @@ class PaymentRepository(BaseRepository[Payment]):
             )
         ).scalar_one_or_none()
 
+    def get_by_external_transaction_id(self, external_transaction_id: str) -> Payment | None:
+        return self.db.execute(
+            select(Payment).where(
+                Payment.external_transaction_id == external_transaction_id,
+                Payment.deleted_at.is_(None),
+            )
+        ).scalar_one_or_none()
+
     def get_latest_by_order_and_provider(self, order_id: str, provider: PaymentProvider) -> Payment | None:
         return self.db.execute(
             select(Payment)
@@ -32,24 +40,32 @@ class PaymentRepository(BaseRepository[Payment]):
         ).scalars().first()
 
 
-class SePayIPNLogRepository(BaseRepository[SePayIPNLog]):
+class PaymentWebhookLogRepository(BaseRepository[PaymentWebhookLog]):
     def __init__(self, db: Session) -> None:
-        super().__init__(db, SePayIPNLog)
+        super().__init__(db, PaymentWebhookLog)
 
-    def list_by_invoice_number(self, invoice_number: str) -> list[SePayIPNLog]:
+    def list_by_external_transaction_id(self, external_transaction_id: str) -> list[PaymentWebhookLog]:
         return list(
             self.db.execute(
-                select(SePayIPNLog)
-                .where(SePayIPNLog.invoice_number == invoice_number, SePayIPNLog.deleted_at.is_(None))
-                .order_by(SePayIPNLog.created_at.desc())
+                select(PaymentWebhookLog)
+                .where(
+                    PaymentWebhookLog.external_transaction_id == external_transaction_id,
+                    PaymentWebhookLog.deleted_at.is_(None),
+                )
+                .order_by(PaymentWebhookLog.created_at.desc())
             ).scalars().all()
         )
 
-    def has_valid_transaction(self, sepay_transaction_id: str, exclude_id: str | None = None) -> bool:
-        stmt = select(SePayIPNLog).where(
-            SePayIPNLog.sepay_transaction_id == sepay_transaction_id,
-            SePayIPNLog.is_valid.is_(True),
+    def has_valid_event(self, provider: str, external_transaction_id: str, event_type: str, exclude_id: str | None = None) -> bool:
+        stmt = select(PaymentWebhookLog).where(
+            PaymentWebhookLog.provider == provider,
+            PaymentWebhookLog.external_transaction_id == external_transaction_id,
+            PaymentWebhookLog.event_type == event_type,
+            PaymentWebhookLog.is_valid.is_(True),
         )
         if exclude_id:
-            stmt = stmt.where(SePayIPNLog.id != exclude_id)
+            stmt = stmt.where(PaymentWebhookLog.id != exclude_id)
         return self.db.execute(stmt).first() is not None
+
+
+SePayIPNLogRepository = PaymentWebhookLogRepository

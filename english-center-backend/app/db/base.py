@@ -12,29 +12,28 @@ from app.models.assignment_type import AssignmentType
 from app.models.assignment_question import AssignmentQuestion, AssignmentQuestionOption
 from app.models.submission_answer import SubmissionAnswer, SubmissionAnswerMedia
 from app.models.class_model import CourseClass
-from app.models.class_session import ClassSchedule, ClassSession, ClassSessionMedia
+from app.models.class_session import ClassSchedule, ClassSession, ClassSessionMedia, ClassSessionTeacher
 from app.models.class_student import ClassStudent
 from app.models.chat import ChatMessage, ChatMessageAttachment, Conversation, ConversationParticipant
-from app.models.guest_enrollment import GuestEnrollment
+from app.models.consultation import Consultation
 from app.models.commerce import (
     Cart,
     CartItem,
     CourseEnrollment,
     CourseWishlist,
     Invoice,
-    InvoiceItem,
     Order,
     OrderItem,
     Payment,
-    SePayIPNLog,
+    PaymentWebhookLog,
 )
+from app.models.media_share import MediaShare
+from app.models.payment_plan import PaymentInstallment, PaymentPlan, PaymentReminder
 from app.models.course import (
     Course,
     CourseCategory,
     CourseMedia,
     CourseModule,
-    CourseOutcome,
-    CourseRequirement,
     CourseTag,
     CourseTagMapping,
     Lesson,
@@ -63,8 +62,6 @@ __all__ = [
     "Media",
     "CourseMedia",
     "CourseTagMapping",
-    "CourseRequirement",
-    "CourseOutcome",
     "CourseModule",
     "Lesson",
     "LessonMaterial",
@@ -73,6 +70,7 @@ __all__ = [
     "ClassStudent",
     "ClassSchedule",
     "ClassSession",
+    "ClassSessionTeacher",
     "ClassSessionMedia",
     "Conversation",
     "ConversationParticipant",
@@ -95,11 +93,14 @@ __all__ = [
     "Order",
     "OrderItem",
     "Invoice",
-    "InvoiceItem",
     "Payment",
-    "SePayIPNLog",
+    "PaymentWebhookLog",
+    "MediaShare",
+    "PaymentPlan",
+    "PaymentInstallment",
+    "PaymentReminder",
     "CourseEnrollment",
     "AgentState",
     "ChatSessionMessage",
-    "GuestEnrollment",
+    "Consultation",
 ]

@@ -1,6 +1,7 @@
 import re
 from datetime import datetime, timezone
 from typing import Any
+from uuid import uuid4
 
 from fastapi import HTTPException
 from sqlalchemy import update
@@ -61,6 +62,7 @@ from app.repositories.course_module import CourseModuleRepository
 from app.repositories.lesson import LessonRepository
 from app.repositories.lesson_material import LessonMaterialRepository
 from app.repositories.media import MediaRepository
+from app.services.media_service import MediaService
 from app.services.storage_service import StorageService
 from app.utils.editorjs import normalize_editorjs_content
 
@@ -106,28 +108,31 @@ class CourseSerializationMixin:
     def _media_dict(self, media: Media) -> dict[str, Any]:
         return {
             "id": str(media.id),
-            "bucket": media.bucket,
-            "object_name": media.object_name,
+            "folder": media.folder,
             "original_filename": media.original_filename,
             "content_type": media.content_type,
             "size": media.size,
             "url": self._media_url(media),
         }
 
-    def _requirement_dict(self, item: CourseRequirement) -> dict[str, Any]:
+    def _requirement_dict(self, item: Any, order_index: int | None = None, course_id: str | None = None) -> dict[str, Any]:
+        if isinstance(item, dict):
+            return item
         return {
-            "id": str(item.id),
-            "course_id": str(item.course_id),
-            "requirement_text": item.requirement_text,
-            "order_index": item.order_index,
+            "id": getattr(item, "id", None),
+            "course_id": course_id or getattr(item, "course_id", None),
+            "requirement_text": getattr(item, "requirement_text", item),
+            "order_index": getattr(item, "order_index", order_index or 0),
         }
 
-    def _outcome_dict(self, item: CourseOutcome) -> dict[str, Any]:
+    def _outcome_dict(self, item: Any, order_index: int | None = None, course_id: str | None = None) -> dict[str, Any]:
+        if isinstance(item, dict):
+            return item
         return {
-            "id": str(item.id),
-            "course_id": str(item.course_id),
-            "outcome_text": item.outcome_text,
-            "order_index": item.order_index,
+            "id": getattr(item, "id", None),
+            "course_id": course_id or getattr(item, "course_id", None),
+            "outcome_text": getattr(item, "outcome_text", item),
+            "order_index": getattr(item, "order_index", order_index or 0),
         }
 
     def _module_dict(self, item: CourseModule) -> dict[str, Any]:
@@ -286,8 +291,6 @@ class CourseService(CourseSerializationMixin):
         self.category_repo = CourseCategoryRepository(db)
         self.tag_repo = CourseTagRepository(db)
         self.tag_mapping_repo = CourseTagMappingRepository(db)
-        self.requirement_repo = CourseRequirementRepository(db)
-        self.outcome_repo = CourseOutcomeRepository(db)
         self.module_repo = CourseModuleRepository(db)
         self.lesson_repo = LessonRepository(db)
         self.lesson_material_repo = LessonMaterialRepository(db)
@@ -327,18 +330,32 @@ class CourseService(CourseSerializationMixin):
             mode=_enum(CourseMode, payload.mode, "mode"),
             target_level=_enum(CourseTargetLevel, payload.target_level, "target_level"),
             output_goal=payload.output_goal,
+            requirements=[
+                {
+                    "id": str(uuid4()),
+                    "requirement_text": text.strip(),
+                    "order_index": index,
+                }
+                for index, text in enumerate(payload.requirements or [])
+                if text.strip()
+            ],
+            outcomes=[
+                {
+                    "id": str(uuid4()),
+                    "outcome_text": text.strip(),
+                    "order_index": index,
+                }
+                for index, text in enumerate(payload.outcomes or [])
+                if text.strip()
+            ],
             total_sessions=payload.total_sessions,
+            total_duration_time=None,
             price=payload.price,
+            discount_price=None,
             status=_enum(CourseStatus, payload.status, "status"),
         )
         self.course_repo.create(course)
         self.replace_course_tags(str(course.id), payload.tag_ids or [], commit=False)
-        for index, text in enumerate(payload.requirements or []):
-            if text.strip():
-                self.requirement_repo.create(CourseRequirement(course_id=course.id, requirement_text=text.strip(), order_index=index))
-        for index, text in enumerate(payload.outcomes or []):
-            if text.strip():
-                self.outcome_repo.create(CourseOutcome(course_id=course.id, outcome_text=text.strip(), order_index=index))
         self.db.commit()
         self.db.refresh(course)
         return course
@@ -398,8 +415,8 @@ class CourseService(CourseSerializationMixin):
         data.update(
             {
                 "output_goal": course.output_goal,
-                "requirements": [self._requirement_dict(item) for item in self.get_course_requirements(str(course.id))],
-                "outcomes": [self._outcome_dict(item) for item in self.get_course_outcomes(str(course.id))],
+                "requirements": [self._requirement_dict(item, index, str(course.id)) for index, item in enumerate(course.requirements or [])],
+                "outcomes": [self._outcome_dict(item, index, str(course.id)) for index, item in enumerate(course.outcomes or [])],
                 "modules": [self._module_dict(item) for item in self.get_course_modules(str(course.id))],
                 "media": [self._course_media_dict(item) for item in self.get_course_media(str(course.id))],
                 "lessons_count": self.lesson_repo.count(filters=[Lesson.course_id == course.id]),
@@ -478,23 +495,12 @@ class CourseService(CourseSerializationMixin):
 
     def upload_course_thumbnail(self, course_id: str, file, file_size: int) -> dict[str, Any]:
         course = self.get_course_by_id(course_id)
-
-        uploaded = StorageService().upload_file(
+        media = MediaService(self.db).upload_media(
             bucket_name=settings.MINIO_BUCKET_AVATARS,
             file=file,
             file_size=file_size,
             folder=f"courses/{course_id}",
         )
-        media = Media(
-            bucket=uploaded["bucket"],
-            object_name=uploaded["object_name"],
-            original_filename=file.filename,
-            content_type=file.content_type,
-            size=file_size,
-            uploaded_by=None,
-        )
-        self.db.add(media)
-        self.db.flush()
         self.db.execute(
             update(CourseMedia)
             .where(CourseMedia.course_id == course.id, CourseMedia.media_type == "thumbnail", CourseMedia.deleted_at.is_(None))
@@ -509,7 +515,6 @@ class CourseService(CourseSerializationMixin):
         )
         self.db.add(mapping)
         self.db.commit()
-        self.db.refresh(media)
 
         return {
             "course_id": str(course.id),
@@ -555,10 +560,12 @@ class CourseService(CourseSerializationMixin):
         return self.tag_mapping_repo.get_tags_by_course_id(course_id)
 
     def get_course_requirements(self, course_id: str) -> list[CourseRequirement]:
-        return self.requirement_repo.list_by_course_id(course_id)
+        course = self.get_course_by_id(course_id)
+        return [self._requirement_dict(item, index, course_id) for index, item in enumerate(course.requirements or [])]
 
     def get_course_outcomes(self, course_id: str) -> list[CourseOutcome]:
-        return self.outcome_repo.list_by_course_id(course_id)
+        course = self.get_course_by_id(course_id)
+        return [self._outcome_dict(item, index, course_id) for index, item in enumerate(course.outcomes or [])]
 
     def get_course_modules(self, course_id: str) -> list[CourseModule]:
         return self.module_repo.list_by_course_id(course_id)
@@ -567,38 +574,63 @@ class CourseService(CourseSerializationMixin):
 class CourseRequirementService(CourseSerializationMixin):
     def __init__(self, db: Session) -> None:
         self.db = db
-        self.requirement_repo = CourseRequirementRepository(db)
+        self.course_repo = CourseRepository(db)
 
-    def create_requirement(self, course_id: str, payload: CourseRequirementCreate) -> CourseRequirement:
-        CourseService(self.db).get_course_by_id(course_id)
-        item = CourseRequirement(course_id=course_id, requirement_text=payload.requirement_text, order_index=payload.order_index)
-        self.requirement_repo.create(item)
+    def _find_course_requirement(self, requirement_id: str) -> tuple[Course, int, dict[str, Any]] | None:
+        courses = self.course_repo.list_filtered()
+        for course in courses:
+            for index, item in enumerate(course.requirements or []):
+                if isinstance(item, dict) and str(item.get("id")) == requirement_id:
+                    return course, index, item
+        return None
+
+    def create_requirement(self, course_id: str, payload: CourseRequirementCreate) -> dict[str, Any]:
+        course = CourseService(self.db).get_course_by_id(course_id)
+        requirements = list(course.requirements or [])
+        item = {
+            "id": str(uuid4()),
+            "requirement_text": payload.requirement_text.strip(),
+            "order_index": payload.order_index,
+        }
+        requirements.append(item)
+        course.requirements = requirements
         self.db.commit()
         return item
 
-    def get_requirements_by_course(self, course_id: str) -> list[CourseRequirement]:
+    def get_requirements_by_course(self, course_id: str) -> list[dict[str, Any]]:
         CourseService(self.db).get_course_by_id(course_id)
         return CourseService(self.db).get_course_requirements(course_id)
 
-    def get_requirement_by_id(self, requirement_id: str) -> CourseRequirement:
-        item = self.requirement_repo.get_active_by_id(requirement_id)
-        if not item:
+    def get_requirement_by_id(self, requirement_id: str) -> dict[str, Any]:
+        found = self._find_course_requirement(requirement_id)
+        if not found:
             raise HTTPException(status_code=404, detail="Course requirement not found")
+        _, _, item = found
         return item
 
-    def update_requirement(self, requirement_id: str, payload: CourseRequirementUpdate) -> CourseRequirement:
-        item = self.get_requirement_by_id(requirement_id)
+    def update_requirement(self, requirement_id: str, payload: CourseRequirementUpdate) -> dict[str, Any]:
+        found = self._find_course_requirement(requirement_id)
+        if not found:
+            raise HTTPException(status_code=404, detail="Course requirement not found")
+        course, index, item = found
         if payload.requirement_text is not None:
-            item.requirement_text = payload.requirement_text
+            item["requirement_text"] = payload.requirement_text.strip()
         if payload.order_index is not None:
-            item.order_index = payload.order_index
+            item["order_index"] = payload.order_index
+        requirements = list(course.requirements or [])
+        requirements[index] = item
+        course.requirements = requirements
         self.db.commit()
-        self.db.refresh(item)
         return item
 
     def soft_delete_requirement(self, requirement_id: str) -> None:
-        item = self.get_requirement_by_id(requirement_id)
-        item.deleted_at = _now()
+        found = self._find_course_requirement(requirement_id)
+        if not found:
+            raise HTTPException(status_code=404, detail="Course requirement not found")
+        course, index, _ = found
+        requirements = list(course.requirements or [])
+        requirements.pop(index)
+        course.requirements = requirements
         self.db.commit()
 
 
@@ -679,22 +711,12 @@ class CourseMediaService(CourseSerializationMixin):
         order_index: int = 0,
     ) -> dict[str, Any]:
         CourseService(self.db).get_course_by_id(course_id)
-        uploaded = StorageService().upload_file(
+        media = MediaService(self.db).upload_media(
             bucket_name=settings.MINIO_BUCKET_AVATARS,
             file=file,
             file_size=file_size,
             folder=f"courses/{course_id}",
         )
-        media = Media(
-            bucket=uploaded["bucket"],
-            object_name=uploaded["object_name"],
-            original_filename=file.filename,
-            content_type=file.content_type,
-            size=file_size,
-            uploaded_by=None,
-        )
-        self.db.add(media)
-        self.db.flush()
         if is_primary:
             self._unset_primary(course_id, media_type)
         mapping = CourseMedia(
@@ -729,23 +751,12 @@ class CourseMediaService(CourseSerializationMixin):
                 file.file.seek(0, 2)
                 size = file.file.tell()
                 file.file.seek(current)
-
-            uploaded = StorageService().upload_file(
+            media = MediaService(self.db).upload_media(
                 bucket_name=settings.MINIO_BUCKET_AVATARS,
                 file=file,
                 file_size=size,
                 folder=f"courses/{course_id}",
             )
-            media = Media(
-                bucket=uploaded["bucket"],
-                object_name=uploaded["object_name"],
-                original_filename=file.filename,
-                content_type=file.content_type,
-                size=size,
-                uploaded_by=None,
-            )
-            self.db.add(media)
-            self.db.flush()
             mapping = CourseMedia(
                 course_id=course_id,
                 media_id=media.id,
@@ -764,38 +775,63 @@ class CourseMediaService(CourseSerializationMixin):
 class CourseOutcomeService(CourseSerializationMixin):
     def __init__(self, db: Session) -> None:
         self.db = db
-        self.outcome_repo = CourseOutcomeRepository(db)
+        self.course_repo = CourseRepository(db)
 
-    def create_outcome(self, course_id: str, payload: CourseOutcomeCreate) -> CourseOutcome:
-        CourseService(self.db).get_course_by_id(course_id)
-        item = CourseOutcome(course_id=course_id, outcome_text=payload.outcome_text, order_index=payload.order_index)
-        self.outcome_repo.create(item)
+    def _find_course_outcome(self, outcome_id: str) -> tuple[Course, int, dict[str, Any]] | None:
+        courses = self.course_repo.list_filtered()
+        for course in courses:
+            for index, item in enumerate(course.outcomes or []):
+                if isinstance(item, dict) and str(item.get("id")) == outcome_id:
+                    return course, index, item
+        return None
+
+    def create_outcome(self, course_id: str, payload: CourseOutcomeCreate) -> dict[str, Any]:
+        course = CourseService(self.db).get_course_by_id(course_id)
+        outcomes = list(course.outcomes or [])
+        item = {
+            "id": str(uuid4()),
+            "outcome_text": payload.outcome_text.strip(),
+            "order_index": payload.order_index,
+        }
+        outcomes.append(item)
+        course.outcomes = outcomes
         self.db.commit()
         return item
 
-    def get_outcomes_by_course(self, course_id: str) -> list[CourseOutcome]:
+    def get_outcomes_by_course(self, course_id: str) -> list[dict[str, Any]]:
         CourseService(self.db).get_course_by_id(course_id)
         return CourseService(self.db).get_course_outcomes(course_id)
 
-    def get_outcome_by_id(self, outcome_id: str) -> CourseOutcome:
-        item = self.outcome_repo.get_active_by_id(outcome_id)
-        if not item:
+    def get_outcome_by_id(self, outcome_id: str) -> dict[str, Any]:
+        found = self._find_course_outcome(outcome_id)
+        if not found:
             raise HTTPException(status_code=404, detail="Course outcome not found")
+        _, _, item = found
         return item
 
-    def update_outcome(self, outcome_id: str, payload: CourseOutcomeUpdate) -> CourseOutcome:
-        item = self.get_outcome_by_id(outcome_id)
+    def update_outcome(self, outcome_id: str, payload: CourseOutcomeUpdate) -> dict[str, Any]:
+        found = self._find_course_outcome(outcome_id)
+        if not found:
+            raise HTTPException(status_code=404, detail="Course outcome not found")
+        course, index, item = found
         if payload.outcome_text is not None:
-            item.outcome_text = payload.outcome_text
+            item["outcome_text"] = payload.outcome_text.strip()
         if payload.order_index is not None:
-            item.order_index = payload.order_index
+            item["order_index"] = payload.order_index
+        outcomes = list(course.outcomes or [])
+        outcomes[index] = item
+        course.outcomes = outcomes
         self.db.commit()
-        self.db.refresh(item)
         return item
 
     def soft_delete_outcome(self, outcome_id: str) -> None:
-        item = self.get_outcome_by_id(outcome_id)
-        item.deleted_at = _now()
+        found = self._find_course_outcome(outcome_id)
+        if not found:
+            raise HTTPException(status_code=404, detail="Course outcome not found")
+        course, index, _ = found
+        outcomes = list(course.outcomes or [])
+        outcomes.pop(index)
+        course.outcomes = outcomes
         self.db.commit()
 
 
@@ -804,6 +840,7 @@ class CourseModuleService(CourseSerializationMixin):
         self.db = db
         self.module_repo = CourseModuleRepository(db)
         self.media_repo = MediaRepository(db)
+        self.lesson_repo = LessonRepository(db)
 
     def _validate_media(self, media_id: str | None) -> None:
         if not media_id:
@@ -859,21 +896,12 @@ class CourseModuleService(CourseSerializationMixin):
 
     def upload_module_media(self, module_id: str, file, file_size: int) -> CourseModule:
         module = self.get_module_by_id(module_id)
-        uploaded = StorageService().upload_file(
+        media = MediaService(self.db).upload_media(
             bucket_name=settings.MINIO_BUCKET_AVATARS,
             file=file,
             file_size=file_size,
             folder=f"course-modules/{module_id}/media",
         )
-        media = Media(
-            bucket=uploaded["bucket"],
-            object_name=uploaded["object_name"],
-            original_filename=file.filename,
-            content_type=file.content_type,
-            size=file_size,
-            uploaded_by=None,
-        )
-        self.media_repo.create(media)
         module.media_id = media.id
         self.db.commit()
         self.db.refresh(module)
@@ -881,6 +909,9 @@ class CourseModuleService(CourseSerializationMixin):
 
     def soft_delete_module(self, module_id: str) -> None:
         module = self.get_module_by_id(module_id)
+        lesson_count = self.lesson_repo.count(filters=[Lesson.module_id == module.id])
+        if lesson_count > 0:
+            raise HTTPException(status_code=400, detail="Module is in use by lessons")
         module.deleted_at = _now()
         self.db.commit()
 
@@ -961,22 +992,12 @@ class LessonService:
 
     def upload_thumbnail(self, lesson_id: str, file, file_size: int) -> Lesson:
         lesson = self.get_lesson_by_id(lesson_id)
-        uploaded = StorageService().upload_file(
+        media = MediaService(self.db).upload_media(
             bucket_name=settings.MINIO_BUCKET_AVATARS,
             file=file,
             file_size=file_size,
             folder=f"lessons/{lesson_id}/thumbnail",
         )
-        media = Media(
-            bucket=uploaded["bucket"],
-            object_name=uploaded["object_name"],
-            original_filename=file.filename,
-            content_type=file.content_type,
-            size=file_size,
-            uploaded_by=None,
-        )
-        self.db.add(media)
-        self.db.flush()
         lesson.media_id = media.id
         self.db.commit()
         self.db.refresh(lesson)
@@ -1094,21 +1115,13 @@ class LessonMaterialService:
         created_by: str | None = None,
     ) -> LessonMaterial:
         LessonService(self.db).get_lesson_by_id(lesson_id)
-        uploaded = StorageService().upload_file(
+        media = MediaService(self.db).upload_media(
             bucket_name=settings.MINIO_BUCKET_AVATARS,
             file=file,
             file_size=file_size,
             folder=f"lessons/{lesson_id}/materials",
-        )
-        media = Media(
-            bucket=uploaded["bucket"],
-            object_name=uploaded["object_name"],
-            original_filename=file.filename,
-            content_type=file.content_type,
-            size=file_size,
             uploaded_by=created_by,
         )
-        self.media_repo.create(media)
         material = LessonMaterial(
             lesson_id=lesson_id,
             media_id=media.id,

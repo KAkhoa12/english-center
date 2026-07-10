@@ -9,6 +9,7 @@ ScheduleName = Literal["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
 
 class ClassScheduleCreate(BaseModel):
     schedule_name: ScheduleName
+    shift_number: int | None = None
     start_time: time
     end_time: time
 
@@ -21,6 +22,7 @@ class ClassScheduleCreate(BaseModel):
 
 class ClassScheduleUpdate(BaseModel):
     schedule_name: ScheduleName | None = None
+    shift_number: int | None = None
     start_time: time | None = None
     end_time: time | None = None
 

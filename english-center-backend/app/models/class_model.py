@@ -27,7 +27,6 @@ class CourseClass(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     course_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("courses.id"), nullable=False, index=True)
     teacher_id: Mapped[str | None] = mapped_column(UUID(as_uuid=True), ForeignKey("teachers.id"), nullable=True, index=True)
-    room_id: Mapped[str | None] = mapped_column(UUID(as_uuid=True), ForeignKey("rooms.id"), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     code: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=True, index=True)
     class_type: Mapped[ClassType] = mapped_column(

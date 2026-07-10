@@ -11,6 +11,9 @@ class ChatUser(BaseModel):
     roles: list[str] = Field(default_factory=list)
     contact_type: str | None = None
     class_ids: list[str] = Field(default_factory=list)
+    participant_role: str | None = None
+    joined_at: datetime | None = None
+    left_at: datetime | None = None
 
 
 class ChatAttachmentPayload(BaseModel):
@@ -23,13 +26,17 @@ class ChatAttachmentPayload(BaseModel):
 
 
 class CreateConversationRequest(BaseModel):
-    participant_user_id: str
+    conversation_type: str | None = None
+    participant_user_id: str | None = None
+    consultation_id: str | None = None
+    class_id: str | None = None
 
 
 class SendMessageRequest(BaseModel):
     conversation_id: str | None = None
     recipient_user_id: str | None = None
     content: str | None = None
+    reply_to_message_id: str | None = None
     attachments: list[ChatAttachmentPayload] = Field(default_factory=list)
 
 
@@ -43,6 +50,10 @@ class ChatMessageResponse(BaseModel):
     sender_id: str
     content: str | None = None
     message_type: str
+    reply_to_message_id: str | None = None
+    reply_to_message: dict | None = None
+    is_read: bool = False
+    read_at: datetime | None = None
     attachments: list[ChatAttachmentResponse] = Field(default_factory=list)
     created_at: datetime
 
@@ -51,6 +62,8 @@ class ChatConversationResponse(BaseModel):
     id: str
     type: str
     title: str | None = None
+    consultation_id: str | None = None
+    class_id: str | None = None
     participants: list[ChatUser]
     last_message: ChatMessageResponse | None = None
     created_at: datetime

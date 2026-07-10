@@ -19,12 +19,13 @@ from app.repositories.course_outcome import CourseOutcomeRepository
 from app.repositories.course_requirement import CourseRequirementRepository
 from app.repositories.course_tag import CourseTagRepository
 from app.repositories.course_tag_mapping import CourseTagMappingRepository
+from app.repositories.consultation import ConsultationRepository
 from app.repositories.invoice import InvoiceItemRepository, InvoiceRepository
 from app.repositories.lesson import LessonRepository
 from app.repositories.lesson_material import LessonMaterialRepository
 from app.repositories.media import MediaRepository
 from app.repositories.order import OrderItemRepository, OrderRepository
-from app.repositories.payment import PaymentRepository, SePayIPNLogRepository
+from app.repositories.payment import PaymentRepository, PaymentWebhookLogRepository, SePayIPNLogRepository
 from app.repositories.permission import PermissionRepository
 from app.repositories.room import RoomRepository
 from app.repositories.staff import StaffRepository
@@ -63,6 +64,7 @@ __all__ = [
     "CourseTagMappingRepository",
     "CourseTagRepository",
     "CourseWishlistRepository",
+    "ConsultationRepository",
     "InvoiceItemRepository",
     "InvoiceRepository",
     "LessonMaterialRepository",
@@ -71,6 +73,7 @@ __all__ = [
     "OrderItemRepository",
     "OrderRepository",
     "PaymentRepository",
+    "PaymentWebhookLogRepository",
     "PermissionRepository",
     "RoomRepository",
     "SePayIPNLogRepository",

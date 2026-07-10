@@ -26,6 +26,7 @@ class ClassScheduleService:
         return {
             "id": str(schedule.id),
             "class_id": str(schedule.class_id),
+            "shift_number": schedule.shift_number,
             "schedule_name": schedule.schedule_name.value,
             "start_time": schedule.start_time,
             "end_time": schedule.end_time,
@@ -53,6 +54,7 @@ class ClassScheduleService:
             raise HTTPException(status_code=400, detail="Class schedule already exists")
         schedule = ClassSchedule(
             class_id=str(class_obj.id),
+            shift_number=payload.shift_number,
             schedule_name=schedule_name,
             start_time=payload.start_time,
             end_time=payload.end_time,
@@ -76,6 +78,7 @@ class ClassScheduleService:
         if self.schedule_repo.exists_duplicate(str(schedule.class_id), schedule_name, start_time, end_time, exclude_id=schedule_id):
             raise HTTPException(status_code=400, detail="Class schedule already exists")
         schedule.schedule_name = schedule_name
+        schedule.shift_number = payload.shift_number if "shift_number" in fields_set else schedule.shift_number
         schedule.start_time = start_time
         schedule.end_time = end_time
         updated = self.schedule_repo.update(schedule)

@@ -12,7 +12,7 @@ from app.dependencies.permissions import require_permission
 from app.schemas.common import PaginationParams
 from app.schemas.student import StudentCreate, StudentUpdate
 from app.services.admin_data_transfer_service import AdminDataTransferService
-from app.services.storage_service import StorageService
+from app.services.media_service import MediaService
 from app.services.student_service import StudentService
 from app.services.user_service import UserService
 from app.utils.file import get_upload_file_size, validate_file_extension, validate_file_size
@@ -99,15 +99,15 @@ def update_student_avatar(student_id: str, file: UploadFile = File(...), db: Ann
     validate_file_extension(file.filename or "avatar", "avatar")
     validate_file_size(size, "avatar")
 
-    storage = StorageService()
-    upload = storage.upload_file(
+    media = MediaService(db).upload_media(
         bucket_name=settings.MINIO_BUCKET_AVATARS,
         file=file,
         file_size=size,
         folder=f"avatars/{st.user_id}",
+        uploaded_by=str(st.user_id),
     )
 
-    user = svc.update_avatar(student_id, upload["object_name"])
+    user = svc.update_avatar(student_id, media.object_name)
     st, _ = svc.get_student_by_id(student_id)
     return api_response(True, "Student avatar updated successfully", _student_dict(st, user), None)
 

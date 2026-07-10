@@ -60,11 +60,8 @@ class AssignmentAttachmentCreate(BaseModel):
     title: str | None = None
     description: str | None = None
     attachment_type: str
-    file_bucket: str | None = None
-    file_object_name: str | None = None
-    external_url: str | None = None
-    content_type: str | None = None
-    file_size: int | None = Field(default=None, ge=0)
+    media_id: str | None = None
+    location_folder: str | None = None
     order_index: int = Field(default=0, ge=0)
 
 
@@ -72,31 +69,26 @@ class AssignmentAttachmentUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     attachment_type: str | None = None
-    file_bucket: str | None = None
-    file_object_name: str | None = None
-    external_url: str | None = None
-    content_type: str | None = None
-    file_size: int | None = Field(default=None, ge=0)
+    media_id: str | None = None
+    location_folder: str | None = None
     order_index: int | None = Field(default=None, ge=0)
 
 
 class SubmissionAttachmentCreate(BaseModel):
     title: str | None = None
-    file_bucket: str
-    file_object_name: str
+    media_id: str
+    location_folder: str | None = None
     original_filename: str | None = None
-    content_type: str | None = None
-    file_size: int | None = Field(default=None, ge=0)
 
 
 class AssignmentSubmissionCreate(BaseModel):
-    content: str | None = None
+    note: str | None = None
     status: str = "submitted"
     attachments: list[SubmissionAttachmentCreate] | None = None
 
 
 class AssignmentSubmissionUpdate(BaseModel):
-    content: str | None = None
+    note: str | None = None
     status: str | None = None
 
 

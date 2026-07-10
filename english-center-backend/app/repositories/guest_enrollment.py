@@ -15,7 +15,10 @@ class GuestEnrollmentRepository(BaseRepository[GuestEnrollment]):
     def list_filtered(self, query: PaginationParams) -> tuple[list[GuestEnrollment], int]:
         filters = []
         if query.search:
-            filters.append(GuestEnrollment.content.ilike(f"%{query.search}%"))
+            filters.append(
+                (GuestEnrollment.note.ilike(f"%{query.search}%")) |
+                (GuestEnrollment.customer_name.ilike(f"%{query.search}%"))
+            )
 
         sort_field = getattr(GuestEnrollment, query.sort_by, GuestEnrollment.created_at) if query.sort_by else GuestEnrollment.created_at
         order_by = sort_field.asc() if query.sort_order == "asc" else sort_field.desc()

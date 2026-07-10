@@ -12,8 +12,8 @@ from app.dependencies.permissions import require_permission
 from app.schemas.common import PaginationParams
 from app.schemas.staff import StaffCreate, StaffUpdate
 from app.services.admin_data_transfer_service import AdminDataTransferService
+from app.services.media_service import MediaService
 from app.services.staff_service import StaffService
-from app.services.storage_service import StorageService
 from app.services.user_service import UserService
 from app.utils.file import get_upload_file_size, validate_file_extension, validate_file_size
 from app.utils.serializers import user_to_dict
@@ -94,15 +94,15 @@ def update_staff_avatar(staff_id: str, file: UploadFile = File(...), db: Annotat
     validate_file_extension(file.filename or "avatar", "avatar")
     validate_file_size(size, "avatar")
 
-    storage = StorageService()
-    upload = storage.upload_file(
+    media = MediaService(db).upload_media(
         bucket_name=settings.MINIO_BUCKET_AVATARS,
         file=file,
         file_size=size,
         folder=f"avatars/{st.user_id}",
+        uploaded_by=str(st.user_id),
     )
 
-    user = svc.update_avatar(staff_id, upload["object_name"])
+    user = svc.update_avatar(staff_id, media.object_name)
     st, _ = svc.get_staff_by_id(staff_id)
     return api_response(True, "Staff avatar updated successfully", _staff_dict(st, user), None)
 

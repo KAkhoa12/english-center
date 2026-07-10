@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 
 from app.models.class_model import ClassStatus, ClassType, CourseClass
 from app.models.course import Course, CourseMode, CourseStatus
-from app.models.room import Room, RoomStatus
 from app.models.student import Student
 from app.models.teacher import Teacher
 from app.models.rbac.user import User
@@ -86,7 +85,6 @@ class ClassService(AcademicAccessMixin):
         self.class_session_repo = ClassSessionRepository(db)
         self.class_schedule_repo = ClassScheduleRepository(db)
         self.course_repo = CourseRepository(db)
-        self.room_repo = RoomRepository(db)
         self.user_repo = UserRepository(db)
 
     def _get_course_for_class(self, course_id: str) -> Course:
@@ -105,16 +103,6 @@ class ClassService(AcademicAccessMixin):
             raise HTTPException(status_code=404, detail="Teacher not found")
         return teacher
 
-    def _get_room(self, room_id: str | None) -> Room | None:
-        if not room_id:
-            return None
-        room = self.room_repo.get_active_by_id(room_id)
-        if not room:
-            raise HTTPException(status_code=404, detail="Room not found")
-        if room.status != RoomStatus.active:
-            raise HTTPException(status_code=400, detail="Room is not available")
-        return room
-
     def _basic_course_dict(self, course: Course) -> dict[str, Any]:
         return {"id": str(course.id), "name": course.name, "code": course.code}
 
@@ -124,21 +112,13 @@ class ClassService(AcademicAccessMixin):
         user = self.user_repo.get(str(teacher.user_id))
         if not user:
             return None
-        data = {
-            "id": str(user.id),
+        return {
+            "id": str(teacher.id),
             "full_name": user.full_name,
-            "email": user.email,
             "avatar_url": getattr(user, "avatar_url", None),
-            "status": user.status.value if getattr(user, "status", None) else None,
-            "is_verified": getattr(user, "is_verified", None),
+            "specialization": teacher.specialization,
+            "experience_years": teacher.experience_years,
         }
-        data["id"] = str(teacher.id)
-        return data
-
-    def _basic_room_dict(self, room: Room | None) -> dict[str, Any] | None:
-        if not room:
-            return None
-        return {"id": str(room.id), "name": room.name, "location": room.location}
 
     def count_students(self, class_id: str) -> int:
         return self.class_student_repo.count_active_students(class_id)
@@ -155,12 +135,10 @@ class ClassService(AcademicAccessMixin):
     def class_list_dict(self, class_obj: CourseClass) -> dict[str, Any]:
         course = self._get_course_for_class(str(class_obj.course_id))
         teacher = self._get_teacher(str(class_obj.teacher_id)) if class_obj.teacher_id else None
-        room = self._get_room(str(class_obj.room_id)) if class_obj.room_id else None
         return {
             "id": str(class_obj.id),
             "course_id": str(class_obj.course_id),
             "teacher_id": str(class_obj.teacher_id) if class_obj.teacher_id else None,
-            "room_id": str(class_obj.room_id) if class_obj.room_id else None,
             "name": class_obj.name,
             "code": class_obj.code,
             "class_type": class_obj.class_type.value,
@@ -170,7 +148,6 @@ class ClassService(AcademicAccessMixin):
             "status": class_obj.status.value,
             "course": self._basic_course_dict(course),
             "teacher": self._basic_teacher_dict(teacher),
-            "room": self._basic_room_dict(room),
             "created_at": class_obj.created_at,
             "updated_at": class_obj.updated_at,
             "schedules": [
@@ -196,7 +173,6 @@ class ClassService(AcademicAccessMixin):
         if course.mode != CourseMode.center:
             raise HTTPException(status_code=400, detail="Cannot create class for template course")
         teacher = self._get_teacher(payload.teacher_id)
-        room = self._get_room(payload.room_id)
         code = generate_code(payload.code) if payload.code else self._generate_code(course, payload.start_date)
         if self.class_repo.exists_by_code(code):
             raise HTTPException(status_code=400, detail="Class code already exists")
@@ -205,7 +181,6 @@ class ClassService(AcademicAccessMixin):
         class_obj = CourseClass(
             course_id=str(course.id),
             teacher_id=str(teacher.id) if teacher else None,
-            room_id=str(room.id) if room else None,
             name=payload.name.strip(),
             code=code,
             class_type=class_type,
@@ -256,7 +231,6 @@ class ClassService(AcademicAccessMixin):
     def update_class(self, class_id: str, payload: ClassUpdate) -> CourseClass:
         class_obj = self.get_class_by_id(class_id)
         teacher = self._get_teacher(payload.teacher_id) if payload.teacher_id is not None else None
-        room = self._get_room(payload.room_id) if payload.room_id is not None else None
         if payload.code is not None:
             code = generate_code(payload.code) if payload.code else None
             if code and code != class_obj.code:
@@ -267,8 +241,6 @@ class ClassService(AcademicAccessMixin):
             class_obj.name = payload.name.strip()
         if payload.teacher_id is not None:
             class_obj.teacher_id = str(teacher.id) if teacher else None
-        if payload.room_id is not None:
-            class_obj.room_id = str(room.id) if room else None
         for field in ["max_students", "start_date"]:
             value = getattr(payload, field)
             if value is not None:

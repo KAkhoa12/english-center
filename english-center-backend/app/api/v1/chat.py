@@ -67,7 +67,13 @@ def create_chat_conversation(
     current_user: User = Depends(require_jwt),
 ):
     service = ChatService(db)
-    conversation = service.get_or_create_direct_conversation(current_user, payload.participant_user_id)
+    conversation = service.create_conversation(
+        current_user,
+        payload.conversation_type,
+        payload.participant_user_id,
+        payload.consultation_id,
+        payload.class_id,
+    )
     return api_response(True, "Chat conversation retrieved successfully", service.conversation_dict(conversation, current_user), None)
 
 

@@ -328,14 +328,10 @@ class AssignmentService(AssignmentAccessMixin):
                     assignment_id=target.id,
                     title=attachment.title,
                     description=attachment.description,
-                    file_bucket=attachment.file_bucket,
-                    file_object_name=attachment.file_object_name,
-                    external_url=attachment.external_url,
-                    content_type=attachment.content_type,
-                    file_size=attachment.file_size,
                     attachment_type=attachment.attachment_type,
+                    media_id=attachment.media_id,
+                    location_folder=attachment.location_folder,
                     order_index=attachment.order_index,
-                    uploaded_by=str(current_user.id),
                 )
             )
         for question in self.assignment_question_repo.list_by_assignment_id(str(template.id)):
@@ -599,29 +595,23 @@ class AssignmentService(AssignmentAccessMixin):
 
 
 class AssignmentAttachmentService(AssignmentAccessMixin):
-    def _validate_attachment(self, attachment_type: AssignmentAttachmentType, file_bucket: str | None, file_object_name: str | None, external_url: str | None) -> None:
-        if attachment_type == AssignmentAttachmentType.file and not (file_bucket and file_object_name):
-            raise HTTPException(status_code=400, detail="file_bucket and file_object_name are required for file attachments")
-        if attachment_type == AssignmentAttachmentType.link and not external_url:
-            raise HTTPException(status_code=400, detail="external_url is required for link attachments")
+    def _validate_attachment(self, attachment_type: AssignmentAttachmentType, media_id: str | None) -> None:
+        if attachment_type == AssignmentAttachmentType.file and not media_id:
+            raise HTTPException(status_code=400, detail="media_id is required for file attachments")
 
     def create_attachment(self, assignment_id: str, payload: AssignmentAttachmentCreate, current_user: User) -> AssignmentAttachment:
         assignment = AssignmentService(self.db).get_assignment_by_id(assignment_id)
         self.assert_can_manage_assignment(assignment, current_user)
         attachment_type = _enum_required(AssignmentAttachmentType, payload.attachment_type, "attachment type")
-        self._validate_attachment(attachment_type, payload.file_bucket, payload.file_object_name, payload.external_url)
+        self._validate_attachment(attachment_type, payload.media_id)
         item = AssignmentAttachment(
             assignment_id=str(assignment.id),
             title=payload.title,
             description=payload.description,
-            file_bucket=payload.file_bucket,
-            file_object_name=payload.file_object_name,
-            external_url=payload.external_url,
-            content_type=payload.content_type,
-            file_size=payload.file_size,
             attachment_type=attachment_type,
+            media_id=payload.media_id,
+            location_folder=payload.location_folder,
             order_index=payload.order_index,
-            uploaded_by=str(current_user.id),
         )
         created = self.assignment_attachment_repo.create(item)
         self.db.commit()
@@ -642,12 +632,12 @@ class AssignmentAttachmentService(AssignmentAccessMixin):
         assignment = AssignmentService(self.db).get_assignment_by_id(str(item.assignment_id))
         self.assert_can_manage_assignment(assignment, current_user)
         attachment_type = _enum_required(AssignmentAttachmentType, payload.attachment_type, "attachment type") if payload.attachment_type else item.attachment_type
-        for field in ["title", "description", "file_bucket", "file_object_name", "external_url", "content_type", "file_size", "order_index"]:
+        for field in ["title", "description", "media_id", "location_folder", "order_index"]:
             value = getattr(payload, field)
             if value is not None:
                 setattr(item, field, value)
         item.attachment_type = attachment_type
-        self._validate_attachment(item.attachment_type, item.file_bucket, item.file_object_name, item.external_url)
+        self._validate_attachment(item.attachment_type, item.media_id)
         updated = self.assignment_attachment_repo.update(item)
         self.db.commit()
         return updated
@@ -666,13 +656,10 @@ class AssignmentAttachmentService(AssignmentAccessMixin):
             "title": item.title,
             "description": item.description,
             "attachment_type": item.attachment_type.value,
-            "file_bucket": item.file_bucket,
-            "file_object_name": item.file_object_name,
-            "external_url": item.external_url,
-            "content_type": item.content_type,
-            "file_size": item.file_size,
+            "media_id": str(item.media_id) if item.media_id else None,
+            "location_folder": item.location_folder,
             "order_index": item.order_index,
-            "presigned_url": self._presigned_url(item.file_bucket, item.file_object_name) if item.attachment_type == AssignmentAttachmentType.file else None,
+            "media": CourseService(self.db)._media_dict(self.media_repo.get_active_by_id(str(item.media_id))) if item.media_id else None,
         }
 
 
@@ -715,10 +702,11 @@ class AssignmentSubmissionService(AssignmentAccessMixin):
                     assignment_id=str(assignment.id),
                     student_id=str(student.id),
                     user_id=str(current_user.id),
+                    note=payload.note,
                     attempt_number=1,
                 )
                 submission = self.assignment_submission_repo.create(submission)
-            submission.content = payload.content
+            submission.note = payload.note
             submission.status = status
             submission.is_late = is_late
             submission.submitted_at = submitted_at or submission.submitted_at
@@ -727,12 +715,9 @@ class AssignmentSubmissionService(AssignmentAccessMixin):
                     SubmissionAttachment(
                         submission_id=str(submission.id),
                         title=attachment.title,
-                        file_bucket=attachment.file_bucket,
-                        file_object_name=attachment.file_object_name,
+                        media_id=attachment.media_id,
+                        location_folder=attachment.location_folder,
                         original_filename=attachment.original_filename,
-                        content_type=attachment.content_type,
-                        file_size=attachment.file_size,
-                        uploaded_by=str(current_user.id),
                     )
                 )
             updated = self.assignment_submission_repo.update(submission)
@@ -781,8 +766,8 @@ class AssignmentSubmissionService(AssignmentAccessMixin):
             submission.status = status
             submission.is_late = is_late
             submission.submitted_at = submitted_at or submission.submitted_at
-        if payload.content is not None:
-            submission.content = payload.content
+        if payload.note is not None:
+            submission.note = payload.note
         updated = self.assignment_submission_repo.update(submission)
         self.db.commit()
         return updated
@@ -832,7 +817,7 @@ class AssignmentSubmissionService(AssignmentAccessMixin):
             "assignment_id": str(submission.assignment_id),
             "student_id": str(submission.student_id),
             "user_id": str(submission.user_id),
-            "content": submission.content,
+            "note": submission.note,
             "status": submission.status.value,
             "submitted_at": submission.submitted_at,
             "is_late": submission.is_late,
@@ -1087,12 +1072,9 @@ class SubmissionAttachmentService(AssignmentAccessMixin):
         item = SubmissionAttachment(
             submission_id=str(submission.id),
             title=payload.title,
-            file_bucket=payload.file_bucket,
-            file_object_name=payload.file_object_name,
+            media_id=payload.media_id,
+            location_folder=payload.location_folder,
             original_filename=payload.original_filename,
-            content_type=payload.content_type,
-            file_size=payload.file_size,
-            uploaded_by=str(current_user.id),
         )
         created = self.submission_attachment_repo.create(item)
         self.db.commit()
@@ -1124,12 +1106,10 @@ class SubmissionAttachmentService(AssignmentAccessMixin):
             "id": str(item.id),
             "submission_id": str(item.submission_id),
             "title": item.title,
-            "file_bucket": item.file_bucket,
-            "file_object_name": item.file_object_name,
+            "media_id": str(item.media_id) if item.media_id else None,
+            "location_folder": item.location_folder,
             "original_filename": item.original_filename,
-            "content_type": item.content_type,
-            "file_size": item.file_size,
-            "presigned_url": self._presigned_url(item.file_bucket, item.file_object_name),
+            "media": CourseService(self.db)._media_dict(self.media_repo.get_active_by_id(str(item.media_id))) if item.media_id else None,
         }
 
 

@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from sqlalchemy import Boolean, ForeignKey, Numeric, Text, UniqueConstraint
+from sqlalchemy import String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -25,3 +26,4 @@ class SubmissionAnswerMedia(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     submission_answer_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("submission_answers.id"), nullable=False, index=True)
     media_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("media.id"), nullable=False, index=True)
+    location_folder: Mapped[str | None] = mapped_column(String(255), nullable=True)

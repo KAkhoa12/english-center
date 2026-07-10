@@ -11,6 +11,7 @@ from app.repositories.teacher import TeacherRepository
 from app.repositories.user import UserRepository
 from app.schemas.profile import ProfileUpdate
 from app.services.rbac_service import RBACService
+from app.services.media_service import MediaService
 from app.services.storage_service import StorageService
 from app.utils.file import get_upload_file_size, validate_file_extension, validate_file_size
 from app.utils.serializers import user_to_dict
@@ -108,13 +109,14 @@ class ProfileService:
         size = get_upload_file_size(file)
         validate_file_extension(file.filename or "avatar", "avatar")
         validate_file_size(size, "avatar")
-        upload = StorageService().upload_file(
+        media = MediaService(self.db).upload_media(
             bucket_name=settings.MINIO_BUCKET_AVATARS,
             file=file,
             file_size=size,
             folder=f"avatars/{user.id}",
+            uploaded_by=str(user.id),
         )
-        user.avatar_url = upload["object_name"]
+        user.avatar_url = media.object_name
         self.db.add(user)
         self.db.commit()
         self.db.refresh(user)

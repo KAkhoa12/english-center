@@ -90,8 +90,12 @@ class Course(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         index=True,
     )
     output_goal: Mapped[str | None] = mapped_column(Text, nullable=True)
+    requirements: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    outcomes: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     total_sessions: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_duration_time: Mapped[int | None] = mapped_column(Integer, nullable=True)
     price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+    discount_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     status: Mapped[CourseStatus] = mapped_column(
         Enum(CourseStatus, name="course_status"),
         default=CourseStatus.active,
@@ -175,6 +179,7 @@ class Media(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "media"
 
     bucket: Mapped[str] = mapped_column(String(100), nullable=False)
+    folder: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     object_name: Mapped[str] = mapped_column(String(500), nullable=False, unique=True, index=True)
     original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
     content_type: Mapped[str | None] = mapped_column(String(255), nullable=True)

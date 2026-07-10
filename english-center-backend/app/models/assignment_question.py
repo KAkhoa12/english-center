@@ -19,6 +19,8 @@ class AssignmentQuestion(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "assignment_questions"
 
     assignment_id: Mapped[str] = mapped_column(UUID(as_uuid=True), ForeignKey("assignments.id"), nullable=False, index=True)
+    media_id: Mapped[str | None] = mapped_column(UUID(as_uuid=True), ForeignKey("media.id"), nullable=True, index=True)
+    location_folder: Mapped[str | None] = mapped_column(Text, nullable=True)
     question_type: Mapped[AssignmentQuestionType] = mapped_column(
         Enum(AssignmentQuestionType, name="assignment_question_type"),
         nullable=False,

@@ -53,6 +53,8 @@ class CourseCreate(BaseModel):
     mode: str = "center"
     target_level: str | None = None
     output_goal: str | None = None
+    discount_price: Decimal | None = Field(default=None, ge=0)
+    total_duration_time: int | None = Field(default=None, ge=0)
     total_sessions: int | None = Field(default=None, ge=0)
     price: Decimal = Field(default=0, ge=0)
     status: str = "active"
@@ -76,6 +78,8 @@ class CourseUpdate(BaseModel):
     mode: str | None = None
     target_level: str | None = None
     output_goal: str | None = None
+    discount_price: Decimal | None = Field(default=None, ge=0)
+    total_duration_time: int | None = Field(default=None, ge=0)
     total_sessions: int | None = Field(default=None, ge=0)
     price: Decimal | None = Field(default=None, ge=0)
     status: str | None = None

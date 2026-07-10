@@ -23,28 +23,27 @@ class ConversationRepository(BaseRepository[Conversation]):
                 Conversation.deleted_at.is_(None),
                 ConversationParticipant.user_id == user_id,
                 ConversationParticipant.deleted_at.is_(None),
+                ConversationParticipant.left_at.is_(None),
             )
         ).scalar_one_or_none()
 
-    def get_direct_between_users(self, user_a_id: str, user_b_id: str) -> Conversation | None:
-        participant_a = select(ConversationParticipant.conversation_id).where(
-            ConversationParticipant.user_id == user_a_id,
-            ConversationParticipant.deleted_at.is_(None),
-        )
-        participant_b = select(ConversationParticipant.conversation_id).where(
-            ConversationParticipant.user_id == user_b_id,
-            ConversationParticipant.deleted_at.is_(None),
-        )
+    def get_by_consultation_id(self, consultation_id: str) -> Conversation | None:
         return self.db.execute(
             select(Conversation)
             .where(
-                Conversation.id.in_(participant_a),
-                Conversation.id.in_(participant_b),
-                Conversation.type == ConversationType.direct,
+                Conversation.consultation_id == consultation_id,
                 Conversation.deleted_at.is_(None),
             )
-            .order_by(Conversation.updated_at.desc())
-        ).scalars().first()
+        ).scalar_one_or_none()
+
+    def get_by_class_id_and_type(self, class_id: str, conversation_type: ConversationType) -> Conversation | None:
+        return self.db.execute(
+            select(Conversation).where(
+                Conversation.class_id == class_id,
+                Conversation.conversation_type == conversation_type,
+                Conversation.deleted_at.is_(None),
+            )
+        ).scalar_one_or_none()
 
     def list_for_user(self, user_id: str) -> list[Conversation]:
         return list(
@@ -54,6 +53,7 @@ class ConversationRepository(BaseRepository[Conversation]):
                 .where(
                     ConversationParticipant.user_id == user_id,
                     ConversationParticipant.deleted_at.is_(None),
+                    ConversationParticipant.left_at.is_(None),
                     Conversation.deleted_at.is_(None),
                 )
                 .order_by(Conversation.updated_at.desc())
@@ -70,20 +70,58 @@ class ConversationParticipantRepository(BaseRepository[ConversationParticipant])
             select(ConversationParticipant.user_id).where(
                 ConversationParticipant.conversation_id == conversation_id,
                 ConversationParticipant.deleted_at.is_(None),
+                ConversationParticipant.left_at.is_(None),
             )
         ).scalars().all()]
 
-    def list_users(self, conversation_id: str) -> list[User]:
+    def get_active_participant(self, conversation_id: str, user_id: str) -> ConversationParticipant | None:
+        return self.db.execute(
+            select(ConversationParticipant).where(
+                ConversationParticipant.conversation_id == conversation_id,
+                ConversationParticipant.user_id == user_id,
+                ConversationParticipant.deleted_at.is_(None),
+                ConversationParticipant.left_at.is_(None),
+            )
+        ).scalar_one_or_none()
+
+    def list_participants_with_user(self, conversation_id: str) -> list[tuple[ConversationParticipant, User]]:
         return list(
             self.db.execute(
-                select(User)
-                .join(ConversationParticipant, ConversationParticipant.user_id == User.id)
+                select(ConversationParticipant, User)
+                .join(User, ConversationParticipant.user_id == User.id)
                 .where(
                     ConversationParticipant.conversation_id == conversation_id,
                     ConversationParticipant.deleted_at.is_(None),
+                    ConversationParticipant.left_at.is_(None),
                     User.deleted_at.is_(None),
                 )
                 .order_by(User.full_name.asc())
+            ).all()
+        )
+
+    def list_users(self, conversation_id: str) -> list[User]:
+        return [user for _, user in self.list_participants_with_user(conversation_id)]
+
+    def list_active_participants(self, conversation_id: str) -> list[ConversationParticipant]:
+        return list(
+            self.db.execute(
+                select(ConversationParticipant).where(
+                    ConversationParticipant.conversation_id == conversation_id,
+                    ConversationParticipant.deleted_at.is_(None),
+                    ConversationParticipant.left_at.is_(None),
+                )
+            ).scalars().all()
+        )
+
+    def list_messages_for_read(self, conversation_id: str, user_id: str) -> list[ChatMessage]:
+        return list(
+            self.db.execute(
+                select(ChatMessage).where(
+                    ChatMessage.conversation_id == conversation_id,
+                    ChatMessage.sender_id != user_id,
+                    ChatMessage.deleted_at.is_(None),
+                    ChatMessage.is_read.is_(False),
+                )
             ).scalars().all()
         )
 

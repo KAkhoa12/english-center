@@ -1,10 +1,4 @@
-from sqlalchemy import Text
-from sqlalchemy.orm import Mapped, mapped_column
+from app.models.consultation import Consultation, ConsultationSource, ConsultationStatus
 
-from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+GuestEnrollment = Consultation
 
-
-class GuestEnrollment(Base, UUIDPrimaryKeyMixin, TimestampMixin):
-    __tablename__ = "guest_enrollments"
-
-    content: Mapped[str] = mapped_column(Text, nullable=False)

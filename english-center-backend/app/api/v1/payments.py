@@ -18,9 +18,9 @@ router = APIRouter(tags=["payments"])
 async def create_sepay_payment(payload: CreateSePayPaymentRequest, db: Annotated[Session, Depends(get_db)], current_user: User = Depends(require_permission("payment.create"))):
     service = PaymentService(db)
     payment = await service.create_sepay_payment(payload.order_id, payload.payment_method, current_user)
-    order = OrderService(db).get_order(str(payment.order_id))
     data = OrderSerializer(db).payment_dict(payment)
-    data["invoice_number"] = order.invoice_number
+    invoice = OrderSerializer(db).invoice(str(payment.order_id))
+    data["invoice_number"] = invoice.invoice_number if invoice else None
     data["checkout_form_fields"] = (payment.raw_response or {}).get("checkout_form_fields") or payment.raw_request
     return api_response(True, "SePay payment created successfully", data, None)
 

@@ -4,8 +4,9 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.class_model import CourseClass
-from app.models.class_session import ClassSchedule, ClassSession, SessionStatus
+from app.models.class_session import ClassSchedule, ClassSession, ClassSessionTeacher, SessionStatus
 from app.models.class_student import ClassStudent
+from app.models.teacher import Teacher
 from app.repositories.base import BaseRepository
 from app.schemas.common import PaginationParams
 
@@ -36,7 +37,8 @@ class ClassSessionRepository(BaseRepository[ClassSession]):
         return list(
             self.db.execute(
                 self._with_schedule()
-                .where(ClassSession.teacher_id == teacher_id, ClassSession.deleted_at.is_(None))
+                .join(ClassSessionTeacher, ClassSessionTeacher.class_session_id == ClassSession.id)
+                .where(ClassSessionTeacher.user_id == teacher_id, ClassSession.deleted_at.is_(None))
                 .order_by(ClassSession.session_date.asc(), self._resolved_start_time().asc())
             ).scalars().all()
         )
@@ -46,15 +48,6 @@ class ClassSessionRepository(BaseRepository[ClassSession]):
             self.db.execute(
                 self._with_schedule()
                 .where(ClassSession.room_id == room_id, ClassSession.deleted_at.is_(None))
-                .order_by(ClassSession.session_date.asc(), self._resolved_start_time().asc())
-            ).scalars().all()
-        )
-
-    def list_by_lesson_id(self, lesson_id: str) -> list[ClassSession]:
-        return list(
-            self.db.execute(
-                self._with_schedule()
-                .where(ClassSession.lesson_id == lesson_id, ClassSession.deleted_at.is_(None))
                 .order_by(ClassSession.session_date.asc(), self._resolved_start_time().asc())
             ).scalars().all()
         )
@@ -144,12 +137,19 @@ class ClassSessionRepository(BaseRepository[ClassSession]):
         if class_ids:
             stmt = stmt.where(ClassSession.class_id.in_(class_ids))
         if teacher_id:
-            stmt = stmt.where(ClassSession.teacher_id == teacher_id)
+            stmt = stmt.join(ClassSessionTeacher, ClassSessionTeacher.class_session_id == ClassSession.id).where(
+                ClassSessionTeacher.user_id == teacher_id
+            )
         if accessible_teacher_id:
             stmt = stmt.where(
                 or_(
-                    ClassSession.teacher_id == accessible_teacher_id,
-                    CourseClass.teacher_id == accessible_teacher_id,
+                    select(ClassSessionTeacher.id)
+                    .where(
+                        ClassSessionTeacher.class_session_id == ClassSession.id,
+                        ClassSessionTeacher.user_id == accessible_teacher_id,
+                    )
+                    .exists(),
+                    CourseClass.teacher_id == select(Teacher.id).where(Teacher.user_id == accessible_teacher_id).scalar_subquery(),
                 )
             )
         if room_id:
@@ -219,13 +219,17 @@ class ClassSessionRepository(BaseRepository[ClassSession]):
         end_time: time,
         exclude_session_id: str | None = None,
     ) -> ClassSession | None:
-        stmt = self._with_schedule().where(
-            ClassSession.teacher_id == teacher_id,
-            ClassSession.session_date == session_date,
-            ClassSession.deleted_at.is_(None),
-            ClassSession.status != SessionStatus.cancelled,
-            self._resolved_start_time() < end_time,
-            self._resolved_end_time() > start_time,
+        stmt = (
+            self._with_schedule()
+            .join(ClassSessionTeacher, ClassSessionTeacher.class_session_id == ClassSession.id)
+            .where(
+                ClassSessionTeacher.user_id == teacher_id,
+                ClassSession.session_date == session_date,
+                ClassSession.deleted_at.is_(None),
+                ClassSession.status != SessionStatus.cancelled,
+                self._resolved_start_time() < end_time,
+                self._resolved_end_time() > start_time,
+            )
         )
         if exclude_session_id:
             stmt = stmt.where(ClassSession.id != exclude_session_id)

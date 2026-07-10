@@ -3,15 +3,12 @@ from typing import Any
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.models.class_session import ClassSessionMedia
-from app.models.course import Media
 from app.repositories.class_session_media import ClassSessionMediaRepository
 from app.repositories.media import MediaRepository
 from app.schemas.class_session_media import ClassSessionMediaCreate, ClassSessionMediaUpdate
 from app.services.class_session_service import ClassSessionService
-from app.services.course_service import CourseService
-from app.services.storage_service import StorageService
+from app.services.media_service import MediaService
 
 
 class ClassSessionMediaService:
@@ -19,11 +16,12 @@ class ClassSessionMediaService:
         self.db = db
         self.media_repo = ClassSessionMediaRepository(db)
         self.file_repo = MediaRepository(db)
+        self.media_service = MediaService(db)
 
-    def _media_dict(self, media: Media | None) -> dict[str, Any] | None:
+    def _media_dict(self, media) -> dict[str, Any] | None:
         if not media:
             return None
-        return CourseService(self.db)._media_dict(media)
+        return self.media_service.media_dict(media)
 
     def media_dict(self, item: ClassSessionMedia) -> dict[str, Any]:
         media = self.file_repo.get_active_by_id(str(item.media_id))
@@ -68,21 +66,13 @@ class ClassSessionMediaService:
         uploaded_by: str | None = None,
     ) -> ClassSessionMedia:
         ClassSessionService(self.db).get_session_by_id(session_id)
-        uploaded = StorageService().upload_file(
+        media = self.media_service.upload_media(
             bucket_name=settings.MINIO_BUCKET_MATERIALS,
             file=file,
             file_size=file_size,
             folder=f"class-sessions/{session_id}/materials",
-        )
-        media = Media(
-            bucket=uploaded["bucket"],
-            object_name=uploaded["object_name"],
-            original_filename=file.filename,
-            content_type=file.content_type,
-            size=file_size,
             uploaded_by=uploaded_by,
         )
-        self.file_repo.create(media)
         item = ClassSessionMedia(
             class_session_id=session_id,
             media_id=media.id,

@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.commerce import Order, OrderItem, OrderStatus
+from app.models.commerce import Invoice, Order, OrderItem, OrderStatus
 from app.repositories.base import BaseRepository
 
 
@@ -18,7 +18,9 @@ class OrderRepository(BaseRepository[Order]):
 
     def get_by_invoice_number(self, invoice_number: str) -> Order | None:
         return self.db.execute(
-            select(Order).where(Order.invoice_number == invoice_number, Order.deleted_at.is_(None))
+            select(Order)
+            .join(Invoice, Invoice.order_id == Order.id)
+            .where(Invoice.invoice_number == invoice_number, Order.deleted_at.is_(None), Invoice.deleted_at.is_(None))
         ).scalar_one_or_none()
 
     def list_by_user_id(self, user_id: str) -> list[Order]:

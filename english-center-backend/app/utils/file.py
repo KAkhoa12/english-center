@@ -57,6 +57,8 @@ def generate_object_name(original_filename: str, folder: str | None = None) -> s
     ext = get_file_extension(safe_name)
     generated = f"{uuid.uuid4().hex}.{ext}" if ext else uuid.uuid4().hex
     if folder:
-        clean_folder = folder.strip("/")
+        clean_folder = "/".join(part.strip() for part in folder.strip("/").split("/") if part.strip())
+        if not clean_folder:
+            return generated
         return f"{clean_folder}/{generated}"
     return generated
