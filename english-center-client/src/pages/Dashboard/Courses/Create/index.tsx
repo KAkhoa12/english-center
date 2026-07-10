@@ -1,18 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { ArrowLeft, Save, FileText, Settings, BadgeDollarSign, Image as ImageIcon } from "lucide-react";
 
-import { DashboardCourseThumbnailField, DashboardListPageHeader } from "@/components/Dashboard/Comon";
-import { MultiSelectBadge } from "@/components/MultiSelectBadge";
+import { DashboardListPageHeader } from "@/components/Dashboard/Comon";
+import {  MutilImagePicker } from "@/components/Comon/MediaPicker";
+import { MutilSelect } from "@/components/Comon/MutilSelect";
+import { Select } from "@/components/Comon/Select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useCoursesStore } from "@/services/courses/courses.store";
 import { useCoursesCategoryStore } from "@/services/coursesCategory/coursesCategory.store";
@@ -22,7 +18,7 @@ import { PRIVATE_ROUTES } from "@/shared/routes";
 
 export const DashboardCourseCreatePage = () => {
   const navigate = useNavigate();
-  const { createCourse, uploadCourseThumbnail, isLoading } = useCoursesStore();
+  const { createCourse, uploadCourseThumbnail, uploadCourseMediaMany, isLoading } = useCoursesStore();
   const { categories, listCategories } = useCoursesCategoryStore();
   const { tags, listTags } = useCoursesTagStore();
 
@@ -39,6 +35,7 @@ export const DashboardCourseCreatePage = () => {
   const [description, setDescription] = useState("");
   const [outputGoal, setOutputGoal] = useState("");
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
 
   useEffect(() => {
     void listCategories({ page: 1, page_size: 100, status: "active", sort_by: "name", sort_order: "asc" });
@@ -47,7 +44,6 @@ export const DashboardCourseCreatePage = () => {
 
   const handleNameChange = (value: string) => {
     setName(value);
-
     if (!slugEdited) {
       setSlug(format_slug(value));
     }
@@ -58,7 +54,6 @@ export const DashboardCourseCreatePage = () => {
       toast.error("Vui lòng nhập tên và loại khóa học");
       return;
     }
-
     const trimmedName = name.trim();
     const normalizedSlug = slug.trim() || format_slug(trimmedName);
 
@@ -81,7 +76,9 @@ export const DashboardCourseCreatePage = () => {
       if (thumbnailFile) {
         await uploadCourseThumbnail(created.id, thumbnailFile);
       }
-
+      if (galleryFiles.length) {
+        await uploadCourseMediaMany(created.id, galleryFiles);
+      }
       toast.success("Tạo khóa học thành công");
       navigate(PRIVATE_ROUTES.DASHBOARD_COURSES_EDIT.replace(":courseId", created.id));
     } catch {
@@ -90,167 +87,254 @@ export const DashboardCourseCreatePage = () => {
   };
 
   return (
-    <section>
-      <DashboardListPageHeader
-        title="Tạo mới khóa học"
-        description="Nhập thông tin cơ bản và ảnh đại diện cho khóa học"
-      />
-
-      <div className="space-y-5">
-        <DashboardCourseThumbnailField
-          file={thumbnailFile}
-          onFileChange={setThumbnailFile}
-          disabled={isLoading}
-        />
-
-        <div className="space-y-4 rounded-2xl border border-gray-100 bg-white p-5">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Tên khóa học</label>
-              <Input value={name} onChange={(e) => handleNameChange(e.target.value)} placeholder="Tên khóa học" />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Slug</label>
-              <Input
-                value={slug}
-                onChange={(e) => {
-                  setSlugEdited(true);
-                  setSlug(format_slug(e.target.value));
-                }}
-                placeholder="slug-khoa-hoc"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Loại khóa học</label>
-              <Select value={categoryId} onValueChange={setCategoryId}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Loại khóa học" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Mode khóa học</label>
-              <Select value={mode} onValueChange={(value: "center" | "template") => setMode(value)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Mode khóa học" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="center">Center - bán theo lớp học</SelectItem>
-                  <SelectItem value="template">Template - học theo module/bài học</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Trình độ mục tiêu</label>
-              <Select value={targetLevel} onValueChange={setTargetLevel}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Trình độ mục tiêu" />
-                </SelectTrigger>
-                <SelectContent>
-                  {["A0", "A1", "A2", "B1", "B2", "C1", "C2"].map((level) => (
-                    <SelectItem key={level} value={level}>
-                      {level}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Tổng số buổi</label>
-              <Input
-                type="number"
-                min={0}
-                value={totalSessions}
-                onChange={(e) => setTotalSessions(e.target.value)}
-                placeholder="Tổng số buổi"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Học phí</label>
-              <Input
-                type="number"
-                min={0}
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="Học phí"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Trạng thái</label>
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Trạng thái" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Đang mở</SelectItem>
-                  <SelectItem value="inactive">Tạm ẩn</SelectItem>
-                  <SelectItem value="archived">Lưu trữ</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5 md:col-span-2">
-              <label className="text-sm font-medium text-gray-700">Các Tags</label>
-              <MultiSelectBadge
-                options={tags.map((tag) => ({ label: tag.name, value: tag.id }))}
-                value={selectedTagIds}
-                onChange={setSelectedTagIds}
-                placeholder="Chọn tag khóa học"
-                searchPlaceholder="Tìm tag..."
-                emptyText="Không có tag phù hợp"
-                disabled={isLoading}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-gray-700">Mô tả khóa học</label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Mô tả khóa học"
-              rows={4}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-gray-700">Mục tiêu đầu ra</label>
-            <Textarea
-              value={outputGoal}
-              onChange={(e) => setOutputGoal(e.target.value)}
-              placeholder="Mục tiêu đầu ra"
-              rows={3}
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-2">
+    <div className="w-full pb-16">
+      <div className="sticky top-[89px] z-50 py-2 bg-slate-50/80 backdrop-blur-md border-b border-slate-200/80 mb-6">
+        <div className="max-w-[1400px] mx-auto px-4 py-2  h-16 flex items-center justify-between gap-4">
+          <DashboardListPageHeader
+            title="Tạo mới khóa học"
+            description="Thiết lập cấu hình và nội dung chương trình đào tạo"
+          />
+          <div className="flex items-center gap-2 shrink-0">
             <Button
               type="button"
               variant="outline"
               onClick={() => navigate(PRIVATE_ROUTES.DASHBOARD_COURSES)}
+              className="h-9 rounded-md border-slate-300 text-slate-700 font-medium hover:bg-slate-100 gap-2 px-3.5 text-xs shadow-none"
             >
-              Quay lại
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Hủy bỏ
             </Button>
-            <Button type="button" disabled={isLoading} onClick={() => void handleCreate()}>
-              Lưu khóa học
+            <Button
+              type="button"
+              disabled={isLoading}
+              onClick={() => void handleCreate()}
+              className="h-9 rounded-md bg-slate-900 hover:bg-slate-800 text-white font-medium gap-2 px-4 text-xs shadow-none"
+            >
+              <Save className="h-3.5 w-3.5" />
+              Lưu thay đổi
             </Button>
           </div>
         </div>
       </div>
-    </section>
+
+      <div className="max-w-[1400px] mx-auto px-4 grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div className="lg:col-span-2 space-y-6">
+          <div className="rounded-md border border-slate-200 bg-white p-6 shadow-none space-y-6">
+            <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
+              <FileText className="h-4 w-4 text-slate-500" />
+              <h2 className="text-sm font-semibold text-slate-900 tracking-tight">Thông tin cơ bản</h2>
+            </div>
+
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-700 tracking-wide">Tên khóa học</label>
+                    <span className="text-[10px] font-medium text-rose-500">Bắt buộc</span>
+                  </div>
+                  <Input
+                    value={name}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    placeholder="Ví dụ: Tiếng Anh Giao Tiếp Phản Xạ Pro"
+                    className="h-9 rounded-md border-slate-200 bg-white placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-slate-950 focus-visible:border-slate-950 shadow-none text-sm"
+                  />
+                  <p className="text-[11px] text-slate-400 font-normal">Tên hiển thị công khai trên cổng học viên.</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-700 tracking-wide">Slug đường dẫn nội bộ</label>
+                  <Input
+                    value={slug}
+                    onChange={(e) => {
+                      setSlugEdited(true);
+                      setSlug(format_slug(e.target.value));
+                    }}
+                    placeholder="giao-tiep-phan-xa-pro"
+                    className="h-9 rounded-md border-slate-200 bg-slate-50/50 text-slate-600 font-mono text-xs focus-visible:ring-1 focus-visible:ring-slate-950 focus-visible:border-slate-950 shadow-none"
+                  />
+                  <p className="text-[11px] text-slate-400 font-normal">Tự động tạo theo tên nếu để trống.</p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 tracking-wide">Tóm tắt nội dung khóa học</label>
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Mô tả ngắn gọn về phương pháp giảng dạy, đối tượng phù hợp..."
+                  rows={4}
+                  className="rounded-md border-slate-200 focus-visible:ring-1 focus-visible:ring-slate-950 focus-visible:border-slate-950 resize-none py-2 text-sm shadow-none"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 tracking-wide">Cam kết & Mục tiêu đầu ra</label>
+                <Textarea
+                  value={outputGoal}
+                  onChange={(e) => setOutputGoal(e.target.value)}
+                  placeholder="Ví dụ: Đạt chứng chỉ CEFR B1, tự tin thuyết trình hội thoại doanh nghiệp..."
+                  rows={3}
+                  className="rounded-md border-slate-200 focus-visible:ring-1 focus-visible:ring-slate-950 focus-visible:border-slate-950 resize-none py-2 text-sm shadow-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-md border border-slate-200 bg-white p-6 shadow-none space-y-6">
+            <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
+              <BadgeDollarSign className="h-4 w-4 text-slate-500" />
+              <h2 className="text-sm font-semibold text-slate-900 tracking-tight">Thương mại & Thời lượng</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 tracking-wide">Học phí trọn gói</label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    placeholder="0"
+                    className="h-9 pl-3 pr-10 rounded-md border-slate-200 font-medium focus-visible:ring-1 focus-visible:ring-slate-950 focus-visible:border-slate-950 shadow-none text-sm"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono font-medium text-slate-400 select-none">VND</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 tracking-wide">Tổng thời lượng phân bổ</label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={totalSessions}
+                    onChange={(e) => setTotalSessions(e.target.value)}
+                    placeholder="Chưa cấu hình"
+                    className="h-9 pl-3 pr-12 rounded-md border-slate-200 focus-visible:ring-1 focus-visible:ring-slate-950 focus-visible:border-slate-950 shadow-none text-sm"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400 select-none">buổi</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-6 overflow-visible">
+          {/*<div className="rounded-md border border-slate-200 bg-white p-5 shadow-none space-y-4">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+              <ImageIcon className="h-4 w-4 text-slate-500" />
+              <div className="text-xs font-semibold text-slate-700 tracking-wide">Ảnh bìa hiển thị</div>
+            </div>
+            <ImagePicker file={thumbnailFile} onFileChange={setThumbnailFile} disabled={isLoading} />
+          </div>*/}
+
+          <MutilImagePicker
+            label="Ảnh thư viện khóa học"
+            files={galleryFiles}
+            onFilesChange={setGalleryFiles}
+            disabled={isLoading}
+            maxFiles={20}
+          />
+
+          <div className="rounded-md border border-slate-200 bg-white p-5 shadow-none space-y-4 overflow-visible">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+              <Settings className="h-4 w-4 text-slate-500" />
+              <div className="text-xs font-semibold text-slate-700 tracking-wide">Thuộc tính & Phân hệ</div>
+            </div>
+
+            <div className="space-y-4 overflow-visible">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-600">Trạng thái phát hành</label>
+                <Select
+                  value={
+                    status === "inactive"
+                      ? { key: "Tạm ẩn (Bản nháp)", value: "inactive" }
+                      : status === "archived"
+                        ? { key: "Lưu trữ nội bộ", value: "archived" }
+                        : { key: "Đang hiển thị tuyển sinh", value: "active" }
+                  }
+                  onChange={(option) => setStatus(option?.value ?? "active")}
+                  options={[
+                    { key: "Đang hiển thị tuyển sinh", value: "active" },
+                    { key: "Tạm ẩn (Bản nháp)", value: "inactive" },
+                    { key: "Lưu trữ nội bộ", value: "archived" },
+                  ]}
+                  placeholder="Chọn trạng thái"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-600">Mô hình phân lớp (Mode)</label>
+                <Select
+                  value={
+                    mode === "center"
+                      ? { key: "Center (Khóa học trực tiếp tại trung tâm)", value: "center" }
+                      : { key: "Template (oaóa cọc có sẵn)", value: "template" }
+                  }
+                  onChange={(option) => setMode((option?.value as "center" | "template") ?? "center")}
+                  options={[
+                    { key: "Center (Khóa học trực tiếp tại trung tâm)", value: "center" },
+                    { key: "Template (oaóa cọc có sẵn)", value: "template" },
+                  ]}
+                  placeholder="Chọn mode"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-slate-600">Danh mục chính</label>
+                  <span className="text-[10px] font-medium text-rose-500">Bắt buộc</span>
+                </div>
+                <Select
+                  value={
+                    categoryId
+                      ? { key: categories.find((item) => item.id === categoryId)?.name ?? categoryId, value: categoryId }
+                      : null
+                  }
+                  onChange={(option) => setCategoryId(option?.value ?? "")}
+                  options={categories.map((category) => ({ key: category.name, value: category.id }))}
+                  placeholder="Chọn danh mục"
+                  is_search
+                  searchPlaceholder="Tìm danh mục..."
+                  emptyText="Không tìm thấy danh mục"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-600">Trình độ đầu ra tương đương</label>
+                <Select
+                  value={{ key: `Trình độ ${targetLevel}`, value: targetLevel }}
+                  onChange={(option) => setTargetLevel(option?.value ?? "A1")}
+                  options={["A0", "A1", "A2", "B1", "B2", "C1", "C2"].map((level) => ({
+                    key: `Trình độ ${level}`,
+                    value: level,
+                  }))}
+                  placeholder="Chọn trình độ"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-600">Phân loại theo nhãn (Tags)</label>
+                <MutilSelect
+                  value={selectedTagIds.map((tagId) => {
+                    const tag = tags.find((item) => item.id === tagId);
+                    return { key: tag?.name ?? tagId, value: tagId };
+                  })}
+                  options={tags.map((tag) => ({ key: tag.name, value: tag.id }))}
+                  onChange={(items) => setSelectedTagIds(items.map((item) => item.value))}
+                  placeholder="Chọn thẻ tags..."
+                  searchPlaceholder="Tìm tag nhanh..."
+                  emptyText="Không tìm thấy kết quả"
+                  disabled={isLoading}
+                  is_search
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

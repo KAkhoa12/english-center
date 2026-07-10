@@ -6,6 +6,10 @@ import type {
   CourseOutcome,
   CourseRequirement,
   CourseStatistic,
+  CourseMediaUploadResult,
+  CourseMediaDeleteResult,
+  CourseMediaUpdateRequest,
+  CourseMediaUpdateResult,
   CourseThumbnailUploadResult,
   CreateCourseOutcomeRequest,
   CreateCourseRequest,
@@ -58,6 +62,18 @@ export const coursesApi = {
     formData.append("file", file);
     return apiClient.postForm<CourseThumbnailUploadResult>(`/courses/${courseId}/thumbnail`, formData);
   },
+
+  uploadCourseMediaMany: (courseId: string, files: File[]) => {
+    const formData = new FormData();
+    files.forEach((file) => formData.append("files", file));
+    return apiClient.postForm<CourseMediaUploadResult[]>(`/courses/${courseId}/media/bulk-upload`, formData);
+  },
+
+  deleteCourseMedia: (courseMediaId: string) =>
+    apiClient.delete<CourseMediaDeleteResult>(`/course-media/${courseMediaId}`),
+
+  updateCourseMedia: (courseMediaId: string, data: CourseMediaUpdateRequest) =>
+    apiClient.patch<CourseMediaUpdateResult, CourseMediaUpdateRequest>(`/course-media/${courseMediaId}`, data),
 
   deleteCourse: (courseId: string) =>
     apiClient.delete<void>(`/courses/${courseId}`),

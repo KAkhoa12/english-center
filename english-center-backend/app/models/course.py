@@ -2,7 +2,7 @@ import enum
 from decimal import Decimal
 
 from sqlalchemy import Boolean, Enum, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -147,7 +147,7 @@ class Lesson(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     media_id: Mapped[str | None] = mapped_column(UUID(as_uuid=True), ForeignKey("media.id"), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    content: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     order_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     estimated_duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[LessonStatus] = mapped_column(

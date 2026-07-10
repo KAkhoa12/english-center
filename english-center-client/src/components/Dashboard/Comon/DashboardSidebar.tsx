@@ -54,7 +54,7 @@ const navItems: NavItem[] = [
       {
         label: "Danh sách khóa học",
         href: PRIVATE_ROUTES.DASHBOARD_CENTER_COURSES,
-        allowedRoles: ["admin", "staff"],
+        allowedRoles: ["admin", "staff", "teacher"],
         requiredPermissions: ["course.create", "course.update", "course.delete"],
       },
       {

@@ -1,4 +1,5 @@
 import type { SortOrder, UserRef } from "@/shared/types/response";
+import type { DataImportResult } from "@/shared/types/data-transfer";
 
 export type Staff = {
   id: string;
@@ -32,3 +33,5 @@ export type ListStaffQuery = {
   sort_by?: string;
   sort_order?: SortOrder;
 };
+
+export type StaffImportResult = DataImportResult;

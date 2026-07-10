@@ -15,7 +15,7 @@ import { useEffect, useState } from "react";
 import type { MouseEvent } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 
-import ChatbotPopup from "@/components/Main/ChatbotPopup";
+import ChatbotPopup from "@/components/Comon/ChatbotPopup";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,12 +24,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuthStore } from "@/services/auth/auth.store";
+import logo from "@/assets/logo.svg";
 const navItems = [
-  { href: "#about", label: "Về chúng tôi", type: "anchor" as const },
-  { href: "/courses", label: "Khóa học", type: "route" as const },
-  { href: "#teachers", label: "Giáo viên", type: "anchor" as const },
-  { href: "#testimonials", label: "Học viên", type: "anchor" as const },
-  { href: "#contact", label: "Liên hệ", type: "anchor" as const },
+  { href: "/", label: "Trang chủ" },
+  { href: "/courses", label: "Khóa học"}
 ];
 
 const footerGroups = [
@@ -71,12 +69,7 @@ function BrandLogo({ dark = false }: { dark?: boolean }) {
       <div className="course-badge flex h-10 w-10 items-center justify-center rounded-xl">
         <BookOpen className="h-6 w-6 text-white" />
       </div>
-      <span className={`text-xl font-bold ${dark ? "text-white" : "text-gray-900"}`}>
-        Star
-        <span className={dark ? "text-brand-400" : "text-brand-500"}>
-          English
-        </span>
-      </span>
+      <img src={logo} alt="Logo" className="h-10 w-10" />
     </a>
   );
 }
@@ -301,67 +294,84 @@ function Header() {
 
 function Footer() {
   return (
-    <footer className="bg-gray-900 pb-8 pt-16 text-white">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="mb-12 grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <div className="mb-5">
-              <BrandLogo dark />
-            </div>
-            <p className="mb-6 text-sm leading-relaxed text-gray-400">
-              Trung tâm tiếng Anh hàng đầu với phương pháp học tập hiện đại,
-              giúp bạn tự tin giao tiếp và đạt chứng chỉ quốc tế.
-            </p>
-            <div className="flex gap-3">
-              {[Globe2, Camera, Play].map((Icon, index) => (
-                <a
-                  key={index}
-                  href="#"
-                  aria-label="Mạng xã hội StarEnglish"
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 transition-colors hover:bg-brand-500"
-                >
-                  <Icon className="h-5 w-5" />
+    <footer className="bg-ink pt-20 pb-10 text-white">
+      <div className="mx-auto w-full max-w-7xl px-5 sm:px-8">
+        <div className="mb-14 grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-6">
+          <div className="col-span-2">
+            <a href="#" className="mb-4 flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white">
+                <span className="text-sm font-bold leading-none text-mint">F</span>
+              </div>
+              <span className="text-[15px] font-semibold">FluentUp English</span>
+            </a>
+            <p className="max-w-xs text-[14px] leading-relaxed text-white/60">Học đúng lộ trình. Tiến bộ mỗi ngày.</p>
+            <div className="mt-6 flex items-center gap-3">
+              {[
+                [SiFacebook, "Facebook"],
+                [SiYoutube, "YouTube"],
+                [SiTiktok, "TikTok"],
+                [SiInstagram, "Instagram"],
+              ].map(([Icon, label]) => (
+                <a key={label} href="#" className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 transition-colors hover:bg-white/5">
+                  <Icon className="h-4 w-4" />
                 </a>
               ))}
             </div>
           </div>
-
-          {footerGroups.map((group) => (
-            <div key={group.title}>
-              <h4 className="mb-5 font-semibold">{group.title}</h4>
-              <ul className="space-y-3">
-                {group.links.map((link) => (
-                  <li key={link}>
-                    <a
-                      href="#"
-                      className="text-sm text-gray-400 transition-colors hover:text-brand-400"
-                    >
-                      {link}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          <div>
+            <h4 className="mb-4 text-[13px] font-semibold">Khóa học</h4>
+            <ul className="space-y-2.5 text-[13px] text-white/60">
+              {["Foundation", "Communication", "IELTS", "Business English"].map((item) => (
+                <li key={item}>
+                  <a href="#" className="transition-colors hover:text-white">
+                    {item}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h4 className="mb-4 text-[13px] font-semibold">Học tập</h4>
+            <ul className="space-y-2.5 text-[13px] text-white/60">
+              {["Kiểm tra trình độ", "Lộ trình học", "Học online", "Tài nguyên"].map((item) => (
+                <li key={item}>
+                  <a href="#" className="transition-colors hover:text-white">
+                    {item}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h4 className="mb-4 text-[13px] font-semibold">Về FluentUp</h4>
+            <ul className="space-y-2.5 text-[13px] text-white/60">
+              {["Giáo viên", "Câu chuyện học viên", "Tuyển dụng", "Liên hệ"].map((item) => (
+                <li key={item}>
+                  <a href="#" className="transition-colors hover:text-white">
+                    {item}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h4 className="mb-4 text-[13px] font-semibold">Hỗ trợ</h4>
+            <ul className="space-y-2.5 text-[13px] text-white/60">
+              {["Trung tâm trợ giúp", "Chính sách học phí", "Điều khoản", "Bảo mật"].map((item) => (
+                <li key={item}>
+                  <a href="#" className="transition-colors hover:text-white">
+                    {item}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
-
-        <div className="flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 sm:flex-row">
-          <p className="text-sm text-gray-500">
-            © 2025 StarEnglish. Tất cả quyền được bảo lưu.
-          </p>
-          <div className="flex gap-6">
-            <a
-              href="#"
-              className="text-xs text-gray-500 transition-colors hover:text-gray-300"
-            >
-              Điều khoản sử dụng
-            </a>
-            <a
-              href="#"
-              className="text-xs text-gray-500 transition-colors hover:text-gray-300"
-            >
-              Chính sách bảo mật
-            </a>
+        <div className="flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 md:flex-row">
+          <p className="text-[13px] text-white/50">© 2026 FluentUp English. All rights reserved.</p>
+          <div className="flex items-center gap-2 text-[12px] text-white/40">
+            <span className="h-2 w-2 rounded-full bg-mint" />
+            Hoạt động bình thường · Tất cả hệ thống đang ổn định
           </div>
         </div>
       </div>

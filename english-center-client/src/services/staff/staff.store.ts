@@ -5,6 +5,7 @@ import type { ApiResponse, Pagination } from "@/shared/types/response";
 import { staffApi } from "./staff.api";
 import type {
   ListStaffQuery,
+  StaffImportResult,
   Staff,
   StaffCreateRequest,
   StaffUpdateRequest,
@@ -27,6 +28,8 @@ type StaffState = {
   createStaff: (data: StaffCreateRequest) => Promise<Staff>;
   updateStaff: (staffId: string, data: StaffUpdateRequest) => Promise<Staff>;
   updateStaffAvatar: (staffId: string, file: File) => Promise<Staff>;
+  exportStaff: () => Promise<void>;
+  importStaff: (file: File) => Promise<StaffImportResult>;
   deleteStaff: (staffId: string) => Promise<void>;
   clearSelectedStaff: () => void;
   clearError: () => void;
@@ -78,6 +81,15 @@ export const useStaffStore = create<StaffState>()((set) => ({
       selectedStaff: state.selectedStaff?.id === item.id ? item : state.selectedStaff,
     }));
     return item;
+  },
+
+  exportStaff: async () => {
+    await staffApi.exportStaff();
+  },
+
+  importStaff: async (file) => {
+    const response = await staffApi.importStaff(file);
+    return unwrap(response, "Nhap du lieu nhan vien that bai");
   },
 
   deleteStaff: async (staffId) => {

@@ -1,14 +1,17 @@
+import json
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.response import api_response, build_pagination
 from app.db.session import get_db
+from app.dependencies.admin import require_admin
 from app.dependencies.permissions import require_permission
 from app.schemas.common import PaginationParams
 from app.schemas.teacher import TeacherCreate, TeacherUpdate
+from app.services.admin_data_transfer_service import AdminDataTransferService
 from app.services.storage_service import StorageService
 from app.services.teacher_service import TeacherService
 from app.services.user_service import UserService
@@ -30,6 +33,15 @@ def _teacher_dict(teacher, user):
     }
 
 
+def _json_download(filename: str, payload: dict) -> Response:
+    content = json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8")
+    return Response(
+        content=content,
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.post("", dependencies=[Depends(require_permission("teacher.create"))])
 def create_teacher(payload: TeacherCreate, db: Annotated[Session, Depends(get_db)]):
     svc = TeacherService(db)
@@ -43,6 +55,22 @@ def list_teachers(db: Annotated[Session, Depends(get_db)], page: int = Query(1),
     q = PaginationParams(page=page, page_size=page_size, search=search, sort_by=sort_by, sort_order=sort_order)
     items, total = TeacherService(db).get_teachers(q)
     return api_response(True, "Teachers retrieved successfully", [_teacher_dict(t, u) for t, u in items], build_pagination(page, page_size, total))
+
+
+@router.get("/export", dependencies=[Depends(require_admin)])
+def export_teachers(db: Annotated[Session, Depends(get_db)]):
+    payload = AdminDataTransferService(db).export_teachers()
+    return _json_download("teachers-export.json", payload)
+
+
+@router.post("/import", dependencies=[Depends(require_admin)])
+def import_teachers(file: UploadFile = File(...), db: Annotated[Session, Depends(get_db)] = None):
+    try:
+        payload = json.loads(file.file.read().decode("utf-8"))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON file") from exc
+    result = AdminDataTransferService(db).import_teachers(payload)
+    return api_response(True, "Teachers imported successfully", result.model_dump(mode="json"), None)
 
 
 @router.get("/{teacher_id}", dependencies=[Depends(require_permission("teacher.read"))])

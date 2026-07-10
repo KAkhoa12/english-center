@@ -41,6 +41,16 @@ class StudentRepository(BaseRepository[Student]):
         rows = self.db.execute(stmt).all()
         return [(row[0], row[1]) for row in rows], total
 
+    def list_all_with_user(self, level: str | None = None) -> list[tuple[Student, User]]:
+        stmt = select(Student, User).join(User, User.id == Student.user_id).where(
+            Student.deleted_at.is_(None),
+            User.deleted_at.is_(None),
+        )
+        if level:
+            stmt = stmt.where(Student.level == StudentLevel(level))
+        rows = self.db.execute(stmt.order_by(Student.created_at.asc())).all()
+        return [(row[0], row[1]) for row in rows]
+
     def get_with_user_by_id(self, student_id: str) -> tuple[Student, User] | None:
         row = self.db.execute(
             select(Student, User)

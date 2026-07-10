@@ -62,6 +62,7 @@ from app.repositories.lesson import LessonRepository
 from app.repositories.lesson_material import LessonMaterialRepository
 from app.repositories.media import MediaRepository
 from app.services.storage_service import StorageService
+from app.utils.editorjs import normalize_editorjs_content
 
 
 def slugify(value: str) -> str:
@@ -708,6 +709,57 @@ class CourseMediaService(CourseSerializationMixin):
         self.db.refresh(mapping)
         return CourseService(self.db)._course_media_dict(mapping)
 
+    def upload_and_attach_media_many(
+        self,
+        course_id: str,
+        files: list[Any],
+        media_type: str | None = "gallery",
+    ) -> list[dict[str, Any]]:
+        CourseService(self.db).get_course_by_id(course_id)
+        existing = self.course_media_repo.get_active_by_course(course_id)
+        next_order_index = (max((item.order_index or 0 for item in existing), default=-1) + 1) if existing else 0
+        items: list[dict[str, Any]] = []
+
+        for offset, file in enumerate(files):
+            size = getattr(file, "_size", None)
+            if size is None:
+                size = getattr(file, "size", None)
+            if size is None:
+                current = file.file.tell()
+                file.file.seek(0, 2)
+                size = file.file.tell()
+                file.file.seek(current)
+
+            uploaded = StorageService().upload_file(
+                bucket_name=settings.MINIO_BUCKET_AVATARS,
+                file=file,
+                file_size=size,
+                folder=f"courses/{course_id}",
+            )
+            media = Media(
+                bucket=uploaded["bucket"],
+                object_name=uploaded["object_name"],
+                original_filename=file.filename,
+                content_type=file.content_type,
+                size=size,
+                uploaded_by=None,
+            )
+            self.db.add(media)
+            self.db.flush()
+            mapping = CourseMedia(
+                course_id=course_id,
+                media_id=media.id,
+                media_type=media_type,
+                order_index=next_order_index + offset,
+                is_primary=False,
+            )
+            self.db.add(mapping)
+            self.db.commit()
+            self.db.refresh(mapping)
+            items.append(CourseService(self.db)._course_media_dict(mapping))
+
+        return items
+
 
 class CourseOutcomeService(CourseSerializationMixin):
     def __init__(self, db: Session) -> None:
@@ -856,7 +908,7 @@ class LessonService:
             media_id=payload.media_id,
             title=payload.title,
             description=payload.description,
-            content=payload.content,
+            content=normalize_editorjs_content(payload.content),
             order_index=payload.order_index,
             estimated_duration_minutes=payload.estimated_duration_minutes,
             status=_enum(LessonStatus, payload.status, "status"),
@@ -953,7 +1005,7 @@ class LessonService:
         data = self.lesson_list_dict(lesson)
         data.update(
             {
-                "content": lesson.content,
+                "content": normalize_editorjs_content(lesson.content),
                 "course": {"id": str(course.id), "name": course.name},
                 "module": {"id": str(module.id), "title": module.title} if module else None,
                 "materials": [
@@ -975,7 +1027,7 @@ class LessonService:
         for field in ["title", "description", "content", "order_index", "estimated_duration_minutes"]:
             value = getattr(payload, field)
             if value is not None:
-                setattr(lesson, field, value)
+                setattr(lesson, field, normalize_editorjs_content(value) if field == "content" else value)
         if payload.status is not None:
             lesson.status = _enum(LessonStatus, payload.status, "status")
         self.db.commit()

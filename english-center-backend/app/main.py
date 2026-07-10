@@ -51,7 +51,7 @@ from app.db.session import SessionLocal, engine
 from app.middlewares.auth_token_middleware import AccessTokenValidationMiddleware
 from app.seed.seed_initial_data import seed_defaults
 from app.vector_db.seed import seed_qdrant_collections
-
+from time import perf_counter
 app = FastAPI(title=settings.APP_NAME)
 app.add_middleware(
     CORSMiddleware,
@@ -164,3 +164,22 @@ async def unhandled_exception_handler(_: Request, exc: Exception):
 @app.get("/")
 def root():
     return api_response(True, "API is running", None, None)
+
+@app.get("/debug/ping")
+async def ping():
+    return {"message": "pong",}
+
+@app.middleware("http")
+async def performance_middleware(
+    request: Request,
+    call_next,
+):
+    start = perf_counter()
+
+    response = await call_next(request)
+
+    duration_ms = (perf_counter() - start) * 1000
+
+    response.headers["X-Process-Time-Ms"] = f"{duration_ms:.2f}"
+
+    return response

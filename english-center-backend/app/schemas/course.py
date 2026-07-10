@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -150,7 +151,7 @@ class LessonCreate(BaseModel):
     media_id: str | None = None
     title: str
     description: str | None = None
-    content: str | None = None
+    content: dict[str, Any] | list[dict[str, Any]] | str | None = None
     order_index: int = Field(default=0, ge=0)
     estimated_duration_minutes: int | None = Field(default=None, ge=0)
     status: str = "draft"
@@ -166,7 +167,7 @@ class LessonUpdate(BaseModel):
     media_id: str | None = None
     title: str | None = None
     description: str | None = None
-    content: str | None = None
+    content: dict[str, Any] | list[dict[str, Any]] | str | None = None
     order_index: int | None = Field(default=None, ge=0)
     estimated_duration_minutes: int | None = Field(default=None, ge=0)
     status: str | None = None

@@ -40,6 +40,15 @@ class StaffRepository(BaseRepository[StaffProfile]):
         rows = self.db.execute(stmt).all()
         return [(row[0], row[1]) for row in rows], total
 
+    def list_all_with_user(self) -> list[tuple[StaffProfile, User]]:
+        rows = self.db.execute(
+            select(StaffProfile, User)
+            .join(User, User.id == StaffProfile.user_id)
+            .where(StaffProfile.deleted_at.is_(None), User.deleted_at.is_(None))
+            .order_by(StaffProfile.created_at.asc())
+        ).all()
+        return [(row[0], row[1]) for row in rows]
+
     def get_with_user_by_id(self, staff_id: str) -> tuple[StaffProfile, User] | None:
         row = self.db.execute(
             select(StaffProfile, User)

@@ -1,6 +1,6 @@
 import type { RouteObject } from 'react-router-dom';
 import { PUBLIC_ROUTES } from '@/shared/routes';
-import MainLayout from '@/shared/layouts/MainLayout';
+import MainLayout from '@/components/Layout/MainLayout';
 import HomePage from '@/pages/Home';
 import AuthLayout from '@/shared/layouts/AuthLayout';
 import LoginPage from '@/pages/Login';

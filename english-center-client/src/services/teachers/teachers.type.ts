@@ -1,4 +1,5 @@
 import type { SortOrder, UserRef } from "@/shared/types/response";
+import type { DataImportResult } from "@/shared/types/data-transfer";
 
 export type Teacher = {
   id: string;
@@ -38,3 +39,5 @@ export type ListTeachersQuery = {
   sort_by?: string;
   sort_order?: SortOrder;
 };
+
+export type TeacherImportResult = DataImportResult;

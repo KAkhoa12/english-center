@@ -1,7 +1,9 @@
+import { httpClient } from "@/config/http-client";
 import { apiClient } from "@/config/api-client";
 
 import type {
   ListStaffQuery,
+  StaffImportResult,
   Staff,
   StaffCreateRequest,
   StaffUpdateRequest,
@@ -21,6 +23,16 @@ const appendQuery = (url: string, query?: Record<string, unknown>): string => {
   return queryString ? `${url}?${queryString}` : url;
 };
 
+const downloadJson = (filename: string, payload: unknown) => {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  window.URL.revokeObjectURL(url);
+};
+
 export const staffApi = {
   createStaff: (data: StaffCreateRequest) =>
     apiClient.post<Staff, StaffCreateRequest>("/staff", data),
@@ -38,6 +50,17 @@ export const staffApi = {
     const formData = new FormData();
     formData.append("file", file);
     return apiClient.patch<Staff, FormData>(`/staff/${staffId}/avatar`, formData);
+  },
+
+  exportStaff: async () => {
+    const response = await httpClient.get("/staff/export", { responseType: "blob" });
+    downloadJson("staff-export.json", JSON.parse(await response.data.text()));
+  },
+
+  importStaff: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiClient.postForm<StaffImportResult>("/staff/import", formData);
   },
 
   deleteStaff: (staffId: string) =>

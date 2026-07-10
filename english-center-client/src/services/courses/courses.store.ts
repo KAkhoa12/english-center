@@ -6,6 +6,7 @@ import { coursesApi } from "./courses.api";
 import type {
   CourseDetail,
   CourseListItem,
+  CourseMedia,
   CourseOutcome,
   CourseRequirement,
   CourseStatistic,
@@ -13,6 +14,7 @@ import type {
   CreateCourseRequest,
   CreateCourseRequirementRequest,
   ListCoursesQuery,
+  CourseMediaUpdateRequest,
   UpdateCourseOutcomeRequest,
   UpdateCourseRequest,
   UpdateCourseRequirementRequest,
@@ -41,6 +43,9 @@ type CoursesState = {
   createCourse: (data: CreateCourseRequest) => Promise<CourseDetail>;
   updateCourse: (courseId: string, data: UpdateCourseRequest) => Promise<CourseDetail>;
   uploadCourseThumbnail: (courseId: string, file: File) => Promise<void>;
+  uploadCourseMediaMany: (courseId: string, files: File[]) => Promise<CourseMedia[]>;
+  deleteCourseMedia: (courseMediaId: string) => Promise<void>;
+  updateCourseMedia: (courseMediaId: string, data: CourseMediaUpdateRequest) => Promise<CourseMedia>;
   deleteCourse: (courseId: string) => Promise<void>;
   listRequirements: (courseId: string) => Promise<CourseRequirement[]>;
   createRequirement: (courseId: string, data: CreateCourseRequirementRequest) => Promise<CourseRequirement>;
@@ -85,6 +90,12 @@ export const useCoursesStore = create<CoursesState>()((set) => ({
 
   getCourseBySlug: async (slug) => {
     const response = await coursesApi.getCourseBySlug(slug);
+    const course = unwrap(response, "Lay thong tin khoa hoc that bai");
+    set({ selectedCourse: course, requirements: course.requirements ?? [], outcomes: course.outcomes ?? [] });
+    return course;
+  },
+  getCourseById: async (courseId) => {
+    const response = await coursesApi.getCourse(courseId);
     const course = unwrap(response, "Lay thong tin khoa hoc that bai");
     set({ selectedCourse: course, requirements: course.requirements ?? [], outcomes: course.outcomes ?? [] });
     return course;
@@ -140,6 +151,49 @@ export const useCoursesStore = create<CoursesState>()((set) => ({
           ? { ...state.selectedCourse, thumbnail_url: result.thumbnail_url }
           : state.selectedCourse,
     }));
+  },
+
+  uploadCourseMediaMany: async (courseId, files) => {
+    if (!files.length) return [];
+    const response = await coursesApi.uploadCourseMediaMany(courseId, files);
+    const mediaItems = unwrap(response, "Tai nhieu anh khoa hoc that bai");
+    set((state) => ({
+      selectedCourse:
+        state.selectedCourse?.id === courseId
+          ? {
+              ...state.selectedCourse,
+              media: [...(state.selectedCourse.media ?? []), ...mediaItems],
+            }
+          : state.selectedCourse,
+    }));
+    return mediaItems;
+  },
+
+  deleteCourseMedia: async (courseMediaId) => {
+    const response = await coursesApi.deleteCourseMedia(courseMediaId);
+    unwrap(response, "Xoa media khoa hoc that bai");
+    set((state) => ({
+      selectedCourse: state.selectedCourse
+        ? {
+            ...state.selectedCourse,
+            media: state.selectedCourse.media?.filter((item) => item.id !== courseMediaId) ?? [],
+          }
+        : state.selectedCourse,
+    }));
+  },
+
+  updateCourseMedia: async (courseMediaId, data) => {
+    const response = await coursesApi.updateCourseMedia(courseMediaId, data);
+    const media = unwrap(response, "Cap nhat media khoa hoc that bai");
+    set((state) => ({
+      selectedCourse: state.selectedCourse
+        ? {
+            ...state.selectedCourse,
+            media: state.selectedCourse.media?.map((item) => (item.id === media.id ? media : item)) ?? [],
+          }
+        : state.selectedCourse,
+    }));
+    return media;
   },
 
   deleteCourse: async (courseId) => {

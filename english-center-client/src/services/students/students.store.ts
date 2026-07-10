@@ -5,6 +5,7 @@ import type { ApiResponse, Pagination } from "@/shared/types/response";
 import { studentsApi } from "./students.api";
 import type {
   ListStudentsQuery,
+  StudentImportResult,
   Student,
   StudentCreateRequest,
   StudentUpdateRequest,
@@ -27,6 +28,8 @@ type StudentsState = {
   createStudent: (data: StudentCreateRequest) => Promise<Student>;
   updateStudent: (studentId: string, data: StudentUpdateRequest) => Promise<Student>;
   updateStudentAvatar: (studentId: string, file: File) => Promise<Student>;
+  exportStudents: () => Promise<void>;
+  importStudents: (file: File) => Promise<StudentImportResult>;
   deleteStudent: (studentId: string) => Promise<void>;
   clearSelectedStudent: () => void;
   clearError: () => void;
@@ -78,6 +81,15 @@ export const useStudentsStore = create<StudentsState>()((set) => ({
       selectedStudent: state.selectedStudent?.id === item.id ? item : state.selectedStudent,
     }));
     return item;
+  },
+
+  exportStudents: async () => {
+    await studentsApi.exportStudents();
+  },
+
+  importStudents: async (file) => {
+    const response = await studentsApi.importStudents(file);
+    return unwrap(response, "Nhap du lieu hoc vien that bai");
   },
 
   deleteStudent: async (studentId) => {

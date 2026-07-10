@@ -1,18 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 import { DashboardListPageHeader } from "@/components/Dashboard/Comon/DashboardListPageHeader";
-import { CoursesListTable } from "@/components/Dashboard/Courses/CoursesListTable";
-import { MultiSelectBadge } from "@/components/MultiSelectBadge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { DashboardRowActions } from "@/components/Dashboard/Comon/DashboardRowActions";
+import { DashboardTablePagination } from "@/components/Dashboard/Comon/DashboardTablePagination";
+import { CoursesFilter } from "@/pages/Dashboard/Courses/components/CoursesFilter";
+import { TableList } from "@/components/Comon/TableList";
+import { Badge } from "@/components/ui/badge";
 import { useCoursesStore } from "@/services/courses/courses.store";
 import type { CourseMode } from "@/services/courses/courses.type";
 import { useCoursesCategoryStore } from "@/services/coursesCategory/coursesCategory.store";
@@ -34,12 +29,13 @@ export const DashboardCoursesPage = ({ modeFilter }: DashboardCoursesPageProps) 
   const [targetLevel, setTargetLevel] = useState<string>("all");
   const [categoryId, setCategoryId] = useState<string>("all");
   const [tagIds, setTagIds] = useState<string[]>([]);
+  const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
 
-  const { courses, pagination, isLoading, listCourses } = useCoursesStore();
+  const { courses, pagination, isLoading, listCourses, deleteCourse } = useCoursesStore();
   const { categories, listCategories } = useCoursesCategoryStore();
   const { tags, listTags } = useCoursesTagStore();
 
@@ -80,222 +76,203 @@ export const DashboardCoursesPage = ({ modeFilter }: DashboardCoursesPageProps) 
     maxPrice,
   ]);
 
+  const courseColumns = [
+    {
+      key: "code",
+      header: "Mã khóa học",
+      render: (row: (typeof courses)[number]) => <span className="font-medium text-gray-900">{row.code}</span>,
+    },
+    {
+      key: "name",
+      header: "Tên khóa học",
+      render: (row: (typeof courses)[number]) => <span className="font-medium text-gray-900">{row.name}</span>,
+    },
+    {
+      key: "mode",
+      header: "Mode",
+      render: (row: (typeof courses)[number]) => (
+        <Badge className={row.mode === "center" ? "bg-blue-50 text-blue-700" : "bg-violet-50 text-violet-700"}>
+          {row.mode === "center" ? "Trung tâm" : "Template"}
+        </Badge>
+      ),
+    },
+    {
+      key: "category",
+      header: "Loại",
+      render: (row: (typeof courses)[number]) => row.category?.name ?? row.categories?.[0]?.name ?? "-",
+    },
+    {
+      key: "target_level",
+      header: "Trình độ",
+      render: (row: (typeof courses)[number]) => row.target_level ?? "-",
+    },
+    {
+      key: "price",
+      header: "Học phí",
+      headerClassName: "text-right",
+      className: "text-right",
+      render: (row: (typeof courses)[number]) => `${row.price.toLocaleString("vi-VN")} đ`,
+    },
+    {
+      key: "status",
+      header: "Trạng thái",
+      render: (row: (typeof courses)[number]) => (
+        <Badge
+          className={
+            row.status === "active"
+              ? "bg-emerald-100 text-emerald-700"
+              : row.status === "inactive"
+                ? "bg-amber-100 text-amber-700"
+                : "bg-gray-200 text-gray-700"
+          }
+        >
+          {row.status}
+        </Badge>
+      ),
+    },
+    {
+      key: "actions",
+      header: "Thao tác",
+      headerClassName: "text-right",
+      className: "text-right",
+      render: (row: (typeof courses)[number]) => (
+        <div onClick={(event) => event.stopPropagation()}>
+          <DashboardRowActions onEdit={() => navigate(`/dashboard/courses/${row.id}/edit`)} />
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <section>
+    <section className="p-3">
       <DashboardListPageHeader
         title={modeFilter === "center" ? "Khóa học tại trung tâm" : modeFilter === "template" ? "Khóa học có sẵn" : "Danh sách khóa học"}
         description={modeFilter === "center" ? "Quản lý các khóa học mở lớp tại trung tâm" : modeFilter === "template" ? "Quản lý các khóa học template/có sẵn" : "Quản lý toàn bộ khóa học trong hệ thống"}
       />
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Input
-          value={searchInput}
-          onChange={(event) => {
-            setSearchInput(event.target.value);
-          }}
-          onKeyDown={(event) => {
-            if (event.key !== "Enter") return;
-            setSearchKeyword(searchInput);
-            setPage(1);
-          }}
-          placeholder="Tìm theo tên, mã hoặc slug khóa học"
-          className="max-w-sm"
-        />
-        <Button
-          type="button"
-          onClick={() => {
-            setSearchKeyword(searchInput);
-            setPage(1);
-          }}
-        >
-          Tìm kiếm
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => navigate(PRIVATE_ROUTES.DASHBOARD_COURSES_CREATE)}
-        >
-          Thêm khóa học mới
-        </Button>
-      </div>
-
-      <div className="mb-4 grid grid-cols-1 gap-3 rounded-2xl border border-gray-100 bg-white p-4 md:grid-cols-2 xl:grid-cols-4">
-        <Select
-          value={status}
-          onValueChange={(value) => {
-            setStatus(value);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Trạng thái" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tất cả trạng thái</SelectItem>
-            <SelectItem value="active">Đang mở</SelectItem>
-            <SelectItem value="inactive">Tạm ẩn</SelectItem>
-            <SelectItem value="archived">Lưu trữ</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {!modeFilter ? <Select
-          value={mode}
-          onValueChange={(value) => {
-            setMode(value);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Mode khóa học" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tất cả mode</SelectItem>
-            <SelectItem value="center">Khóa trung tâm</SelectItem>
-            <SelectItem value="template">Khóa template</SelectItem>
-          </SelectContent>
-        </Select> : null}
-
-        <Select
-          value={targetLevel}
-          onValueChange={(value) => {
-            setTargetLevel(value);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Trình độ" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tất cả trình độ</SelectItem>
-            {["A0", "A1", "A2", "B1", "B2", "C1", "C2"].map((level) => (
-              <SelectItem key={level} value={level}>
-                {level}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={categoryId}
-          onValueChange={(value) => {
-            setCategoryId(value);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Loại khóa học" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tất cả loại khóa học</SelectItem>
-            {categories.map((category) => (
-              <SelectItem key={category.id} value={category.id}>
-                {category.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <MultiSelectBadge
-          value={tagIds}
-          onChange={(value) => {
-            setTagIds(value);
-            setPage(1);
-          }}
-          options={tags.map((tag) => ({ label: tag.name, value: tag.id }))}
-          placeholder="Tất cả tag"
-          searchPlaceholder="Tìm tag khóa học"
-          emptyText="Không có tag"
-        />
-
-        <Input
-          type="number"
-          min={0}
-          value={minPrice}
-          onChange={(event) => {
-            setMinPrice(event.target.value);
-            setPage(1);
-          }}
-          placeholder="Học phí từ"
-        />
-
-        <Input
-          type="number"
-          min={0}
-          value={maxPrice}
-          onChange={(event) => {
-            setMaxPrice(event.target.value);
-            setPage(1);
-          }}
-          placeholder="Học phí đến"
-        />
-
-        <Select
-          value={sortBy}
-          onValueChange={(value) => {
-            setSortBy(value);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Sắp xếp theo" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="created_at">Ngày tạo</SelectItem>
-            <SelectItem value="updated_at">Ngày cập nhật</SelectItem>
-            <SelectItem value="name">Tên khóa học</SelectItem>
-            <SelectItem value="price">Học phí</SelectItem>
-            <SelectItem value="code">Mã khóa học</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <div className="flex items-center gap-2">
-          <Select
-            value={sortOrder}
-            onValueChange={(value: "asc" | "desc") => {
-              setSortOrder(value);
-              setPage(1);
-            }}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Thứ tự" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="desc">Giảm dần</SelectItem>
-              <SelectItem value="asc">Tăng dần</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setStatus("all");
-              setMode("all");
-              setTargetLevel("all");
-              setCategoryId("all");
-              setTagIds([]);
-              setSortBy("created_at");
-              setSortOrder("desc");
-              setMinPrice("");
-              setMaxPrice("");
-              setSearchInput("");
-              setSearchKeyword("");
-              setPage(1);
-            }}
-          >
-            Xóa lọc
-          </Button>
-        </div>
-      </div>
-
-      <CoursesListTable
-        data={courses}
-        loading={isLoading}
-        pagination={pagination}
-        onPageChange={setPage}
-        onPageSizeChange={(value) => {
-          setPageSize(value);
+      <CoursesFilter
+        searchInput={searchInput}
+        onSearchInputChange={setSearchInput}
+        onSearch={() => {
+          setSearchKeyword(searchInput);
           setPage(1);
         }}
+        status={status}
+        onStatusChange={(value) => {
+          setStatus(value);
+          setPage(1);
+        }}
+        mode={mode}
+        modeFilter={modeFilter}
+        onModeChange={(value) => {
+          setMode(value);
+          setPage(1);
+        }}
+        targetLevel={targetLevel}
+        onTargetLevelChange={(value) => {
+          setTargetLevel(value);
+          setPage(1);
+        }}
+        categoryId={categoryId}
+        onCategoryIdChange={(value) => {
+          setCategoryId(value);
+          setPage(1);
+        }}
+        tagIds={tagIds}
+        onTagIdsChange={(value) => {
+          setTagIds(value);
+          setPage(1);
+        }}
+        sortBy={sortBy}
+        onSortByChange={(value) => {
+          setSortBy(value);
+          setPage(1);
+        }}
+        sortOrder={sortOrder}
+        onSortOrderChange={(value) => {
+          setSortOrder(value);
+          setPage(1);
+        }}
+        minPrice={minPrice}
+        onMinPriceChange={(value) => {
+          setMinPrice(value);
+          setPage(1);
+        }}
+        maxPrice={maxPrice}
+        onMaxPriceChange={(value) => {
+          setMaxPrice(value);
+          setPage(1);
+        }}
+        categories={categories}
+        tags={tags}
+        onCreateCourse={() => navigate(PRIVATE_ROUTES.DASHBOARD_COURSES_CREATE)}
+        onReset={() => {
+          setStatus("all");
+          setMode("all");
+          setTargetLevel("all");
+          setCategoryId("all");
+          setTagIds([]);
+          setSortBy("created_at");
+          setSortOrder("desc");
+          setMinPrice("");
+          setMaxPrice("");
+          setSearchInput("");
+          setSearchKeyword("");
+          setPage(1);
+        }}
+      />
+
+      <TableList
+        data={courses}
+        columns={courseColumns}
+        getRowId={(row) => row.id}
+        loading={isLoading}
+        selectedRowIds={selectedCourseIds}
+        onSelectedRowIdsChange={setSelectedCourseIds}
+        bulkActions={[
+          {
+            label: "Xóa đã chọn",
+            variant: "destructive",
+            onClick: async (rows) => {
+              if (rows.length === 0) return;
+              const confirmed = window.confirm(`Xóa ${rows.length} khóa học đã chọn?`);
+              if (!confirmed) return;
+              try {
+                for (const row of rows) {
+                  await deleteCourse(row.id);
+                }
+                setSelectedCourseIds([]);
+                await listCourses({
+                  page,
+                  page_size: pageSize,
+                  search: searchKeyword.trim() || undefined,
+                  status: status !== "all" ? status : undefined,
+                  mode: modeFilter ?? (mode !== "all" ? (mode as CourseMode) : undefined),
+                  target_level: targetLevel !== "all" ? targetLevel : undefined,
+                  category_id: categoryId !== "all" ? categoryId : undefined,
+                  tag_ids: tagIds.length ? tagIds : undefined,
+                  sort_by: sortBy || undefined,
+                  sort_order: sortOrder,
+                  min_price: minPrice.trim() ? Number(minPrice) : undefined,
+                  max_price: maxPrice.trim() ? Number(maxPrice) : undefined,
+                });
+                toast.success("Xóa khóa học thành công");
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Xóa khóa học thất bại");
+              }
+            },
+          },
+        ]}
+        footer={
+          <DashboardTablePagination
+            pagination={pagination}
+            onPageChange={setPage}
+            onPageSizeChange={(value) => {
+              setPageSize(value);
+              setPage(1);
+            }}
+          />
+        }
       />
     </section>
   );

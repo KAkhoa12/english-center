@@ -5,6 +5,7 @@ import type { ApiResponse, Pagination } from "@/shared/types/response";
 import { teachersApi } from "./teachers.api";
 import type {
   ListTeachersQuery,
+  TeacherImportResult,
   Teacher,
   TeacherCreateRequest,
   TeacherUpdateRequest,
@@ -27,6 +28,8 @@ type TeachersState = {
   createTeacher: (data: TeacherCreateRequest) => Promise<Teacher>;
   updateTeacher: (teacherId: string, data: TeacherUpdateRequest) => Promise<Teacher>;
   updateTeacherAvatar: (teacherId: string, file: File) => Promise<Teacher>;
+  exportTeachers: () => Promise<void>;
+  importTeachers: (file: File) => Promise<TeacherImportResult>;
   deleteTeacher: (teacherId: string) => Promise<void>;
   clearSelectedTeacher: () => void;
   clearError: () => void;
@@ -78,6 +81,15 @@ export const useTeachersStore = create<TeachersState>()((set) => ({
       selectedTeacher: state.selectedTeacher?.id === item.id ? item : state.selectedTeacher,
     }));
     return item;
+  },
+
+  exportTeachers: async () => {
+    await teachersApi.exportTeachers();
+  },
+
+  importTeachers: async (file) => {
+    const response = await teachersApi.importTeachers(file);
+    return unwrap(response, "Nhap du lieu giao vien that bai");
   },
 
   deleteTeacher: async (teacherId) => {

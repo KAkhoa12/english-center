@@ -194,3 +194,10 @@ Cách tải dự án về máy cá nhân:
 
 
 Lỗi không tạo lịch trùng từ các lớp
+
+== AI ==
+1. AI chatbot tư vấn ( nó sẽ giúp khách chốt ngày học rồi khóa học muốn học ) ( số 1 )
+2. AI hỗ trợ học viên hiểu rõ bài học nếu có chỗ nào chưa hiểu
+3. AI hỗ trợ giáo viên và admin quản lý hệ thống
+
+AI sẽ chạy theo flow graph đồ thị, sử dụng thư viên langgraph

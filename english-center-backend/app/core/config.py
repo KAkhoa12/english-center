@@ -26,11 +26,11 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
-    MINIO_ENDPOINT: str = "localhost:9000"
+    MINIO_ENDPOINT: str
     MINIO_PUBLIC_ENDPOINT: str = "localhost:9000"
     MINIO_ROOT_USER: str = "minioadmin"
     MINIO_ROOT_PASSWORD: str = "minioadmin"
-    MINIO_SECURE: bool = False
+    MINIO_SECURE: bool = True
 
     MINIO_BUCKET_AVATARS: str = "avatars"
     MINIO_BUCKET_MATERIALS: str = "materials"
@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:5173"
 
     OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_API_KEY: str
     OLLAMA_LOW_LLM_MODEL: str = "gpt-oss:20b-cloud"
     OLLAMA_HIGH_LLM_MODEL: str = "gpt-oss:120b-cloud"
     OLLAMA_RERANK_MODEL: str = "bge-reranker-v2-m3"
@@ -67,8 +68,6 @@ class Settings(BaseSettings):
     LANGGRAPH_RECURSION_LIMIT: int = Field(default=50, ge=1, le=500)
 
     QDRANT_URL: str | None = None
-    QDRANT_HOST: str = "localhost"
-    QDRANT_PORT: int = 6333
     QDRANT_API_KEY: str | None = None
     QDRANT_COLLECTION_PREFIX: str = "english_center"
 
@@ -76,12 +75,6 @@ class Settings(BaseSettings):
     @classmethod
     def normalize_ollama_base_url(cls, value: str) -> str:
         return value.rstrip("/")
-
-    @property
-    def QDRANT_ENDPOINT(self) -> str:
-        if self.QDRANT_URL:
-            return self.QDRANT_URL.rstrip("/")
-        return f"http://{self.QDRANT_HOST}:{self.QDRANT_PORT}"
 
     @property
     def LANGGRAPH_DEFAULT_CONFIG(self) -> dict:

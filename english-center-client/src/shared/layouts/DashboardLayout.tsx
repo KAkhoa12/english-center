@@ -15,7 +15,7 @@ export const DashboardLayout = () => {
         <DashboardSidebar />
         <div className="min-w-0 flex-1">
           <DashboardHeader onOpenSidebar={() => setSidebarOpen(true)} />
-          <main className="px-4 py-6 sm:px-6 lg:px-8">
+          <main className="px-2 py-2 sm:px-2 lg:px-2">
             <Outlet />
           </main>
         </div>

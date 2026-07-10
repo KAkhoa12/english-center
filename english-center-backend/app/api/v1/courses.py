@@ -119,6 +119,18 @@ def upload_course_media(course_id: str, db: Annotated[Session, Depends(get_db)],
     return api_response(True, "Course media uploaded successfully", item, None)
 
 
+@router.post("/courses/{course_id}/media/bulk-upload", dependencies=[Depends(require_permission("course.update"))])
+def upload_course_media_bulk(course_id: str, db: Annotated[Session, Depends(get_db)], files: list[UploadFile] = File(...)):
+    if not files:
+        return api_response(True, "Course media uploaded successfully", [], None)
+    for file in files:
+        size = get_upload_file_size(file)
+        validate_file_extension(file.filename or "file", "avatar")
+        validate_file_size(size, "avatar")
+    items = CourseMediaService(db).upload_and_attach_media_many(course_id, files=files, media_type="gallery")
+    return api_response(True, "Course media uploaded successfully", items, None)
+
+
 @router.patch("/course-media/{course_media_id}", dependencies=[Depends(require_permission("course.update"))])
 def update_course_media(course_media_id: str, payload: CourseMediaUpdate, db: Annotated[Session, Depends(get_db)]):
     item = CourseMediaService(db).update_media(course_media_id, payload)

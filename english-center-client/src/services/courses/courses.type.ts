@@ -45,12 +45,14 @@ export type CourseModule = {
 export type CourseMedia = {
   id: string;
   course_id?: string;
+  media_id?: string;
   file_id?: string;
   media_type?: string;
   is_primary?: boolean;
   order_index?: number;
   created_at?: string;
   updated_at?: string;
+  media?: Record<string, unknown> | null;
 };
 
 export type CourseListItem = {
@@ -92,6 +94,18 @@ export type CourseThumbnailUploadResult = {
   bucket: string | null;
   object_name: string | null;
 };
+
+export type CourseMediaUploadResult = CourseMedia;
+
+export type CourseMediaDeleteResult = void;
+
+export type CourseMediaUpdateRequest = {
+  media_type?: string | null;
+  order_index?: number | null;
+  is_primary?: boolean | null;
+};
+
+export type CourseMediaUpdateResult = CourseMedia;
 
 export type CenterCourseClassStatistic = {
   id: string;

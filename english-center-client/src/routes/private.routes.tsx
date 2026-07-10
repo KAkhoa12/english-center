@@ -3,7 +3,7 @@ import type { RouteObject } from "react-router-dom";
 import DashboardAccessGuard from "@/shared/guards/DashboardAccessGuard";
 import PrivateRoute from "@/shared/guards/PrivateRoute";
 import DashboardLayout from "@/shared/layouts/DashboardLayout";
-import MainLayout from "@/shared/layouts/MainLayout";
+import MainLayout from "@/components/Layout/MainLayout";
 import CartPage from "@/pages/Cart";
 import DashboardCourseCategoriesPage from "@/pages/Dashboard/CourseCategories";
 import DashboardCoursesPage from "@/pages/Dashboard/Courses";
@@ -99,7 +99,7 @@ export const privateRoutes: RouteObject[] = [
             path: PRIVATE_ROUTES.DASHBOARD_COURSES,
             element: (
               <DashboardAccessGuard
-                allowedRoles={["admin", "staff"]}
+                allowedRoles={["admin", "staff","teacher"]}
                 requiredPermissions={["course.create", "course.update", "course.delete"]}
               >
                 <DashboardCoursesPage />
@@ -110,7 +110,7 @@ export const privateRoutes: RouteObject[] = [
             path: PRIVATE_ROUTES.DASHBOARD_CENTER_COURSES,
             element: (
               <DashboardAccessGuard
-                allowedRoles={["admin", "staff"]}
+                allowedRoles={["admin", "staff","teacher"]}
                 requiredPermissions={["course.create", "course.update", "course.delete"]}
               >
                 <DashboardCoursesPage modeFilter="center" />
@@ -121,7 +121,7 @@ export const privateRoutes: RouteObject[] = [
             path: PRIVATE_ROUTES.DASHBOARD_TEMPLATE_COURSES,
             element: (
               <DashboardAccessGuard
-                allowedRoles={["admin", "staff"]}
+                allowedRoles={["admin", "staff","teacher"]}
                 requiredPermissions={["course.create", "course.update", "course.delete"]}
               >
                 <DashboardCoursesPage modeFilter="template" />
@@ -147,7 +147,7 @@ export const privateRoutes: RouteObject[] = [
           {
             path: PRIVATE_ROUTES.DASHBOARD_COURSES_CREATE,
             element: (
-              <DashboardAccessGuard allowedRoles={["admin", "staff"]} requiredPermissions={["course.create"]}>
+              <DashboardAccessGuard allowedRoles={["admin", "staff","teacher"]} requiredPermissions={["course.create"]}>
                 <DashboardCourseCreatePage />
               </DashboardAccessGuard>
             ),
@@ -155,7 +155,7 @@ export const privateRoutes: RouteObject[] = [
           {
             path: PRIVATE_ROUTES.DASHBOARD_COURSES_EDIT,
             element: (
-              <DashboardAccessGuard allowedRoles={["admin", "staff"]} requiredPermissions={["course.update"]}>
+              <DashboardAccessGuard allowedRoles={["admin", "staff", "teacher"]} requiredPermissions={["course.update"]}>
                 <DashboardCourseEditPage />
               </DashboardAccessGuard>
             ),

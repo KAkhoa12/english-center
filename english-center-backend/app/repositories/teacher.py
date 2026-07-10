@@ -39,6 +39,15 @@ class TeacherRepository(BaseRepository[Teacher]):
         rows = self.db.execute(stmt).all()
         return [(row[0], row[1]) for row in rows], total
 
+    def list_all_with_user(self) -> list[tuple[Teacher, User]]:
+        rows = self.db.execute(
+            select(Teacher, User)
+            .join(User, User.id == Teacher.user_id)
+            .where(Teacher.deleted_at.is_(None), User.deleted_at.is_(None))
+            .order_by(Teacher.created_at.asc())
+        ).all()
+        return [(row[0], row[1]) for row in rows]
+
     def get_with_user_by_id(self, teacher_id: str) -> tuple[Teacher, User] | None:
         row = self.db.execute(
             select(Teacher, User)

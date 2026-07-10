@@ -1,13 +1,17 @@
 import {
+  BookOpen,
   BookOpenCheck,
   CheckCircle2,
+  Clock,
   Clock3,
   Globe2,
   GraduationCap,
   Heart,
+  Infinity,
   MapPin,
   PlayCircle,
   ShoppingCart,
+  Target,
   Trophy,
   Users,
 } from "lucide-react";
@@ -21,7 +25,16 @@ import { useClassesStore } from "@/services/classes/classes.store";
 import type { ClassItem } from "@/services/classes/classes.type";
 import { useCoursesStore } from "@/services/courses/courses.store";
 import { useWishlistStore } from "@/services/wishlist/wishlist.store";
-
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import SkeletonCourseDetail from "@/components/Main/CourseDetail/SkeletonCourseDetail";
+import MediaView from "@/components/Comon/MediaView";
+import { getLevelLabel } from "@/shared/types/level";
 const formatDate = (value: string | null) =>
   value ? new Date(value).toLocaleDateString("vi-VN") : "Đang cập nhật";
 
@@ -44,10 +57,10 @@ const canSelectClass = (item: ClassItem) =>
   item.current_students_count < item.max_students;
 
 export default function CourseDetailPage() {
-  const { id: slug = "" } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
 
-  const { selectedCourse, isLoading, getCourseBySlug, clearSelectedCourse } = useCoursesStore();
+  const { selectedCourse, isLoading, getCourse, clearSelectedCourse } = useCoursesStore();
   const { classes, isLoading: isLoadingClasses, listPublicCourseClasses } = useClassesStore();
   const { addCartItem } = useCartStore();
   const { addWishlist, getWishlistStatus, favorited } = useWishlistStore();
@@ -59,12 +72,12 @@ export default function CourseDetailPage() {
   const [classLoadError, setClassLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!slug) return;
-    void getCourseBySlug(slug);
+    if (!id) return;
+    void getCourse(id);
     return () => {
       clearSelectedCourse();
     };
-  }, [slug, getCourseBySlug, clearSelectedCourse]);
+  }, [getCourse, clearSelectedCourse]);
 
   useEffect(() => {
     if (!selectedCourse || !isAuthenticated) return;
@@ -133,15 +146,7 @@ export default function CourseDetailPage() {
   };
 
   if (isLoading) {
-    return (
-      <section className="relative overflow-hidden bg-gradient-to-br from-brand-700 via-brand-500 to-brand-300 pb-24 pt-28">
-        <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="flex h-96 items-center justify-center">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/30 border-t-white" />
-          </div>
-        </div>
-      </section>
-    );
+    return <SkeletonCourseDetail />;
   }
 
   if (!selectedCourse) {
@@ -174,40 +179,54 @@ export default function CourseDetailPage() {
   ];
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-brand-700 via-brand-500 to-brand-300 pb-24 pt-28">
-      <div className="pointer-events-none absolute -right-24 -top-24 h-[500px] w-[500px] rounded-full bg-amber-400/10 blur-[80px]" />
-      <div className="pointer-events-none absolute -bottom-20 -left-20 h-[400px] w-[400px] rounded-full bg-accent-400/10 blur-[80px]" />
+    <section className="z-10 mx-auto container pt-20">
+      <Breadcrumb className="py-3">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/courses">Khóa học</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href="#">{selectedCourse.name}</BreadcrumbLink>
+            </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
-      <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="mb-8 flex items-center gap-2 text-sm text-white/60">
-          <button
-            type="button"
-            onClick={() => navigate("/courses")}
-            className="transition-colors hover:text-white"
-          >
-            Khóa học
-          </button>
-          <span>/</span>
-          <span className="font-medium text-white">{selectedCourse.name}</span>
-        </div>
+      <div className="grid grid-cols-12 gap-7">
+        <article className="col-span-8 overflow-hidden rounded-3xl ">
+          <MediaView
+            type="image"
+            links={[selectedCourse.thumbnail_url || "https://picsum.photos/seed/course-detail/1200/720.jpg"]}
+            height={500}
+          />
+          <div className="my-4">
+            <p className="text-xs font-medium text-muted mb-2">{selectedCourse.category.name}</p>
+            <h1 className="text-[28px] md:text-[36px] font-bold text-ink leading-tight tracking-tight mb-3">
+              {selectedCourse.name}
+            </h1>
+            <p className="text-[15px] text-muted leading-relaxed ">
+              {selectedCourse.description}
+            </p>
+          </div>
 
-        <div className="grid items-start gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-          <article className="card-hover overflow-hidden rounded-3xl border border-white/20 bg-white shadow-sm">
-            <div className="relative h-72 overflow-hidden sm:h-96">
-              <img
-                src={selectedCourse.thumbnail_url || "https://picsum.photos/seed/course-detail/1200/720.jpg"}
-                alt={selectedCourse.name}
-                className="h-full w-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent" />
-              <button
-                type="button"
-                className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-brand-600"
-              >
-                <PlayCircle className="h-4 w-4" />
-                Xem video giới thiệu
-              </button>
-            </div>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 py-4 border-y border-line mb-6">
+            <span className="flex items-center gap-1.5 text-[13px] text-muted">
+              <Target className="w-4 h-4 text-faint" />
+               Trình độ {getLevelLabel(selectedCourse.target_level)}
+            </span>
+            <span className="flex items-center gap-1.5 text-[13px] text-muted">
+              <BookOpen className="w-4 h-4 text-faint" />
+              21 bài học
+            </span>
+            <span className="flex items-center gap-1.5 text-[13px] text-muted">
+              <Clock className="w-4 h-4 text-faint" />
+              Học linh hoạt
+            </span>
+            <span className="flex items-center gap-1.5 text-[13px] text-muted">
+              <Infinity className="w-4 h-4 text-faint" />
+              Truy cập vĩnh viễn
+            </span>
+          </div>
 
             <div className="p-6 sm:p-8">
               <div className="mb-3 inline-flex items-center rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-600">
@@ -276,7 +295,7 @@ export default function CourseDetailPage() {
             </div>
           </article>
 
-          <aside className="space-y-6">
+          <aside className="col-span-4 ">
             <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
               <div className="mb-4 flex items-center justify-between">
                 <div>
@@ -450,7 +469,6 @@ export default function CourseDetailPage() {
               </ul>
             </div> : null}
           </aside>
-        </div>
       </div>
     </section>
   );

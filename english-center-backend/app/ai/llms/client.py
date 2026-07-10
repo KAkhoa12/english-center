@@ -1,3 +1,4 @@
+from fastapi.security import api_key
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 from app.core.config import settings
 from typing import Any, Literal, Sequence
@@ -14,6 +15,11 @@ def _build_llm(temperature: float, tier: Tier, streaming: bool = False):
         base_url=settings.OLLAMA_BASE_URL,
         temperature=temperature,
         disable_streaming=not streaming,
+        client_kwargs={
+            "headers": {
+                "Authorization": f"Bearer {settings.OLLAMA_API_KEY}"
+            }
+        },
     )
 
 def _maybe_bind_tools(llm: Any, enable_tools: bool = False, tools: Sequence[Any] | None = None):

@@ -8,7 +8,7 @@ dependencies = [
     "alembic>=1.18.4",
     "ddgs>=9.14.4",
     "email-validator>=2.3.0",
-    "fastapi>=0.136.1",
+    "fastapi[standard]>=0.136.1",
     "httpx>=0.28.1",
     "jinja2>=3.1.6",
     "langchain>=1.3.6",
@@ -28,3 +28,5 @@ dependencies = [
     "uvicorn[standard]>=0.47.0",
     "websockets>=10.4,<15",
 ]
+[tool.fastapi]
+entrypoint = "app.main:app"

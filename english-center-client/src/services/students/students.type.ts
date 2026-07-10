@@ -1,4 +1,5 @@
 import type {SortOrder, UserRef } from "@/shared/types/response";
+import type { DataImportResult } from "@/shared/types/data-transfer";
 
 export type StudentLevel = string;
 
@@ -47,3 +48,5 @@ export type ListStudentsQuery = {
   sort_order?: SortOrder;
   level?: StudentLevel;
 };
+
+export type StudentImportResult = DataImportResult;

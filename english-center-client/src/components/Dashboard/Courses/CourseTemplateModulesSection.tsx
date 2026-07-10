@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { EditorJsField } from "@/components/Dashboard/Courses/EditorJsField";
 import { useAssignmentQuestionOptionsStore } from "@/services/assignmentQuestionOptions/assignmentQuestionOptions.store";
 import type { AssignmentQuestionOption } from "@/services/assignmentQuestionOptions/assignmentQuestionOptions.type";
 import { useAssignmentQuestionsStore } from "@/services/assignmentQuestions/assignmentQuestions.store";
@@ -26,6 +27,8 @@ import { useCourseModulesStore } from "@/services/courseModules/courseModules.st
 import type { CourseModule } from "@/services/courseModules/courseModules.type";
 import { useLessonsStore } from "@/services/lessons/lessons.store";
 import type { Lesson } from "@/services/lessons/lessons.type";
+import type { EditorJsDocument } from "@/shared/types/editorjs";
+import { normalizeEditorJsDocument } from "@/shared/helpers/editorjs";
 
 type CourseTemplateModulesSectionProps = {
   courseId: string;
@@ -36,6 +39,16 @@ type MediaLike = {
   content_type?: string | null;
   original_filename?: string | null;
 } | null;
+
+type LessonFormState = {
+  module_id: string;
+  title: string;
+  description: string;
+  content: EditorJsDocument | null;
+  estimated_duration_minutes: string;
+  order_index: string;
+  status: string;
+};
 
 const moduleStatuses = [
   { value: "active", label: "Đang mở" },
@@ -91,6 +104,7 @@ export const CourseTemplateModulesSection = ({ courseId }: CourseTemplateModules
 
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false);
   const [lessonPanelOpen, setLessonPanelOpen] = useState(false);
+  const [lessonEditorKey, setLessonEditorKey] = useState(0);
   const [editingModule, setEditingModule] = useState<CourseModule | null>(null);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
   const [prefillModuleId, setPrefillModuleId] = useState<string>("");
@@ -102,11 +116,11 @@ export const CourseTemplateModulesSection = ({ courseId }: CourseTemplateModules
     order_index: "0",
     status: "active",
   });
-  const [lessonForm, setLessonForm] = useState({
+  const [lessonForm, setLessonForm] = useState<LessonFormState>({
     module_id: "",
     title: "",
     description: "",
-    content: "",
+    content: null,
     estimated_duration_minutes: "",
     order_index: "0",
     status: "draft",
@@ -154,11 +168,12 @@ export const CourseTemplateModulesSection = ({ courseId }: CourseTemplateModules
     setEditingLesson(null);
     setLessonFile(null);
     setPrefillModuleId(moduleId);
+    setLessonEditorKey((value) => value + 1);
     setLessonForm({
       module_id: moduleId,
       title: "",
       description: "",
-      content: "",
+      content: null,
       estimated_duration_minutes: "",
       order_index: String(lessonsByModule[moduleId]?.length ?? 0),
       status: "draft",
@@ -170,11 +185,12 @@ export const CourseTemplateModulesSection = ({ courseId }: CourseTemplateModules
     setEditingLesson(lesson);
     setLessonFile(null);
     setPrefillModuleId(lesson.module_id || "");
+    setLessonEditorKey((value) => value + 1);
     setLessonForm({
       module_id: lesson.module_id || "",
       title: lesson.title,
       description: lesson.description || "",
-      content: lesson.content || "",
+      content: normalizeEditorJsDocument(lesson.content),
       estimated_duration_minutes: lesson.estimated_duration_minutes ? String(lesson.estimated_duration_minutes) : "",
       order_index: String(lesson.order_index),
       status: lesson.status || "draft",
@@ -225,7 +241,7 @@ export const CourseTemplateModulesSection = ({ courseId }: CourseTemplateModules
         module_id: lessonForm.module_id,
         title: lessonForm.title.trim(),
         description: lessonForm.description.trim() || null,
-        content: lessonForm.content.trim() || null,
+        content: lessonForm.content,
         estimated_duration_minutes: lessonForm.estimated_duration_minutes
           ? Number(lessonForm.estimated_duration_minutes)
           : null,
@@ -432,7 +448,11 @@ export const CourseTemplateModulesSection = ({ courseId }: CourseTemplateModules
                 </div>
                 <div className="space-y-1.5 md:col-span-2">
                   <FieldLabel>Nội dung bài học</FieldLabel>
-                  <Textarea value={lessonForm.content} rows={10} onChange={(event) => setLessonForm((prev) => ({ ...prev, content: event.target.value }))} />
+                  <EditorJsField
+                    key={`${lessonEditorKey}-${editingLesson?.id ?? "new"}`}
+                    value={lessonForm.content}
+                    onChange={(value) => setLessonForm((prev) => ({ ...prev, content: value }))}
+                  />
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <FieldLabel>Ảnh hoặc video bài học</FieldLabel>

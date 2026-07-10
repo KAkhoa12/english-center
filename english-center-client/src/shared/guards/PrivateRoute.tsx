@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
-
 import { useAuthStore } from "@/services/auth/auth.store";
 
 export default function PrivateRoute() {
@@ -13,11 +12,20 @@ export default function PrivateRoute() {
     let mounted = true;
 
     async function verifyAuth() {
-      const result = await checkAuth();
-
-      if (mounted) {
-        setCanAccess(result);
-        setIsChecking(false);
+      try {
+        const result = await checkAuth();
+        if (mounted) {
+          setCanAccess(result);
+        }
+      } catch (error) {
+        console.error("Xảy ra lỗi khi kiểm tra quyền truy cập:", error);
+        if (mounted) {
+          setCanAccess(false);
+        }
+      } finally {
+        if (mounted) {
+          setIsChecking(false); // Luôn luôn chạy để tắt màn hình loading
+        }
       }
     }
 

@@ -41,7 +41,7 @@ export type Lesson = {
   order_index: number;
   estimated_duration_minutes: number | null;
   status: string;
-  content?: string | null;
+  content?: EditorJsDocument | null;
   course?: LessonCourseRef;
   module?: LessonModuleRef;
   materials?: LessonMaterialRef[];
@@ -52,7 +52,7 @@ export type CreateLessonRequest = {
   media_id?: string | null;
   title: string;
   description?: string | null;
-  content?: string | null;
+  content?: EditorJsDocument | null;
   order_index?: number;
   estimated_duration_minutes?: number | null;
   status?: string;
@@ -63,7 +63,7 @@ export type UpdateLessonRequest = {
   media_id?: string | null;
   title?: string | null;
   description?: string | null;
-  content?: string | null;
+  content?: EditorJsDocument | null;
   order_index?: number | null;
   estimated_duration_minutes?: number | null;
   status?: string | null;
@@ -82,3 +82,4 @@ export type ListLessonsQuery = {
 export type SetLessonThumbnailRequest = {
   media_id: string;
 };
+import type { EditorJsDocument } from "@/shared/types/editorjs";

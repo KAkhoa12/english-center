@@ -1,14 +1,17 @@
+import json
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.response import api_response, build_pagination
 from app.db.session import get_db
+from app.dependencies.admin import require_admin
 from app.dependencies.permissions import require_permission
 from app.schemas.common import PaginationParams
 from app.schemas.staff import StaffCreate, StaffUpdate
+from app.services.admin_data_transfer_service import AdminDataTransferService
 from app.services.staff_service import StaffService
 from app.services.storage_service import StorageService
 from app.services.user_service import UserService
@@ -28,6 +31,15 @@ def _staff_dict(st, user):
     }
 
 
+def _json_download(filename: str, payload: dict) -> Response:
+    content = json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8")
+    return Response(
+        content=content,
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.post("", dependencies=[Depends(require_permission("staff.create"))])
 def create_staff(payload: StaffCreate, db: Annotated[Session, Depends(get_db)]):
     svc = StaffService(db)
@@ -41,6 +53,22 @@ def list_staff(db: Annotated[Session, Depends(get_db)], page: int = Query(1), pa
     q = PaginationParams(page=page, page_size=page_size, search=search, sort_by=sort_by, sort_order=sort_order)
     items, total = StaffService(db).get_staff(q)
     return api_response(True, "Staff retrieved successfully", [_staff_dict(st, u) for st, u in items], build_pagination(page, page_size, total))
+
+
+@router.get("/export", dependencies=[Depends(require_admin)])
+def export_staff(db: Annotated[Session, Depends(get_db)]):
+    payload = AdminDataTransferService(db).export_staff()
+    return _json_download("staff-export.json", payload)
+
+
+@router.post("/import", dependencies=[Depends(require_admin)])
+def import_staff(file: UploadFile = File(...), db: Annotated[Session, Depends(get_db)] = None):
+    try:
+        payload = json.loads(file.file.read().decode("utf-8"))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON file") from exc
+    result = AdminDataTransferService(db).import_staff(payload)
+    return api_response(True, "Staff imported successfully", result.model_dump(mode="json"), None)
 
 
 @router.get("/{staff_id}", dependencies=[Depends(require_permission("staff.read"))])

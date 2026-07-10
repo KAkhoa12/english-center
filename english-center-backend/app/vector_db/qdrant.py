@@ -10,16 +10,14 @@ DEFAULT_COLLECTIONS = (
 
 # Khởi tạo Client đồng bộ (nếu cần dùng trong các script hoặc sync func)
 qdrant_client = QdrantClient(
-    host=settings.QDRANT_HOST,
-    port=settings.QDRANT_PORT,
-    api_key=settings.QDRANT_API_KEY,
+    url=settings.QDRANT_URL,
+    api_key=settings.QDRANT_API_KEY
 )
 
 # Khởi tạo Client bất đồng bộ (Khuyên dùng chính cho FastAPI)
 async_qdrant_client = AsyncQdrantClient(
-    host=settings.QDRANT_HOST,
-    port=settings.QDRANT_PORT,
-    api_key=settings.QDRANT_API_KEY,
+    url=settings.QDRANT_URL,
+    api_key=settings.QDRANT_API_KEY
 )
 
 # Dependency để inject vào các Router của FastAPI
