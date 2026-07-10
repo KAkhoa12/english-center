@@ -9,7 +9,6 @@ import {
   Heart,
   Infinity,
   MapPin,
-  PlayCircle,
   ShoppingCart,
   Target,
   Trophy,
@@ -200,7 +199,7 @@ export default function CourseDetailPage() {
             height={500}
           />
           <div className="my-4">
-            <p className="text-xs font-medium text-muted mb-2">{selectedCourse.category.name}</p>
+            <p className="text-xs font-medium text-muted mb-2">{selectedCourse.category?.name ?? "Đang cập nhật"}</p>
             <h1 className="text-[28px] md:text-[36px] font-bold text-ink leading-tight tracking-tight mb-3">
               {selectedCourse.name}
             </h1>

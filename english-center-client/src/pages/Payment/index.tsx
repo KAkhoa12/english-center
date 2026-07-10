@@ -52,7 +52,7 @@ type PaymentLineItem = {
 const cartItemToLineItem = (item: CartItem): PaymentLineItem => ({
   id: item.id,
   name: item.course_name,
-  code: item.course_code,
+  code: item.course_code ?? "",
   className: item.class?.name ?? null,
   classCode: item.class?.code ?? null,
   classStartDate: item.class?.start_date ?? null,
@@ -63,7 +63,7 @@ const cartItemToLineItem = (item: CartItem): PaymentLineItem => ({
 const orderItemToLineItem = (item: OrderItem): PaymentLineItem => ({
   id: item.id,
   name: item.course_name,
-  code: item.course_code,
+  code: item.course_code ?? "",
   className: item.class?.name ?? null,
   classCode: item.class?.code ?? null,
   classStartDate: item.class?.start_date ?? null,

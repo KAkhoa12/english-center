@@ -1,8 +1,7 @@
-import * as React from "react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, Info, Layers, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Info, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CourseBasicInfoForm from "@/components/Dashboard/Courses/CourseBasicInfoForm";
 import CourseOutcomesEditor from "@/components/Dashboard/Courses/CourseOutcomesEditor";
@@ -274,10 +273,10 @@ export default function DashboardCourseEditPage() {
                     onDeleteItem={async (itemId) => {
                       await deleteCourseMedia(itemId);
                     }}
-              onPrimaryChange={async (itemId, isPrimary) => {
-                await updateCourseMedia(itemId, { is_primary: isPrimary });
-                await getCourse(courseId);
-              }}
+                    onSetPrimary={async (itemId) => {
+                      await updateCourseMedia(itemId, { is_primary: true });
+                      await getCourse(courseId);
+                    }}
                     disabled={isLoading}
                     maxFiles={20}
                     uploadLabel="Tải ảnh"

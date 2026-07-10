@@ -8,10 +8,10 @@ export default function MainLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
-  const heroMockupRef = useRef(null);
+  const heroMockupRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    let animationFrame = null;
+    let animationFrame: number | null = null;
 
     const handleScroll = () => {
       if (animationFrame) return;
@@ -57,7 +57,9 @@ export default function MainLayout() {
         entries.forEach((entry) => {
           if (!entry.isIntersecting) return;
           const targetWidth = entry.target.getAttribute("data-w");
-          if (targetWidth) entry.target.style.width = targetWidth;
+          if (targetWidth && entry.target instanceof HTMLElement) {
+            entry.target.style.width = targetWidth;
+          }
           observer.unobserve(entry.target);
         });
       },

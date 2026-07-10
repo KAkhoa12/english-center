@@ -13,7 +13,7 @@ export type OrderItem = {
   class_id: string | null;
   class: OrderItemClassRef | null;
   course_name: string;
-  course_code: string;
+  course_code: string | null;
   unit_price: number;
   quantity: number;
   total_price: number;
@@ -47,7 +47,7 @@ export type Order = {
   id: string;
   user_id: string;
   order_code: string;
-  invoice_number: string;
+  invoice_number: string | null;
   status: string;
   currency: string;
   subtotal_amount: number;

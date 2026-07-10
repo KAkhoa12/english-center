@@ -94,7 +94,7 @@ export const useCoursesStore = create<CoursesState>()((set) => ({
     set({ selectedCourse: course, requirements: course.requirements ?? [], outcomes: course.outcomes ?? [] });
     return course;
   },
-  getCourseById: async (courseId) => {
+  getCourseById: async (courseId: string) => {
     const response = await coursesApi.getCourse(courseId);
     const course = unwrap(response, "Lay thong tin khoa hoc that bai");
     set({ selectedCourse: course, requirements: course.requirements ?? [], outcomes: course.outcomes ?? [] });

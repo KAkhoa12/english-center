@@ -1,4 +1,3 @@
-import * as React from "react";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Eye, FileText, Image, Trash2, Upload, X, Video, FileUp } from "lucide-react";

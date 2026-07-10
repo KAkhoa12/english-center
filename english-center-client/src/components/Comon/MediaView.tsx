@@ -143,7 +143,6 @@ export function MediaView({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [thumbOffset, setThumbOffset] = useState(0);
-  const [modalVisible, setModalVisible] = useState(false);
 
   const thumbTrackRef = useRef<HTMLDivElement>(null);
 
@@ -198,21 +197,6 @@ export function MediaView({
   const thumbScrollPrev = () => {
     setThumbOffset((prev) => Math.max(prev - 1, 0));
   };
-
-  /* ── Modal enter animation ── */
-
-  useEffect(() => {
-    if (isModalOpen) {
-      // Trigger reflow then show
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setModalVisible(true);
-        });
-      });
-    } else {
-      setModalVisible(false);
-    }
-  }, [isModalOpen]);
 
   /* ── Keyboard ── */
 

@@ -72,7 +72,7 @@ export default function CourseTemplateCard({
       <div className="flex flex-1 flex-col p-5">
         <div className="mb-3 flex items-center gap-2">
           <span className="inline-flex rounded-md bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted">
-            {course.category.name}
+            {course.category?.name ?? "Đang cập nhật"}
           </span>
           {course.target_level && (
             <span

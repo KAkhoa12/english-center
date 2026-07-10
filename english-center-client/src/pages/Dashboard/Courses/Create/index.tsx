@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, Save, FileText, Settings, BadgeDollarSign, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Save, FileText, Settings, BadgeDollarSign } from "lucide-react";
 
 import { DashboardListPageHeader } from "@/components/Dashboard/Comon";
-import {  MutilImagePicker } from "@/components/Comon/MediaPicker";
+import { MutilImagePicker } from "@/components/Comon/MediaPicker";
 import { MutilSelect } from "@/components/Comon/MutilSelect";
 import { Select } from "@/components/Comon/Select";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ import { PRIVATE_ROUTES } from "@/shared/routes";
 
 export const DashboardCourseCreatePage = () => {
   const navigate = useNavigate();
-  const { createCourse, uploadCourseThumbnail, uploadCourseMediaMany, isLoading } = useCoursesStore();
+  const { createCourse, uploadCourseMediaMany, isLoading } = useCoursesStore();
   const { categories, listCategories } = useCoursesCategoryStore();
   const { tags, listTags } = useCoursesTagStore();
 
@@ -34,7 +34,6 @@ export const DashboardCourseCreatePage = () => {
   const [status, setStatus] = useState("active");
   const [description, setDescription] = useState("");
   const [outputGoal, setOutputGoal] = useState("");
-  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
 
   useEffect(() => {
@@ -73,9 +72,6 @@ export const DashboardCourseCreatePage = () => {
         output_goal: outputGoal.trim() || null,
       });
 
-      if (thumbnailFile) {
-        await uploadCourseThumbnail(created.id, thumbnailFile);
-      }
       if (galleryFiles.length) {
         await uploadCourseMediaMany(created.id, galleryFiles);
       }

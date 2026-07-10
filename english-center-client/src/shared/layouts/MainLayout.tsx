@@ -1,13 +1,10 @@
 import {
   BookOpen,
-  Camera,
   ChevronDown,
-  Globe2,
   Heart,
   LayoutDashboard,
   LogOut,
   Menu,
-  Play,
   ShoppingCart,
   X,
 } from "lucide-react";
@@ -26,44 +23,11 @@ import {
 import { useAuthStore } from "@/services/auth/auth.store";
 import logo from "@/assets/logo.svg";
 const navItems = [
-  { href: "/", label: "Trang chủ" },
-  { href: "/courses", label: "Khóa học"}
+  { href: "/", label: "Trang chủ", type: "route" as const },
+  { href: "/courses", label: "Khóa học", type: "route" as const },
 ];
 
-const footerGroups = [
-  {
-    title: "Khóa học",
-    links: [
-      "Tiếng Anh Trẻ Em",
-      "Tiếng Anh Thiếu Niên",
-      "Luyện Thi IELTS",
-      "Giao Tiếp Ứng Dụng",
-      "Tiếng Anh Thương Mại",
-      "Luyện Thi TOEIC",
-    ],
-  },
-  {
-    title: "Hỗ trợ",
-    links: [
-      "Câu hỏi thường gặp",
-      "Chính sách hoàn phí",
-      "Hướng dẫn đăng ký",
-      "Lịch khai giảng",
-      "Tuyển dụng",
-    ],
-  },
-  {
-    title: "Cơ sở",
-    links: [
-      "Q.1 - 123 Nguyễn Huệ",
-      "Q.7 - 456 Nguyễn Văn Linh",
-      "Q.3 - 789 Võ Văn Tần",
-      "Q. Bình Thạnh - 321 Xô Viết Nghệ Tĩnh",
-    ],
-  },
-];
-
-function BrandLogo({ dark = false }: { dark?: boolean }) {
+function BrandLogo() {
   return (
     <a href="#" className="flex items-center gap-2">
       <div className="course-badge flex h-10 w-10 items-center justify-center rounded-xl">
@@ -306,14 +270,14 @@ function Footer() {
             </a>
             <p className="max-w-xs text-[14px] leading-relaxed text-white/60">Học đúng lộ trình. Tiến bộ mỗi ngày.</p>
             <div className="mt-6 flex items-center gap-3">
-              {[
-                [SiFacebook, "Facebook"],
-                [SiYoutube, "YouTube"],
-                [SiTiktok, "TikTok"],
-                [SiInstagram, "Instagram"],
-              ].map(([Icon, label]) => (
-                <a key={label} href="#" className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 transition-colors hover:bg-white/5">
-                  <Icon className="h-4 w-4" />
+              {["Facebook", "YouTube", "TikTok", "Instagram"].map((label) => (
+                <a
+                  key={label}
+                  href="#"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 text-[11px] font-semibold text-white/70 transition-colors hover:bg-white/5 hover:text-white"
+                  aria-label={label}
+                >
+                  {label.slice(0, 1)}
                 </a>
               ))}
             </div>

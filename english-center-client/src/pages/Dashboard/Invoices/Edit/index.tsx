@@ -17,7 +17,7 @@ export default function DashboardInvoiceEditPage() {
   useEffect(() => {
     if (!invoiceId) return;
     void getOrder(invoiceId)
-      .then((data) => setInvoiceNumber(data.invoice_number))
+      .then((data) => setInvoiceNumber(data.invoice_number ?? ""))
       .catch(() => toast.error("Khong the tai hoa don"));
   }, [invoiceId, getOrder]);
 

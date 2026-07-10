@@ -1,7 +1,16 @@
 export type InvoiceItem = {
   id: string;
+  course_id: string | null;
+  class_id: string | null;
+  class: {
+    id: string;
+    name: string;
+    code: string | null;
+    start_date: string | null;
+    status: string;
+  } | null;
   item_name: string;
-  item_code: string;
+  item_code: string | null;
   unit_price: number;
   quantity: number;
   total_price: number;
