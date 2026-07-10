@@ -34,7 +34,13 @@ export type Payment = {
   amount: number;
   currency: string;
   checkout_url: string | null;
+  external_order_id: string | null;
+  external_transaction_id: string | null;
   provider_transaction_id: string | null;
+  provider_payment_id: string | null;
+  paid_at: string | null;
+  failed_at: string | null;
+  cancelled_at: string | null;
 };
 
 export type Order = {

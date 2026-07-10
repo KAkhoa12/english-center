@@ -10,6 +10,7 @@ import type {
   ChatMessage,
   ChatSocketEvent,
   ChatUser,
+  CreateConversationRequest,
   SendMessageRequest,
 } from "./chat.type";
 import { ChatSocketClient } from "./chat.ws";
@@ -34,7 +35,10 @@ type ChatState = {
 
   fetchContacts: () => Promise<ChatUser[]>;
   fetchConversations: () => Promise<ChatConversation[]>;
-  openConversationWith: (participantUserId: string) => Promise<ChatConversation>;
+  openConversationWith: (
+    participantUserId: string,
+    options?: Omit<CreateConversationRequest, "participant_user_id">
+  ) => Promise<ChatConversation>;
   setActiveConversation: (conversation: ChatConversation | null) => void;
   fetchMessages: (conversationId: string) => Promise<ChatMessage[]>;
   sendMessage: (payload: SendMessageRequest) => Promise<void>;
@@ -97,10 +101,13 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     }
   },
 
-  openConversationWith: async (participantUserId) => {
+  openConversationWith: async (participantUserId, options) => {
     try {
       set({ isLoading: true, error: null });
-      const response = await chatApi.createConversation({ participant_user_id: participantUserId });
+      const response = await chatApi.createConversation({
+        participant_user_id: participantUserId,
+        ...options,
+      });
       const conversation = unwrap(response, "Mo hoi thoai that bai");
       const messages = await chatApi.listMessages(conversation.id, { limit: 50 });
       set((state) => ({
