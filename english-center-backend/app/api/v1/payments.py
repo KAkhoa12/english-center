@@ -1,6 +1,7 @@
+import json
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -12,6 +13,18 @@ from app.schemas.commerce import CreateSePayPaymentRequest, MarkOrderPaidRequest
 from app.services.commerce_service import OrderSerializer, OrderService, PaymentService, mark_order_paid_for_testing
 
 router = APIRouter(tags=["payments"])
+
+
+async def _read_json_body(request: Request) -> dict:
+    raw_body = await request.body()
+    if not raw_body:
+        return {}
+
+    try:
+        decoded = raw_body.decode("utf-8")
+        return json.loads(decoded) if decoded.strip() else {}
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="Webhook body must be valid JSON") from exc
 
 
 @router.post("/payments/sepay/create")
@@ -39,7 +52,7 @@ def get_order_payments(order_id: str, db: Annotated[Session, Depends(get_db)], c
 
 @router.post("/payments/sepay/ipn")
 async def sepay_ipn(request: Request, db: Annotated[Session, Depends(get_db)]):
-    payload = await request.json()
+    payload = await _read_json_body(request)
     success, status_code = PaymentService(db).handle_sepay_ipn(payload, dict(request.headers))
     return JSONResponse(status_code=status_code, content={"success": success})
 
@@ -59,9 +72,8 @@ def mark_order_paid(
 async def payment_webhook_sepay(
     request: Request
 ):
-    body = await request.json()
-
-    print(body)
+    raw_body = await request.body()
+    print(raw_body.decode("utf-8", errors="replace"))
 
     return {
         "success": True
