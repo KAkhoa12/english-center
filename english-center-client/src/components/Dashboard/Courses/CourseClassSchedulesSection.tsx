@@ -2,23 +2,23 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
+import MutilSelect, { type MutilSelectOption } from "@/components/Comon/MutilSelect";
+import { Select, type SelectOption } from "@/components/Comon/Select";
+import TableList from "@/components/Comon/TableList";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useClassSchedulesStore } from "@/services/classSchedules/classSchedules.store";
 import type { ClassSchedule, ClassScheduleName } from "@/services/classSchedules/classSchedules.type";
 import type { ClassItem } from "@/services/classes/classes.type";
 
-const scheduleOptions: { value: ClassScheduleName; label: string }[] = [
-  { value: "T2", label: "Thứ 2" },
-  { value: "T3", label: "Thứ 3" },
-  { value: "T4", label: "Thứ 4" },
-  { value: "T5", label: "Thứ 5" },
-  { value: "T6", label: "Thứ 6" },
-  { value: "T7", label: "Thứ 7" },
-  { value: "CN", label: "Chủ nhật" },
+const scheduleOptions: SelectOption[] = [
+  { key: "Thứ 2", value: "T2" },
+  { key: "Thứ 3", value: "T3" },
+  { key: "Thứ 4", value: "T4" },
+  { key: "Thứ 5", value: "T5" },
+  { key: "Thứ 6", value: "T6" },
+  { key: "Thứ 7", value: "T7" },
+  { key: "Chủ nhật", value: "CN" },
 ];
 
 const emptyForm = {
@@ -29,25 +29,46 @@ const emptyForm = {
 
 const formatTime = (value?: string | null) => value?.slice(0, 5) || "--:--";
 
-export const CourseClassSchedulesSection = ({ classes }: { classes: ClassItem[] }) => {
+type CourseClassSchedulesSectionProps = {
+  classes: ClassItem[];
+  selectedClassId?: string;
+  hideClassSelect?: boolean;
+};
+
+export const CourseClassSchedulesSection = ({
+  classes,
+  selectedClassId,
+  hideClassSelect = false,
+}: CourseClassSchedulesSectionProps) => {
   const { schedules, isLoading, listClassSchedules, createClassSchedule, updateClassSchedule, deleteClassSchedule } = useClassSchedulesStore();
-  const [selectedClassId, setSelectedClassId] = useState("");
+  const [internalSelectedClassId, setInternalSelectedClassId] = useState(selectedClassId ?? "");
   const [form, setForm] = useState(emptyForm);
+  const [selectedDays, setSelectedDays] = useState<MutilSelectOption[]>([{ key: "Thứ 2", value: "T2" }]);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const selectedClass = useMemo(() => classes.find((item) => item.id === selectedClassId) ?? null, [classes, selectedClassId]);
+  const activeClassId = selectedClassId ?? internalSelectedClassId;
+  const selectedClass = useMemo(() => classes.find((item) => item.id === activeClassId) ?? null, [activeClassId, classes]);
+  const classOptions = useMemo(
+    () => classes.map((item) => ({ key: item.name, value: item.id })),
+    [classes],
+  );
 
   useEffect(() => {
-    if (!selectedClassId && classes[0]) setSelectedClassId(classes[0].id);
-  }, [classes, selectedClassId]);
+    if (selectedClassId !== undefined) {
+      setInternalSelectedClassId(selectedClassId);
+      return;
+    }
+    if (!internalSelectedClassId && classes[0]) setInternalSelectedClassId(classes[0].id);
+  }, [classes, internalSelectedClassId, selectedClassId]);
 
   useEffect(() => {
-    if (!selectedClassId) return;
-    void listClassSchedules(selectedClassId).catch(() => toast.error("Không thể tải thời gian lịch học"));
-  }, [listClassSchedules, selectedClassId]);
+    if (!activeClassId) return;
+    void listClassSchedules(activeClassId).catch(() => toast.error("Không thể tải thời gian lịch học"));
+  }, [activeClassId, listClassSchedules]);
 
   const resetForm = () => {
     setForm(emptyForm);
+    setSelectedDays([{ key: "Thứ 2", value: "T2" }]);
     setEditingId(null);
   };
 
@@ -58,10 +79,11 @@ export const CourseClassSchedulesSection = ({ classes }: { classes: ClassItem[] 
       start_time: formatTime(schedule.start_time),
       end_time: formatTime(schedule.end_time),
     });
+    setSelectedDays([{ key: scheduleOptions.find((item) => item.value === schedule.schedule_name)?.key ?? schedule.schedule_name, value: schedule.schedule_name }]);
   };
 
   const handleSubmit = async () => {
-    if (!selectedClassId) {
+    if (!activeClassId) {
       toast.error("Vui lòng chọn lớp học");
       return;
     }
@@ -70,13 +92,17 @@ export const CourseClassSchedulesSection = ({ classes }: { classes: ClassItem[] 
       return;
     }
 
+    const days = selectedDays.length > 0 ? selectedDays : [scheduleOptions.find((item) => item.value === form.schedule_name) ?? { key: "Thứ 2", value: "T2" }];
+
     try {
       if (editingId) {
         await updateClassSchedule(editingId, form);
         toast.success("Cập nhật lịch học thành công");
       } else {
-        await createClassSchedule(selectedClassId, form);
-        toast.success("Thêm lịch học thành công");
+        for (const day of days) {
+          await createClassSchedule(activeClassId, { ...form, schedule_name: day.value as ClassScheduleName });
+        }
+        toast.success(days.length > 1 ? `Đã thêm ${days.length} lịch học` : "Thêm lịch học thành công");
       }
       resetForm();
     } catch (error) {
@@ -94,6 +120,36 @@ export const CourseClassSchedulesSection = ({ classes }: { classes: ClassItem[] 
     }
   };
 
+  const columns = [
+    {
+      key: "schedule_name",
+      header: "Ngày học",
+      render: (row: ClassSchedule) => scheduleOptions.find((item) => item.value === row.schedule_name)?.key ?? row.schedule_name,
+    },
+    {
+      key: "time",
+      header: "Thời gian",
+      render: (row: ClassSchedule) => `${formatTime(row.start_time)} - ${formatTime(row.end_time)}`,
+    },
+    {
+      key: "actions",
+      header: "Thao tác",
+      className: "text-right",
+      render: (row: ClassSchedule) => (
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => startEdit(row)}>
+            <Pencil className="h-4 w-4" />
+            Sửa
+          </Button>
+          <Button type="button" variant="destructive" size="sm" onClick={() => void handleDelete(row.id)}>
+            <Trash2 className="h-4 w-4" />
+            Xóa
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -101,7 +157,9 @@ export const CourseClassSchedulesSection = ({ classes }: { classes: ClassItem[] 
           <h3 className="text-lg font-semibold text-gray-900">Thời gian lịch học trong tuần</h3>
           <p className="mt-1 text-sm text-gray-500">Chọn lớp rồi khai báo các khung giờ học cố định từ T2 đến CN.</p>
         </div>
-        <Badge className="bg-emerald-50 text-emerald-700">{schedules.length} lịch</Badge>
+        <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700">
+          {schedules.length} lịch
+        </span>
       </div>
 
       {classes.length === 0 ? (
@@ -110,78 +168,76 @@ export const CourseClassSchedulesSection = ({ classes }: { classes: ClassItem[] 
         </div>
       ) : (
         <>
-          <div className="mt-5 grid gap-3 rounded-2xl bg-gray-50 p-4 md:grid-cols-2 xl:grid-cols-5">
-            <label className="space-y-1.5 text-sm font-medium text-gray-700 xl:col-span-2">
-              Lớp học
-              <Select value={selectedClassId} onValueChange={(value) => { setSelectedClassId(value); resetForm(); }}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Chọn lớp" /></SelectTrigger>
-                <SelectContent>
-                  {classes.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </label>
+          <div className="mt-5 grid gap-3 rounded-2xl bg-gray-50 p-4 xl:grid-cols-2">
+            {!hideClassSelect ? (
+              <label className="space-y-1.5 text-sm font-medium text-gray-700">
+                Lớp học
+                <Select
+                  value={classOptions.find((item) => item.value === activeClassId) ?? null}
+                  onChange={(option) => {
+                    setInternalSelectedClassId(option?.value ?? "");
+                    resetForm();
+                  }}
+                  options={classOptions}
+                  placeholder="Chọn lớp"
+                  is_search
+                  searchPlaceholder="Tìm lớp học..."
+                  emptyText="Không có lớp học"
+                />
+              </label>
+            ) : (
+              <div>
+                <p className="text-sm font-medium text-gray-700">Lớp học</p>
+                <p className="mt-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900">
+                  {selectedClass?.name || "Chưa chọn lớp"}
+                </p>
+              </div>
+            )}
+
             <label className="space-y-1.5 text-sm font-medium text-gray-700">
               Ngày học
-              <Select value={form.schedule_name} onValueChange={(value: ClassScheduleName) => setForm((prev) => ({ ...prev, schedule_name: value }))}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {scheduleOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <MutilSelect
+                value={selectedDays}
+                onChange={setSelectedDays}
+                options={scheduleOptions}
+                placeholder="Chọn ngày học"
+                searchPlaceholder="Tìm thứ trong tuần..."
+                emptyText="Không có ngày học"
+                is_search
+              />
             </label>
+
             <label className="space-y-1.5 text-sm font-medium text-gray-700">
               Giờ bắt đầu
               <Input type="time" value={form.start_time} onChange={(event) => setForm((prev) => ({ ...prev, start_time: event.target.value }))} />
             </label>
+
             <label className="space-y-1.5 text-sm font-medium text-gray-700">
               Giờ kết thúc
               <Input type="time" value={form.end_time} onChange={(event) => setForm((prev) => ({ ...prev, end_time: event.target.value }))} />
             </label>
-            <div className="flex items-end gap-2 md:col-span-2 xl:col-span-5">
-              <Button type="button" onClick={() => void handleSubmit()} disabled={isLoading}>
+
+            <div className="flex items-end gap-2 xl:col-span-2">
+              <Button type="button" onClick={() => void handleSubmit()} disabled={isLoading || !activeClassId}>
                 <Plus className="h-4 w-4" />
                 {editingId ? "Lưu lịch" : "Thêm lịch"}
               </Button>
-              {editingId ? <Button type="button" variant="outline" onClick={resetForm}>Hủy sửa</Button> : null}
+              {editingId ? (
+                <Button type="button" variant="outline" onClick={resetForm}>
+                  Hủy sửa
+                </Button>
+              ) : null}
             </div>
           </div>
 
-          <div className="mt-5 overflow-hidden rounded-2xl border border-gray-100">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Lớp</TableHead>
-                  <TableHead>Ngày học</TableHead>
-                  <TableHead>Thời gian</TableHead>
-                  <TableHead className="text-right">Thao tác</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {schedules.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="py-8 text-center text-sm text-gray-500">Chưa có lịch học trong tuần cho lớp này.</TableCell>
-                  </TableRow>
-                ) : schedules.map((schedule) => (
-                  <TableRow key={schedule.id}>
-                    <TableCell>{selectedClass?.name || "-"}</TableCell>
-                    <TableCell>{scheduleOptions.find((item) => item.value === schedule.schedule_name)?.label ?? schedule.schedule_name}</TableCell>
-                    <TableCell>{formatTime(schedule.start_time)} - {formatTime(schedule.end_time)}</TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-2">
-                        <Button type="button" variant="outline" size="sm" onClick={() => startEdit(schedule)}>
-                          <Pencil className="h-4 w-4" />
-                          Sửa
-                        </Button>
-                        <Button type="button" variant="destructive" size="sm" onClick={() => void handleDelete(schedule.id)}>
-                          <Trash2 className="h-4 w-4" />
-                          Xóa
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div className="mt-5">
+            <TableList
+              columns={columns}
+              data={schedules}
+              getRowId={(row) => row.id}
+              loading={isLoading}
+              emptyText="Chưa có lịch học trong tuần cho lớp này."
+            />
           </div>
         </>
       )}

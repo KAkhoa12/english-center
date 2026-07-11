@@ -224,7 +224,9 @@ export const DashboardCoursesPage = ({ modeFilter }: DashboardCoursesPageProps) 
 
       <TableList
         data={courses}
+        pagination={pagination}
         columns={courseColumns}
+        onPageChange={setPage}
         getRowId={(row) => row.id}
         loading={isLoading}
         selectedRowIds={selectedCourseIds}
@@ -263,16 +265,6 @@ export const DashboardCoursesPage = ({ modeFilter }: DashboardCoursesPageProps) 
             },
           },
         ]}
-        footer={
-          <DashboardTablePagination
-            pagination={pagination}
-            onPageChange={setPage}
-            onPageSizeChange={(value) => {
-              setPageSize(value);
-              setPage(1);
-            }}
-          />
-        }
       />
     </section>
   );

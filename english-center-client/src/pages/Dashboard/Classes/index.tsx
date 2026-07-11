@@ -52,13 +52,13 @@ export default function DashboardClassesPage() {
   return (
     <section>
       <DashboardListPageHeader title="Quản lý lớp học" description="Quản trị các lớp học" />
-      <ClassesFilterBar
+      {/*<ClassesFilterBar
         value={filters}
         courseOptions={courseOptions}
         teacherOptions={teacherOptions}
         onChange={(query) => { setFilters(query); setPage(1); }}
         onCreate={() => navigate(PRIVATE_ROUTES.DASHBOARD_CLASSES_CREATE)}
-      />
+      />*/}
       <ClassesListTable data={visible} loading={isLoading} pagination={pagination} onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} onEdit={(item) => navigate(PRIVATE_ROUTES.DASHBOARD_CLASSES_EDIT.replace(":classId", item.id))} />
     </section>
   );

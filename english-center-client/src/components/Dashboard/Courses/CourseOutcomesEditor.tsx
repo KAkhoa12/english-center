@@ -1,5 +1,5 @@
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ export default function CourseOutcomesEditor({
   const [newText, setNewText] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
+  const sortedItems = useMemo(() => [...items].sort((a, b) => a.order_index - b.order_index), [items]);
 
   return (
     <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
@@ -49,10 +50,10 @@ export default function CourseOutcomesEditor({
       </div>
 
       <div className="mt-4 space-y-2">
-        {items.length === 0 ? (
+        {sortedItems.length === 0 ? (
           <p className="text-sm text-gray-500">Chưa có kết quả đầu ra nào.</p>
         ) : (
-          items.map((item, index) => (
+          sortedItems.map((item, index) => (
             <div
               key={item.id}
               className="flex items-center gap-2 rounded-xl border border-gray-100 px-3 py-2"

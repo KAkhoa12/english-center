@@ -1,47 +1,51 @@
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { DashboardDateInput } from "@/components/Dashboard/Comon";
+import TableList, { type TableListColumn } from "@/components/Comon/TableList";
+import { DashboardConfirmDeleteDialog } from "@/components/Dashboard/Comon";
+import { CourseClassSchedulesSection } from "@/components/Dashboard/Courses/CourseClassSchedulesSection";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { ClassCreateRequest, ClassItem } from "@/services/classes/classes.type";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ClassFormFields, type ClassFormState } from "@/components/Dashboard/Classes/ClassFormFields";
+import { type MutilSelectOption } from "@/components/Comon/MutilSelect";
+import type { ClassCreateRequest, ClassItem, ClassUpdateRequest } from "@/services/classes/classes.type";
+import { useRoomsStore } from "@/services/rooms/rooms.store";
+import { useTeachersStore } from "@/services/teachers/teachers.store";
 import { generateCode } from "@/shared/helpers/code-format";
-import { PRIVATE_ROUTES } from "@/shared/routes";
+import type { SelectValue } from "@/components/ui/select";
 
-const emptyClassForm = {
+const emptyClassForm: ClassFormState = {
+  courseId: null,
+  teacherId: null,
+  roomId: null,
   name: "",
   code: "",
-  class_type: "offline",
-  max_students: "20",
-  start_date: "",
+  classType: "offline",
+  maxStudents: 20,
+  startDate: "",
   status: "planned",
 };
 
-const classStatusOptions = [
-  { value: "planned", label: "Dự kiến" },
-  { value: "ongoing", label: "Đang học" },
-  { value: "completed", label: "Hoàn thành" },
-  { value: "cancelled", label: "Đã hủy" },
-  { value: "archived", label: "Lưu trữ" },
-];
+const classStatusLabel = (status: string) =>
+  ({ planned: "Dự kiến", ongoing: "Đang học", completed: "Hoàn thành", cancelled: "Đã hủy", archived: "Lưu trữ" }[status] ?? status);
 
-const classStatusLabel = (status: string) => classStatusOptions.find((item) => item.value === status)?.label ?? status;
-
-const formatDate = (value?: string | null) => {
-  if (!value) return "Chưa có ngày";
-  return new Date(value).toLocaleDateString("vi-VN");
-};
+const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString("vi-VN") : "Chưa có ngày");
 
 type CourseCenterClassesSectionProps = {
   courseId: string;
   courseName?: string;
   classes: ClassItem[];
   onCreateClass: (payload: ClassCreateRequest) => Promise<void>;
+  onUpdateClass: (classId: string, payload: ClassUpdateRequest) => Promise<void>;
   onDeleteClass: (classId: string) => Promise<void>;
 };
 
@@ -50,160 +54,235 @@ export const CourseCenterClassesSection = ({
   courseName,
   classes,
   onCreateClass,
+  onUpdateClass,
   onDeleteClass,
 }: CourseCenterClassesSectionProps) => {
-  const navigate = useNavigate();
-  const [classForm, setClassForm] = useState(emptyClassForm);
-  const [classCodeTouched, setClassCodeTouched] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [form, setForm] = useState<ClassFormState>(emptyClassForm);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const { teachers, listTeachers } = useTeachersStore();
+  const { rooms, listRooms } = useRoomsStore();
 
-  const handleCreateClass = async () => {
-    if (!classForm.name.trim()) {
+  useEffect(() => {
+    void listTeachers({ page: 1, page_size: 100 }).catch(() => toast.error("Không thể tải danh sách giáo viên"));
+    void listRooms({ page: 1, page_size: 100, status: "active" }).catch(() => toast.error("Không thể tải danh sách phòng học"));
+  }, [listTeachers, listRooms]);
+
+  const teacherOptions = useMemo<MutilSelectOption[]>(
+    () => teachers.map((teacher) => ({ value: teacher.id, key: teacher.user.full_name, description: teacher.user.email })),
+    [teachers],
+  );
+  const roomOptions = useMemo<MutilSelectOption[]>(
+    () => rooms.map((room) => ({ value: room.id, key: room.name, description: room.location })),
+    [rooms],
+  );
+  const selectedClass = useMemo(() => classes.find((item) => item.id === selectedClassId) ?? null, [classes, selectedClassId]);
+
+  const openCreate = () => {
+    setDialogMode("create");
+    setSelectedClassId(null);
+    setForm(emptyClassForm);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (item: ClassItem) => {
+    setDialogMode("edit");
+    setSelectedClassId(item.id);
+    setForm({
+      courseId: item.course_id,
+      teacherId: item.teacher_id,
+      roomId: item.room_id,
+      name: item.name,
+      code: item.code ?? "",
+      classType: item.class_type,
+      maxStudents: item.max_students,
+      startDate: item.start_date ?? "",
+      status: item.status,
+    });
+    setDialogOpen(true);
+  };
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setSaving(false);
+  };
+
+  const submit = async () => {
+    if (!form.name.trim()) {
       toast.error("Vui lòng nhập tên lớp");
       return;
     }
 
+    setSaving(true);
     try {
-      await onCreateClass({
+      const payload: ClassCreateRequest = {
         course_id: courseId,
-        name: classForm.name.trim(),
-        code: classForm.code.trim() || null,
-        class_type: classForm.class_type,
-        max_students: Number(classForm.max_students || 1),
-        start_date: classForm.start_date || null,
-        status: classForm.status,
-      });
-      setClassForm(emptyClassForm);
-      setClassCodeTouched(false);
-      toast.success("Thêm lớp học thành công");
+        teacher_id: form.teacherId,
+        room_id: form.roomId,
+        name: form.name.trim(),
+        code: form.code.trim() || generateCode(form.name),
+        class_type: form.classType,
+        max_students: Number(form.maxStudents || 1),
+        start_date:  new Date(form.startDate),
+        status: form.status,
+      };
+
+      if (dialogMode === "edit" && selectedClass) {
+        await onUpdateClass(selectedClass.id, payload);
+        toast.success("Cập nhật lớp học thành công");
+      } else {
+        await onCreateClass(payload);
+        toast.success("Thêm lớp học thành công");
+      }
+      closeDialog();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Thêm lớp học thất bại");
+      toast.error(error instanceof Error ? error.message : "Lưu lớp học thất bại");
+      setSaving(false);
     }
   };
 
-  const handleDeleteClass = async (classId: string) => {
+  const confirmDelete = async () => {
+    if (!deletingId) return;
     try {
-      await onDeleteClass(classId);
+      await onDeleteClass(deletingId);
       toast.success("Xóa lớp thành công");
+      setDeletingId(null);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Xóa lớp thất bại");
     }
   };
 
-  return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">Lớp học của {courseName || "khóa học"}</h3>
-          <p className="mt-1 text-sm text-gray-500">Tạo lớp theo ngày khai giảng và quản lý nhanh bằng bảng.</p>
-        </div>
-        <Badge className="bg-blue-50 text-blue-700">{classes.length} lớp</Badge>
-      </div>
-
-      <div className="mt-5 rounded-2xl bg-gray-50 p-4">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <label className="space-y-1.5 text-sm font-medium text-gray-700">
-            Tên lớp
-            <Input
-              value={classForm.name}
-              onChange={(event) => {
-                const name = event.target.value;
-                setClassForm((prev) => ({ ...prev, name, code: classCodeTouched ? prev.code : generateCode(name) }));
-              }}
-              placeholder="VD: IELTS Foundation 01"
-            />
-          </label>
-          <label className="space-y-1.5 text-sm font-medium text-gray-700">
-            Mã lớp
-            <Input
-              value={classForm.code}
-              onChange={(event) => {
-                setClassCodeTouched(true);
-                setClassForm((prev) => ({ ...prev, code: generateCode(event.target.value) }));
-              }}
-              placeholder="VD: IELTS_F01"
-            />
-          </label>
-          <label className="space-y-1.5 text-sm font-medium text-gray-700">
-            Hình thức lớp
-            <Select value={classForm.class_type} onValueChange={(value) => setClassForm((prev) => ({ ...prev, class_type: value }))}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="offline">Offline</SelectItem>
-                <SelectItem value="online">Online</SelectItem>
-                <SelectItem value="hybrid">Hybrid</SelectItem>
-              </SelectContent>
-            </Select>
-          </label>
-          <label className="space-y-1.5 text-sm font-medium text-gray-700">
-            Sĩ số tối đa
-            <Input type="number" min={1} value={classForm.max_students} onChange={(event) => setClassForm((prev) => ({ ...prev, max_students: event.target.value }))} />
-          </label>
-          <label className="space-y-1.5 text-sm font-medium text-gray-700">
-            Ngày khai giảng
-            <DashboardDateInput value={classForm.start_date} onChange={(start_date) => setClassForm((prev) => ({ ...prev, start_date }))} />
-          </label>
-          <label className="space-y-1.5 text-sm font-medium text-gray-700">
-            Trạng thái lớp
-            <Select value={classForm.status} onValueChange={(value) => setClassForm((prev) => ({ ...prev, status: value }))}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {classStatusOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </label>
-          <div className="flex items-end md:col-span-2">
-            <Button type="button" className="w-full md:w-auto" onClick={() => void handleCreateClass()}>
-              <Plus className="h-4 w-4" />
-              Thêm lớp
+  const columns = useMemo<TableListColumn<ClassItem>[]>(
+    () => [
+      {
+        key: "name",
+        header: "Lớp",
+        className: "px-4 py-3",
+        render: (item) => (
+          <div>
+            <p className="font-medium text-ink">{item.name}</p>
+            <p className="text-xs text-caption">{item.code || "Chưa có mã"}</p>
+          </div>
+        ),
+      },
+      {
+        key: "class_type",
+        header: "Hình thức",
+        className: "px-4 py-3",
+        render: (item) => item.class_type,
+      },
+      {
+        key: "students",
+        header: "Sĩ số",
+        className: "px-4 py-3",
+        render: (item) => `${item.current_students_count}/${item.max_students}`,
+      },
+      {
+        key: "start_date",
+        header: "Ngày khai giảng",
+        className: "px-4 py-3",
+        render: (item) => formatDate(item.start_date),
+      },
+      {
+        key: "status",
+        header: "Trạng thái",
+        className: "px-4 py-3",
+        render: (item) => <Badge className="bg-blue-50 text-blue-700">{classStatusLabel(item.status)}</Badge>,
+      },
+      {
+        key: "actions",
+        header: "Thao tác",
+        headerClassName: "text-right",
+        className: "px-4 py-3 text-right",
+        render: (item) => (
+          <div className="flex justify-end gap-2" onClick={(event) => event.stopPropagation()}>
+            <Button type="button" variant="outline" size="sm" onClick={() => openEdit(item)}>
+              <Pencil className="h-4 w-4" />
+              Sửa
+            </Button>
+            <Button type="button" variant="destructive" size="sm" onClick={() => setDeletingId(item.id)}>
+              <Trash2 className="h-4 w-4" />
+              Xóa
             </Button>
           </div>
+        ),
+      },
+    ],
+    [],
+  );
+
+  return (
+    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+      <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">Quản lý lớp học đi kèm</h3>
+          <p className="mt-1 text-sm text-gray-500">Xem nhanh, chỉnh sửa và mở lịch học trong tuần ngay trong dialog.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge className="bg-blue-50 text-blue-700">{classes.length} lớp</Badge>
+          <Button type="button" onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            Thêm lớp
+          </Button>
         </div>
       </div>
 
-      <div className="mt-5 overflow-hidden rounded-2xl border border-gray-100">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Lớp</TableHead>
-              <TableHead>Hình thức</TableHead>
-              <TableHead>Sĩ số</TableHead>
-              <TableHead>Ngày khai giảng</TableHead>
-              <TableHead>Trạng thái</TableHead>
-              <TableHead className="text-right">Thao tác</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {classes.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-sm text-gray-500">Chưa có lớp nào cho khóa center này.</TableCell>
-              </TableRow>
-            ) : classes.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>
-                  <p className="font-medium text-gray-900">{item.name}</p>
-                  <p className="text-xs text-gray-500">{item.code || "Chưa có mã"}</p>
-                </TableCell>
-                <TableCell>{item.class_type}</TableCell>
-                <TableCell>{item.current_students_count}/{item.max_students}</TableCell>
-                <TableCell>{formatDate(item.start_date)}</TableCell>
-                <TableCell><Badge className="bg-blue-50 text-blue-700">{classStatusLabel(item.status)}</Badge></TableCell>
-                <TableCell>
-                  <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" size="sm" onClick={() => navigate(PRIVATE_ROUTES.DASHBOARD_CLASSES_EDIT.replace(":classId", item.id))}>
-                      <Pencil className="h-4 w-4" />
-                      Sửa
-                    </Button>
-                    <Button type="button" variant="destructive" size="sm" onClick={() => void handleDeleteClass(item.id)}>
-                      <Trash2 className="h-4 w-4" />
-                      Xóa
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <TableList
+        columns={columns}
+        data={classes}
+        getRowId={(row) => row.id}
+        emptyText="Chưa có lớp nào cho khóa center này."
+        onRowClick={openEdit}
+      />
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="min-w-7xl overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>{dialogMode === "create" ? "Thêm lớp học" : "Chỉnh sửa lớp học"}</DialogTitle>
+            <DialogDescription>{courseName ? `Khóa học: ${courseName}` : "Thông tin lớp học và lịch học trong tuần."}</DialogDescription>
+          </DialogHeader>
+
+          <div className="h-[70vh] overflow-y-scroll">
+            <ClassFormFields
+              value={form}
+              courseOptions={[{ key: courseId, value: courseName || "Khóa học" }]}
+              teacherOptions={teacherOptions}
+              roomOptions={roomOptions}
+              hideCourse
+              hideCode
+              onChange={setForm}
+            />
+
+            {dialogMode === "edit" && selectedClass ? (
+              <CourseClassSchedulesSection classes={classes} selectedClassId={selectedClass.id} hideClassSelect />
+            ) : (
+              <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
+                Lưu lớp học trước, rồi mở lại để chỉnh lịch học trong tuần.
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
+              Đóng
+            </Button>
+            <Button type="button" onClick={() => void submit()} disabled={saving}>
+              {dialogMode === "edit" ? "Lưu thay đổi" : "Thêm lớp"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <DashboardConfirmDeleteDialog
+        open={Boolean(deletingId)}
+        title="Xóa lớp học"
+        description="Bạn có chắc chắn muốn xóa lớp học này không?"
+        onOpenChange={(open) => !open && setDeletingId(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 };

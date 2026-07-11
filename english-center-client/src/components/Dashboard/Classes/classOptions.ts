@@ -1,34 +1,34 @@
 export const classTypeOptions = [
-  { value: "offline", label: "Offline" },
-  { value: "online", label: "Online" },
-  { value: "hybrid", label: "Kết hợp" },
+  { value: "offline", key: "Offline" },
+  { value: "online", key: "Online" },
+  { value: "hybrid", key: "Kết hợp" },
 ];
 
 export const classStatusOptions = [
-  { value: "planned", label: "Dự kiến" },
-  { value: "ongoing", label: "Đang diễn ra" },
-  { value: "completed", label: "Hoàn thành" },
-  { value: "cancelled", label: "Đã hủy" },
-  { value: "archived", label: "Lưu trữ" },
+  { value: "planned", key: "Dự kiến" },
+  { value: "ongoing", key: "Đang diễn ra" },
+  { value: "completed", key: "Hoàn thành" },
+  { value: "cancelled", key: "Đã hủy" },
+  { value: "archived", key: "Lưu trữ" },
 ];
 
 export const sessionModeOptions = [
-  { value: "offline", label: "Offline" },
-  { value: "online", label: "Online" },
+  { value: "offline", key: "Offline" },
+  { value: "online", key: "Online" },
 ];
 
 export const sessionStatusOptions = [
-  { value: "scheduled", label: "Đã lên lịch" },
-  { value: "completed", label: "Hoàn thành" },
-  { value: "cancelled", label: "Đã hủy" },
+  { value: "scheduled", key: "Đã lên lịch" },
+  { value: "completed", key: "Hoàn thành" },
+  { value: "cancelled", key: "Đã hủy" },
 ];
 
 export const enrollmentStatusOptions = [
-  { value: "active", label: "Đang học" },
-  { value: "completed", label: "Hoàn thành" },
-  { value: "cancelled", label: "Đã hủy" },
-  { value: "pending", label: "Chờ xử lý" },
+  { value: "active", key: "Đang học" },
+  { value: "completed", key: "Hoàn thành" },
+  { value: "cancelled", key: "Đã hủy" },
+  { value: "pending", key: "Chờ xử lý" },
 ];
 
-export const labelOf = (options: { value: string; label: string }[], value?: string | null) =>
-  options.find((item) => item.value === value)?.label ?? value ?? "-";
+export const labelOf = (options: { key: string; label: string }[], key?: string | null) =>
+  options.find((item) => item.key === key)?.label ?? key ?? "-";

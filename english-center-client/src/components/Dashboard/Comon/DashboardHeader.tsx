@@ -27,14 +27,14 @@ export const DashboardHeader = ({ onOpenSidebar }: DashboardHeaderProps) => {
     "Tài khoản";
 
   return (
-    <header className="sticky top-0 z-30 border-b border-gray-100 bg-white/85 px-4 py-4 backdrop-blur-xl sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-30 border-b border-line-soft bg-white/90 px-4 py-3.5 backdrop-blur-xl sm:px-6 lg:px-8">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 lg:hidden">
           <button
             type="button"
             aria-label="Mở menu dashboard"
             onClick={onOpenSidebar}
-            className="rounded-2xl border border-gray-100 bg-white p-2.5 text-gray-700 shadow-sm"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-line-soft bg-white text-muted transition-all hover:bg-surface-soft hover:text-ink"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -42,79 +42,93 @@ export const DashboardHeader = ({ onOpenSidebar }: DashboardHeaderProps) => {
         </div>
 
         <div className="hidden lg:block">
-          <p className="text-sm font-medium text-gray-400">Xin chào, {displayName}</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-gray-950">
+          <p className="text-[13px] font-medium text-caption">
+            Xin chào, <span className="text-ink">{displayName}</span>
+          </p>
+          <h1 className="mt-0.5 text-[22px] font-bold tracking-tight text-ink">
             Dashboard học tập
           </h1>
         </div>
 
-        <div className="flex flex-1 items-center justify-end gap-3">
-          <label className="hidden w-full max-w-sm items-center gap-2 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-400 md:flex">
-            <Search className="h-4 w-4" />
+        <div className="flex flex-1 items-center justify-end gap-2.5">
+          {/* Search */}
+          <label className="hidden w-full max-w-sm items-center gap-2 rounded-full border border-line-soft bg-surface-soft/60 px-4 py-2.5 text-sm text-faint transition-all focus-within:border-mint focus-within:ring-4 focus-within:ring-mint/15 md:flex">
+            <Search className="h-4 w-4 shrink-0" />
             <input
               type="search"
               placeholder="Tìm lớp học, bài tập..."
-              className="w-full border-none bg-transparent p-0 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:shadow-none"
+              className="w-full border-none bg-transparent p-0 text-sm text-body outline-none placeholder:text-faint"
             />
           </label>
 
+          {/* Notification */}
           <button
             type="button"
             aria-label="Thông báo"
-            className="relative rounded-2xl border border-gray-100 bg-white p-3 text-gray-600 shadow-sm transition-colors hover:text-brand-600"
+            className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-line-soft bg-white text-muted transition-all hover:bg-surface-soft hover:text-ink"
           >
-            <Bell className="h-5 w-5" />
-            <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-white bg-coral-500" />
+            <Bell className="h-[18px] w-[18px]" />
+            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-coral ring-2 ring-white" />
           </button>
 
+          {/* AI Chat */}
           <button
             type="button"
             aria-label="Mở trợ lý AI"
             onClick={() => setAiOpen(true)}
-            className="relative rounded-2xl border border-brand-100 bg-brand-50 p-3 text-brand-600 shadow-sm transition-colors hover:bg-brand-100"
+            className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-mint/20 bg-mint/10 text-mint-deep transition-all hover:bg-mint/20"
           >
-            <Bot className="h-5 w-5" />
+            <Bot className="h-[18px] w-[18px]" />
           </button>
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="hidden items-center gap-3 rounded-2xl border border-gray-100 bg-white py-2 pl-2 pr-3 shadow-sm sm:flex"
+                className="hidden items-center gap-2.5 rounded-full border border-line-soft bg-white py-1.5 pl-1.5 pr-3 transition-all hover:bg-surface-soft sm:flex"
               >
                 <img
                   src="https://picsum.photos/seed/dashboard-user/96/96.jpg"
                   alt={displayName}
-                  className="h-9 w-9 rounded-xl object-cover"
+                  className="h-8 w-8 rounded-full object-cover"
                 />
-                <span className="text-sm font-semibold text-gray-800">{displayName}</span>
-                <ChevronDown className="h-4 w-4 text-gray-400" />
+                <span className="text-[13px] font-semibold text-ink">{displayName}</span>
+                <ChevronDown className="h-3.5 w-3.5 text-faint" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-56 rounded-xl border border-gray-100 bg-white p-1.5 shadow-lg"
-            >
+            <DropdownMenuContent align="end" className="w-60">
+              {/* User info header */}
+              <div className="px-3 py-2.5">
+                <p className="text-[13px] font-semibold text-ink truncate">{displayName}</p>
+                <p className="text-[11px] text-caption truncate">
+                  {infoUser?.user?.email ?? "—"}
+                </p>
+              </div>
+
+              <DropdownMenuSeparator />
+
               <DropdownMenuItem
                 onClick={() => navigate("/")}
-                className="cursor-pointer rounded-lg px-3 py-2 text-gray-700 focus:bg-brand-50 focus:text-brand-700"
+                className="cursor-pointer"
               >
-                <Home className="mr-2 h-4 w-4" />
+                <Home className="h-4 w-4 text-faint" />
                 Quay về trang chủ
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="my-1 bg-gray-100" />
+
+              <DropdownMenuSeparator />
+
               <DropdownMenuItem
                 onClick={async () => {
                   await logout();
                   navigate("/");
                 }}
-                className="cursor-pointer rounded-lg px-3 py-2 text-red-600 focus:bg-red-50 focus:text-red-600"
+                className="cursor-pointer text-coral hover:bg-coral/10 hover:text-coral focus:bg-coral/10 focus:text-coral"
               >
-                <LogOut className="mr-2 h-4 w-4" />
+                <LogOut className="h-4 w-4" />
                 Đăng xuất
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
         </div>
       </div>
       <DashboardAiChatSheet open={aiOpen} onOpenChange={setAiOpen} />

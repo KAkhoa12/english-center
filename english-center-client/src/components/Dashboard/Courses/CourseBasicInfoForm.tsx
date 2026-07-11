@@ -12,6 +12,7 @@ type CourseBasicInfoFormProps = {
   course: CourseDetail | null;
   categories: CourseCategory[];
   loading?: boolean;
+  formId?: string;
   onSubmit: (payload: UpdateCourseRequest) => Promise<void>;
 };
 
@@ -19,6 +20,7 @@ export default function CourseBasicInfoForm({
   course,
   categories,
   loading = false,
+  formId,
   onSubmit,
 }: CourseBasicInfoFormProps) {
   const [name, setName] = useState("");
@@ -71,6 +73,7 @@ export default function CourseBasicInfoForm({
 
   return (
     <form
+      id={formId}
       onSubmit={handleSubmit}
       className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm"
     >

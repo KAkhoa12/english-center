@@ -53,3 +53,16 @@ def mark_order_paid(
 ):
     order = mark_order_paid_for_testing(db, order_id, current_user, payload.payment_method, payload.reference)
     return api_response(True, "Order marked as paid successfully", OrderSerializer(db).order_detail(order), None)
+
+
+@router.post("/payment/webhook/sepay")
+async def payment_webhook_sepay(
+    request: Request
+):
+    body = await request.json()
+
+    print(body)
+
+    return {
+        "success": True
+    }

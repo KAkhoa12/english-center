@@ -290,6 +290,7 @@ export const DashboardSidebar = ({
 }: DashboardSidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const me = useAuthStore((state) => state.me);
+
   const visibleNavItems = navItems
     .map((item) => ({
       ...item,
@@ -299,17 +300,18 @@ export const DashboardSidebar = ({
 
   return (
     <aside
-      className={`${className} sticky top-0 h-screen shrink-0 overflow-y-auto border-r border-gray-100 bg-white px-4 py-6 transition-all ${
-        collapsed ? "w-20" : "w-72"
-      }`}
+      className={`${className} sticky top-0 h-screen shrink-0 overflow-y-auto border-r border-line-soft bg-white transition-all duration-300 scrollbar-hidden ${
+        collapsed ? "w-[72px] px-2" : "w-72 px-4"
+      } py-5`}
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 px-1">
         {!collapsed && <DashboardBrand />}
         <button
           type="button"
           aria-label={collapsed ? "Mở rộng sidebar" : "Thu gọn sidebar"}
           onClick={() => setCollapsed((prev) => !prev)}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 text-gray-500 transition-all hover:bg-gray-50 hover:text-gray-900"
+          title={collapsed ? "Mở rộng" : "Thu gọn"}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-line text-muted transition-all hover:bg-surface-soft hover:text-ink"
         >
           {collapsed ? (
             <ChevronRight className="h-4 w-4" />
@@ -319,60 +321,65 @@ export const DashboardSidebar = ({
         </button>
       </div>
 
-      <nav className="mt-10 space-y-1">
+      <div className="mx-1 my-4 h-px bg-line-soft" />
+
+      <nav className="space-y-1 px-1">
         {visibleNavItems.map(({ label, icon: Icon, href, children }) =>
           children ? (
             <details key={label} className="group" open>
               <summary
-                className={`list-none rounded-2xl px-4 py-3 text-sm font-semibold text-gray-500 transition-all hover:bg-gray-50 hover:text-gray-900 ${
+                className={`list-none rounded-xl px-3 py-2 text-[13px] font-semibold text-muted transition-all hover:bg-surface-soft hover:text-ink ${
                   collapsed
                     ? "flex items-center justify-center"
                     : "flex items-center justify-between"
                 }`}
+                title={collapsed ? label : undefined}
               >
                 <span className="flex items-center gap-3">
-                  <Icon className="h-5 w-5" />
-                  {!collapsed && label}
+                  <Icon className="h-[18px] w-[18px]" />
+                  {!collapsed && <span>{label}</span>}
                 </span>
                 {!collapsed && (
-                  <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+                  <ChevronDown className="h-3.5 w-3.5 text-faint transition-transform duration-200 group-open:rotate-180" />
                 )}
               </summary>
               {!collapsed && (
-                <div className="mt-1 space-y-1 pl-7">
-                {children.map((child) => (
-                  <NavLink
-                    key={child.label}
-                    to={child.href}
-                    className={({ isActive }) =>
-                      `block rounded-xl px-3 py-2 text-sm font-medium transition-all ${
-                        isActive
-                          ? "bg-brand-50 text-brand-700"
-                          : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-                      }`
-                    }
-                  >
-                    {child.label}
-                  </NavLink>
-                ))}
-              </div>
-            )}
-          </details>
-        ) : (
+                <div className="mt-1 space-y-0.5 pl-3">
+                  <div className="ml-2 h-4 w-px bg-line-soft" />
+                  {children.map((child) => (
+                    <NavLink
+                      key={child.label}
+                      to={child.href}
+                      className={({ isActive }) =>
+                        `relative block rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200 ${
+                          isActive
+                            ? "bg-mint/10 text-mint-deep font-semibold"
+                            : "text-muted hover:bg-surface-soft hover:text-ink"
+                        }`
+                      }
+                    >
+                      {child.label}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </details>
+          ) : (
             <NavLink
               key={label}
               to={href ?? "#"}
               end={href === PRIVATE_ROUTES.DASHBOARD}
+              title={collapsed ? label : undefined}
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all ${
+                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-semibold transition-all duration-200 ${
                   isActive
-                    ? "bg-brand-50 text-brand-600 shadow-sm"
-                    : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                    ? "bg-mint/10 text-mint-deep shadow-[0_0_0_1px_rgb(0_212_164/0.15)]"
+                    : "text-muted hover:bg-surface-soft hover:text-ink"
                 } ${collapsed ? "justify-center" : ""}`
               }
             >
-              <Icon className="h-5 w-5" />
-              {!collapsed && label}
+              <Icon className="h-[18px] w-[18px]" />
+              {!collapsed && <span>{label}</span>}
             </NavLink>
           )
         )}

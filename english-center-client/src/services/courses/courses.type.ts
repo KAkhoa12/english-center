@@ -63,7 +63,9 @@ export type CourseListItem = {
   description: string | null;
   target_level: TargetLevel | null;
   total_sessions: number | null;
+  total_duration_time?: number | null;
   price: number;
+  discount_price?: number | null;
   status: CourseStatus;
   mode: CourseMode;
   category?: CourseCategoryRef | null;
@@ -79,7 +81,7 @@ export type CourseDetail = CourseListItem & {
   category?: CourseCategoryRef | null;
   category_id?: string | null;
   mode: CourseMode;
-  thumbnail?: string | null;
+  thumbnail?: Record<string, unknown> | null;
   media?: CourseMedia[];
   output_goal: string | null;
   requirements: CourseRequirement[];
@@ -93,6 +95,7 @@ export type CourseThumbnailUploadResult = {
   thumbnail_url: string | null;
   bucket: string | null;
   object_name: string | null;
+  media?: Record<string, unknown> | null;
 };
 
 export type CourseMediaUploadResult = CourseMedia;
@@ -133,6 +136,8 @@ export type CreateCourseRequest = {
   mode?: CourseMode;
   target_level?: TargetLevel | null;
   output_goal?: string | null;
+  discount_price?: number | null;
+  total_duration_time?: number | null;
   total_sessions?: number | null;
   price?: number;
   status?: CourseStatus;
@@ -151,6 +156,8 @@ export type UpdateCourseRequest = {
   mode?: CourseMode | null;
   target_level?: TargetLevel | null;
   output_goal?: string | null;
+  discount_price?: number | null;
+  total_duration_time?: number | null;
   total_sessions?: number | null;
   price?: number | null;
   status?: CourseStatus | null;

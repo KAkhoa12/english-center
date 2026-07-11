@@ -1,4 +1,4 @@
-import { DashboardTablePagination } from "@/components/Dashboard/Comon";
+import { DashboardRowActions, DashboardTablePagination } from "@/components/Dashboard/Comon";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { ClassItem } from "@/services/classes/classes.type";
 import type { Pagination } from "@/shared/types/response";
@@ -41,7 +41,11 @@ export const ClassesListTable = ({ data, loading = false, pagination, onPageChan
               <TableCell>{labelOf(classTypeOptions, item.class_type)}</TableCell>
               <TableCell>{item.current_students_count}/{item.max_students}</TableCell>
               <TableCell>{labelOf(classStatusOptions, item.status)}</TableCell>
-              <TableCell className="text-right"><button type="button" onClick={() => onEdit(item)} className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm hover:bg-gray-50">Sửa</button></TableCell>
+              <TableCell className="text-right">
+                <div onClick={(event) => event.stopPropagation()} className="flex justify-end">
+                  <DashboardRowActions onEdit={() => onEdit(item)} />
+                </div>
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>

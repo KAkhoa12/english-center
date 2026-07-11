@@ -166,7 +166,9 @@ class CourseSerializationMixin:
             "mode": course.mode.value,
             "target_level": course.target_level.value if course.target_level else None,
             "total_sessions": course.total_sessions,
+            "total_duration_time": course.total_duration_time,
             "price": float(course.price),
+            "discount_price": float(course.discount_price) if course.discount_price is not None else None,
             "status": course.status.value,
             "thumbnail_url": self._media_url(primary_media) if primary_media else None,
             "thumbnail": self._media_dict(primary_media) if primary_media else None,
@@ -330,6 +332,7 @@ class CourseService(CourseSerializationMixin):
             mode=_enum(CourseMode, payload.mode, "mode"),
             target_level=_enum(CourseTargetLevel, payload.target_level, "target_level"),
             output_goal=payload.output_goal,
+            total_duration_time=payload.total_duration_time,
             requirements=[
                 {
                     "id": str(uuid4()),
@@ -349,9 +352,8 @@ class CourseService(CourseSerializationMixin):
                 if text.strip()
             ],
             total_sessions=payload.total_sessions,
-            total_duration_time=None,
             price=payload.price,
-            discount_price=None,
+            discount_price=payload.discount_price,
             status=_enum(CourseStatus, payload.status, "status"),
         )
         self.course_repo.create(course)
@@ -465,8 +467,10 @@ class CourseService(CourseSerializationMixin):
         for field in [
             "description",
             "output_goal",
+            "total_duration_time",
             "total_sessions",
             "price",
+            "discount_price",
         ]:
             value = getattr(payload, field)
             if value is not None:

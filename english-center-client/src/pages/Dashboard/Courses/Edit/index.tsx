@@ -45,7 +45,7 @@ export default function DashboardCourseEditPage() {
     clearError,
   } = useCoursesStore();
   const { categories, listCategories } = useCoursesCategoryStore();
-  const { classes, listCourseClasses, createClass, deleteClass } = useClassesStore();
+  const { classes, listCourseClasses, createClass, deleteClass, updateClass } = useClassesStore();
 
   useEffect(() => {
     void listCategories({ page: 1, page_size: 100, status: "active", sort_by: "name", sort_order: "asc" });
@@ -134,6 +134,16 @@ export default function DashboardCourseEditPage() {
               <p className="text-[11px] text-slate-400 truncate mt-0.5">Mã ID: {courseId}</p>
             </div>
           </div>
+          {activeTab === "info" && selectedCourse ? (
+            <Button
+              type="submit"
+              form="course-basic-info-form"
+              disabled={isLoading}
+              className="bg-brand-500 text-white hover:bg-brand-600"
+            >
+              Lưu thay đổi
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -172,6 +182,7 @@ export default function DashboardCourseEditPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
               <div className="lg:col-span-2 space-y-6">
                 <CourseBasicInfoForm
+                  formId="course-basic-info-form"
                   course={selectedCourse}
                   categories={categories}
                   loading={isLoading}
@@ -295,6 +306,9 @@ export default function DashboardCourseEditPage() {
                 courseId={courseId}
                 courseName={selectedCourse.name}
                 classes={classes}
+                onUpdateClass={async (classId, payload) => {
+                  await updateClass(classId, payload);
+                }}
                 onCreateClass={async (payload) => {
                   await createClass(payload);
                 }}

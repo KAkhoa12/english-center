@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
-import { DashboardDateInput, DashboardListPageHeader, DashboardTablePagination, SectionCard } from "@/components/Dashboard/Comon";
+import { DashboardListPageHeader, DashboardTablePagination, SectionCard } from "@/components/Dashboard/Comon";
 import { labelOf, sessionModeOptions, sessionStatusOptions } from "@/components/Dashboard/Classes/classOptions";
 import { MultiSelectBadge } from "@/components/MultiSelectBadge";
 import { Badge } from "@/components/ui/badge";
@@ -108,18 +108,18 @@ export default function DashboardSessionsPage() {
             <SelectTrigger><SelectValue placeholder="Trạng thái" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất cả trạng thái</SelectItem>
-              {sessionStatusOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
+              {sessionStatusOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.value}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={mode} onValueChange={(value) => { setMode(value); setPage(1); }}>
             <SelectTrigger><SelectValue placeholder="Hình thức" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất cả hình thức</SelectItem>
-              {sessionModeOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
+              {sessionModeOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.value}</SelectItem>)}
             </SelectContent>
           </Select>
-          <DashboardDateInput value={fromDate} onChange={(value) => { setFromDate(value); setPage(1); }} />
-          <DashboardDateInput value={toDate} onChange={(value) => { setToDate(value); setPage(1); }} />
+          {/*<DashboardDateInput value={fromDate} onChange={(value) => { setFromDate(value); setPage(1); }} />
+          <DashboardDateInput value={toDate} onChange={(value) => { setToDate(value); setPage(1); }} />*/}
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
-import { DashboardDateInput, DashboardListPageHeader } from "@/components/Dashboard/Comon";
+import { DashboardListPageHeader } from "@/components/Dashboard/Comon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -57,7 +57,7 @@ export default function DashboardCashflowEditPage() {
             <SelectContent><SelectItem value="income">Thu</SelectItem><SelectItem value="expense">Chi</SelectItem></SelectContent>
           </Select>
           <Input type="number" min={0} value={amount} onChange={(e) => setAmount(Number(e.target.value || 0))} placeholder="So tien" />
-          <DashboardDateInput value={transactionDate} onChange={setTransactionDate} />
+          {/*<DashboardDateInput value={transactionDate} onChange={setTransactionDate} />*/}
         </div>
         <Textarea placeholder="Ghi chu" value={note} onChange={(e) => setNote(e.target.value)} rows={4} />
         <div className="flex justify-end gap-2">

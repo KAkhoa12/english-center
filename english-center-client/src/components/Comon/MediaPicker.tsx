@@ -65,6 +65,8 @@ type DisplayItem = {
   origin: "remote" | "local";
   fileIndex?: number;
 };
+
+const EMPTY_ITEMS: Array<{ id: string; name: string; src: string }> = [];
 const Modal = ({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) => {
   if (!open) return null;
   return (
@@ -313,7 +315,7 @@ const MultiPicker = ({
   disabled = false,
   className,
   maxFiles,
-  items = [],
+  items = EMPTY_ITEMS,
   readOnly = false,
   onUploadFiles,
   onDeleteItem,

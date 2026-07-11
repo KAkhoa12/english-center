@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, Save, FileText, Settings, BadgeDollarSign } from "lucide-react";
@@ -16,11 +16,31 @@ import { useCoursesTagStore } from "@/services/coursesTag/coursesTag.store";
 import { format_code, format_slug } from "@/shared/helpers/slug_format";
 import { PRIVATE_ROUTES } from "@/shared/routes";
 
+const STATUS_OPTIONS = [
+  { key: "Đang hiển thị tuyển sinh", value: "active" },
+  { key: "Tạm ẩn (Bản nháp)", value: "inactive" },
+  { key: "Lưu trữ nội bộ", value: "archived" },
+];
+
+const MODE_OPTIONS = [
+  { key: "Center (Khóa học trực tiếp tại trung tâm)", value: "center" },
+  { key: "Template (khóa học có sẵn)", value: "template" },
+];
+
+const LEVEL_OPTIONS = ["A0", "A1", "A2", "B1", "B2", "C1", "C2"].map((level) => ({
+  key: `Trình độ ${level}`,
+  value: level,
+}));
+
 export const DashboardCourseCreatePage = () => {
   const navigate = useNavigate();
-  const { createCourse, uploadCourseMediaMany, isLoading } = useCoursesStore();
-  const { categories, listCategories } = useCoursesCategoryStore();
-  const { tags, listTags } = useCoursesTagStore();
+  const createCourse = useCoursesStore((state) => state.createCourse);
+  const uploadCourseMediaMany = useCoursesStore((state) => state.uploadCourseMediaMany);
+  const isLoading = useCoursesStore((state) => state.isLoading);
+  const categories = useCoursesCategoryStore((state) => state.categories);
+  const listCategories = useCoursesCategoryStore((state) => state.listCategories);
+  const tags = useCoursesTagStore((state) => state.tags);
+  const listTags = useCoursesTagStore((state) => state.listTags);
 
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -41,14 +61,17 @@ export const DashboardCourseCreatePage = () => {
     void listTags({ page: 1, page_size: 100, sort_by: "name", sort_order: "asc" });
   }, [listCategories, listTags]);
 
-  const handleNameChange = (value: string) => {
-    setName(value);
-    if (!slugEdited) {
-      setSlug(format_slug(value));
-    }
-  };
+  const handleNameChange = useCallback(
+    (value: string) => {
+      setName(value);
+      if (!slugEdited) {
+        setSlug(format_slug(value));
+      }
+    },
+    [slugEdited],
+  );
 
-  const handleCreate = async () => {
+  const handleCreate = useCallback(async () => {
     if (!name.trim() || !categoryId) {
       toast.error("Vui lòng nhập tên và loại khóa học");
       return;
@@ -80,7 +103,63 @@ export const DashboardCourseCreatePage = () => {
     } catch {
       toast.error("Tạo khóa học thất bại");
     }
-  };
+  }, [
+    name,
+    categoryId,
+    slug,
+    createCourse,
+    mode,
+    targetLevel,
+    totalSessions,
+    price,
+    status,
+    selectedTagIds,
+    description,
+    outputGoal,
+    galleryFiles,
+    uploadCourseMediaMany,
+    navigate,
+  ]);
+
+  const statusValue = useMemo(() => {
+    if (status === "inactive") return { key: "Tạm ẩn (Bản nháp)", value: "inactive" };
+    if (status === "archived") return { key: "Lưu trữ nội bộ", value: "archived" };
+    return { key: "Đang hiển thị tuyển sinh", value: "active" };
+  }, [status]);
+
+  const modeValue = useMemo(
+    () =>
+      mode === "center"
+        ? { key: "Center (Khóa học trực tiếp tại trung tâm)", value: "center" }
+        : { key: "Template (khóa học có sẵn)", value: "template" },
+    [mode],
+  );
+
+  const categoryValue = useMemo(
+    () =>
+      categoryId
+        ? { key: categories.find((item) => item.id === categoryId)?.name ?? categoryId, value: categoryId }
+        : null,
+    [categoryId, categories],
+  );
+
+  const targetLevelValue = useMemo(() => ({ key: `Trình độ ${targetLevel}`, value: targetLevel }), [targetLevel]);
+
+  const selectedTagValues = useMemo(
+    () =>
+      selectedTagIds.map((tagId) => {
+        const tag = tags.find((item) => item.id === tagId);
+        return { key: tag?.name ?? tagId, value: tagId };
+      }),
+    [selectedTagIds, tags],
+  );
+
+  const categoryOptions = useMemo(
+    () => categories.map((category) => ({ key: category.name, value: category.id })),
+    [categories],
+  );
+
+  const tagOptions = useMemo(() => tags.map((tag) => ({ key: tag.name, value: tag.id })), [tags]);
 
   return (
     <div className="w-full pb-16">
@@ -217,13 +296,6 @@ export const DashboardCourseCreatePage = () => {
         </div>
 
         <div className="space-y-6 overflow-visible">
-          {/*<div className="rounded-md border border-slate-200 bg-white p-5 shadow-none space-y-4">
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-              <ImageIcon className="h-4 w-4 text-slate-500" />
-              <div className="text-xs font-semibold text-slate-700 tracking-wide">Ảnh bìa hiển thị</div>
-            </div>
-            <ImagePicker file={thumbnailFile} onFileChange={setThumbnailFile} disabled={isLoading} />
-          </div>*/}
 
           <MutilImagePicker
             label="Ảnh thư viện khóa học"
@@ -243,19 +315,9 @@ export const DashboardCourseCreatePage = () => {
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-slate-600">Trạng thái phát hành</label>
                 <Select
-                  value={
-                    status === "inactive"
-                      ? { key: "Tạm ẩn (Bản nháp)", value: "inactive" }
-                      : status === "archived"
-                        ? { key: "Lưu trữ nội bộ", value: "archived" }
-                        : { key: "Đang hiển thị tuyển sinh", value: "active" }
-                  }
+                  value={statusValue}
                   onChange={(option) => setStatus(option?.value ?? "active")}
-                  options={[
-                    { key: "Đang hiển thị tuyển sinh", value: "active" },
-                    { key: "Tạm ẩn (Bản nháp)", value: "inactive" },
-                    { key: "Lưu trữ nội bộ", value: "archived" },
-                  ]}
+                  options={STATUS_OPTIONS}
                   placeholder="Chọn trạng thái"
                 />
               </div>
@@ -263,16 +325,9 @@ export const DashboardCourseCreatePage = () => {
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-slate-600">Mô hình phân lớp (Mode)</label>
                 <Select
-                  value={
-                    mode === "center"
-                      ? { key: "Center (Khóa học trực tiếp tại trung tâm)", value: "center" }
-                      : { key: "Template (oaóa cọc có sẵn)", value: "template" }
-                  }
+                  value={modeValue}
                   onChange={(option) => setMode((option?.value as "center" | "template") ?? "center")}
-                  options={[
-                    { key: "Center (Khóa học trực tiếp tại trung tâm)", value: "center" },
-                    { key: "Template (oaóa cọc có sẵn)", value: "template" },
-                  ]}
+                  options={MODE_OPTIONS}
                   placeholder="Chọn mode"
                 />
               </div>
@@ -283,13 +338,9 @@ export const DashboardCourseCreatePage = () => {
                   <span className="text-[10px] font-medium text-rose-500">Bắt buộc</span>
                 </div>
                 <Select
-                  value={
-                    categoryId
-                      ? { key: categories.find((item) => item.id === categoryId)?.name ?? categoryId, value: categoryId }
-                      : null
-                  }
+                  value={categoryValue}
                   onChange={(option) => setCategoryId(option?.value ?? "")}
-                  options={categories.map((category) => ({ key: category.name, value: category.id }))}
+                  options={categoryOptions}
                   placeholder="Chọn danh mục"
                   is_search
                   searchPlaceholder="Tìm danh mục..."
@@ -300,12 +351,9 @@ export const DashboardCourseCreatePage = () => {
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-slate-600">Trình độ đầu ra tương đương</label>
                 <Select
-                  value={{ key: `Trình độ ${targetLevel}`, value: targetLevel }}
+                  value={targetLevelValue}
                   onChange={(option) => setTargetLevel(option?.value ?? "A1")}
-                  options={["A0", "A1", "A2", "B1", "B2", "C1", "C2"].map((level) => ({
-                    key: `Trình độ ${level}`,
-                    value: level,
-                  }))}
+                  options={LEVEL_OPTIONS}
                   placeholder="Chọn trình độ"
                 />
               </div>
@@ -313,11 +361,8 @@ export const DashboardCourseCreatePage = () => {
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-slate-600">Phân loại theo nhãn (Tags)</label>
                 <MutilSelect
-                  value={selectedTagIds.map((tagId) => {
-                    const tag = tags.find((item) => item.id === tagId);
-                    return { key: tag?.name ?? tagId, value: tagId };
-                  })}
-                  options={tags.map((tag) => ({ key: tag.name, value: tag.id }))}
+                  value={selectedTagValues}
+                  options={tagOptions}
                   onChange={(items) => setSelectedTagIds(items.map((item) => item.value))}
                   placeholder="Chọn thẻ tags..."
                   searchPlaceholder="Tìm tag nhanh..."

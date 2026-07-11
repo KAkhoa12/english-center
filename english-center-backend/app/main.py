@@ -83,6 +83,7 @@ app.add_middleware(
         f"{settings.API_V1_PREFIX}/auth/register",
         f"{settings.API_V1_PREFIX}/auth/refresh",
         f"{settings.API_V1_PREFIX}/payments/sepay/ipn",
+        f"{settings.API_V1_PREFIX}/payment/webhook/sepay",
     },
 )
 

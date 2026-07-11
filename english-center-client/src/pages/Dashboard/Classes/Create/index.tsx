@@ -20,7 +20,7 @@ const initialForm: ClassFormState = {
   code: "",
   classType: "offline",
   maxStudents: 20,
-  startDate: "",
+  startDate: null,
   status: "planned",
 };
 
@@ -61,7 +61,7 @@ export default function DashboardClassCreatePage() {
         code: form.code.trim() || null,
         class_type: form.classType,
         max_students: form.maxStudents,
-        start_date: form.startDate || null,
+        start_date: form.startDate ? form.startDate.toISOString().slice(0, 10) : null,
         status: form.status,
       });
       toast.success("Tạo lớp học thành công");

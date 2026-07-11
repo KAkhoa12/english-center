@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { DashboardDateInput } from "@/components/Dashboard/Comon";
 import { SearchableSelect, type SearchableOption } from "@/components/Dashboard/Classes/SearchableSelect";
 import { sessionModeOptions } from "@/components/Dashboard/Classes/classOptions";
 import { Button } from "@/components/ui/button";
@@ -104,7 +103,9 @@ export function ClassSessionAutoCreateDialog({
         <DialogHeader><DialogTitle>Tạo lịch học tự động</DialogTitle></DialogHeader>
         <div className="grid gap-4">
           <div className="grid gap-4 md:grid-cols-2">
-            <label className="space-y-2 text-sm font-medium text-gray-700">Bắt đầu từ ngày<DashboardDateInput value={form.startDate} onChange={(startDate) => update({ startDate })} /></label>
+            {/*<label className="space-y-2 text-sm font-medium text-gray-700">
+              Bắt đầu từ ngày<DashboardDateInput value={form.startDate} onChange={(startDate) => update({ startDate })} />
+            </label>*/}
             <label className="space-y-2 text-sm font-medium text-gray-700">Số tuần tạo<Input type="number" min={1} value={form.weeks} onChange={(event) => update({ weeks: Math.max(1, Number(event.target.value || 1)) })} /></label>
           </div>
           <div>
@@ -125,7 +126,7 @@ export function ClassSessionAutoCreateDialog({
             )}
           </div>
           <div className="grid gap-4 md:grid-cols-2">
-            <label className="space-y-2 text-sm font-medium text-gray-700">Hình thức buổi học<Select value={form.mode} onValueChange={(mode) => update({ mode })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{sessionModeOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></label>
+            <label className="space-y-2 text-sm font-medium text-gray-700">Hình thức buổi học<Select value={form.mode} onValueChange={(mode) => update({ mode })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{sessionModeOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.value}</SelectItem>)}</SelectContent></Select></label>
             {form.mode === "offline" ? (
               <label className="space-y-2 text-sm font-medium text-gray-700">Phòng học<SearchableSelect value={form.roomId} options={roomOptions} placeholder="Chọn phòng học" onChange={(roomId) => update({ roomId })} /></label>
             ) : (

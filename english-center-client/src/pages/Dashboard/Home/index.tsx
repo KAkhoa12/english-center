@@ -5,7 +5,7 @@ import {
   DashboardHero,
   StatsOverview,
   TodaySchedule,
-} from "@/components/Dashboard/Home";
+} from "@/pages/Dashboard/Home/components";
 
 export const DashboardHomePage = () => {
   return (
