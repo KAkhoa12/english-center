@@ -73,8 +73,9 @@ async def payment_webhook_sepay(
     request: Request
 ):
     raw_body = await request.body()
-    print(raw_body.decode("utf-8", errors="replace"))
+    print(raw_body.decode("utf-8", errors="replace" ))
 
     return {
-        "success": True
+        "success": True,
+        "raw_body": raw_body.decode("utf-8", errors="replace"),
     }
