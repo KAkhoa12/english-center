@@ -1,0 +1,9 @@
+Note lại tuần 2, cần update lại 1 số thứ như sau: 
+- Có cần các khóa học có sẵn hay không ? 
+(Course: mode = "template") - (Course: mode = "center") ( các khóa học tại trung tâm)
+
+- Deloy Front End: Vercel 
+- Deloy Back End: Vercel
+- Server kết nối Database ( Postgres) -> Kết nối bằng vps -> trỏ IP Vps sang 1 Dns -> kait-postgres.duckdnn.org 
+- Server kết nối MinIO ( Lưu trữ các file, hình ảnh) -> Kết nối bằng vps -> trỏ IP Vps sang 1 Dns -> 
+kait-minio.duckdnn.org
