@@ -3,6 +3,7 @@ from typing import Any
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.class_session import ClassSessionMedia
 from app.repositories.class_session_media import ClassSessionMediaRepository
 from app.repositories.media import MediaRepository

@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   UserRound,
   UserSquare2,
+  Wallet, // ponytail: one icon for payment plans
 } from "lucide-react";
 import { type ComponentType, useState } from "react";
 import { NavLink } from "react-router-dom";
@@ -129,20 +130,32 @@ const navItems: NavItem[] = [
     label: "Tài chính",
     icon: CircleDollarSign,
     allowedRoles: ["admin", "staff"],
-    children: [
-      {
-        label: "Thu chi",
-        href: PRIVATE_ROUTES.DASHBOARD_FINANCE_CASHFLOW,
-        allowedRoles: ["admin", "staff"],
-        requiredPermissions: ["order.read", "payment.read"],
-      },
-      {
-        label: "Hóa đơn",
-        href: PRIVATE_ROUTES.DASHBOARD_FINANCE_INVOICES,
-        allowedRoles: ["admin", "staff"],
-        requiredPermissions: ["invoice.read", "order.read"],
-      },
-    ],
+      children: [
+        {
+          label: "Tạo đơn hàng",
+          href: PRIVATE_ROUTES.DASHBOARD_ORDERS_CREATE,
+          allowedRoles: ["admin", "staff"],
+          requiredPermissions: ["order.create"],
+        },
+        {
+          label: "Thu chi",
+          href: PRIVATE_ROUTES.DASHBOARD_FINANCE_CASHFLOW,
+          allowedRoles: ["admin", "staff"],
+          requiredPermissions: ["order.read", "payment.read"],
+        },
+        {
+          label: "Hóa đơn",
+          href: PRIVATE_ROUTES.DASHBOARD_FINANCE_INVOICES,
+          allowedRoles: ["admin", "staff"],
+          requiredPermissions: ["invoice.read", "order.read"],
+        },
+        {
+          label: "Kế hoạch chi trả",
+          href: PRIVATE_ROUTES.DASHBOARD_FINANCE_PAYMENT_PLANS,
+          allowedRoles: ["admin", "staff"],
+          requiredPermissions: ["payment.read"],
+        },
+      ],
   },
   {
     label: "Tài nguyên",
@@ -279,6 +292,11 @@ const navItems: NavItem[] = [
       {
         label: "Hóa đơn của tôi",
         href: PRIVATE_ROUTES.DASHBOARD_MY_INVOICES,
+        allowedRoles: ["admin", "staff", "teacher", "student"],
+      },
+      {
+        label: "Kế hoạch chi trả của tôi",
+        href: PRIVATE_ROUTES.DASHBOARD_MY_PAYMENT_PLANS,
         allowedRoles: ["admin", "staff", "teacher", "student"],
       },
     ],

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
+import AssignmentQuestionsDialog from "@/components/AssignmentQuestionsDialog";
 import {
   DashboardListPageHeader,
   SectionCard,
@@ -34,6 +35,8 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { useAssignmentsStore } from "@/services/assignments/assignments.store";
+import type { Assignment } from "@/services/assignments/assignments.type";
+import { useAssignmentTypesStore } from "@/services/assignmentTypes/assignmentTypes.store";
 import { useAttendanceStore } from "@/services/attendance/attendance.store";
 import type { AttendanceItem } from "@/services/attendance/attendance.type";
 import { useClassSessionMediaStore } from "@/services/classSessionMedia/classSessionMedia.store";
@@ -103,11 +106,13 @@ export default function DashboardSessionDetailPage() {
     availableAssignments,
     listClassAssignments,
     listAvailableAssignments,
+    createSessionAssignment,
     createSessionAssignmentFromTemplate,
   } = useAssignmentsStore();
   const { teachers, listTeachers } = useTeachersStore();
   const { rooms, listRooms } = useRoomsStore();
   const { lessons, listLessons } = useLessonsStore();
+  const { assignmentTypes, listAssignmentTypes } = useAssignmentTypesStore();
   const [infoForm, setInfoForm] = useState<InfoFormState | null>(null);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadTitle, setUploadTitle] = useState("");
@@ -115,6 +120,10 @@ export default function DashboardSessionDetailPage() {
   const [templateAssignmentId, setTemplateAssignmentId] = useState<
     string | null
   >(null);
+  const [newTitle, setNewTitle] = useState("");
+  const [newTypeId, setNewTypeId] = useState("");
+  const [questionAssignment, setQuestionAssignment] = useState<Assignment | null>(null);
+  const [questionsOpen, setQuestionsOpen] = useState(false);
 
   const sessionMedia = useMemo(
     () => mediaBySessionId[sessionId] ?? [],
@@ -243,7 +252,8 @@ export default function DashboardSessionDetailPage() {
         error instanceof Error ? error.message : "Không thể tải bài tập có sẵn",
       ),
     );
-  }, [activeTab, listAvailableAssignments]);
+    void listAssignmentTypes({ page: 1, page_size: 100, status: "active" }).catch(() => {});
+  }, [activeTab, listAvailableAssignments, listAssignmentTypes]);
 
   const refreshAttendance = () => {
     if (!sessionId) return Promise.resolve([]);
@@ -334,6 +344,32 @@ export default function DashboardSessionDetailPage() {
       toast.error(
         error instanceof Error ? error.message : "Xóa tài liệu thất bại",
       );
+    }
+  };
+
+  const handleCreateAssignment = async () => {
+    if (!sessionId || !newTitle.trim()) {
+      toast.error("Vui lòng nhập tiêu đề bài tập");
+      return;
+    }
+    if (!newTypeId) {
+      toast.error("Vui lòng chọn loại bài tập");
+      return;
+    }
+    try {
+      await createSessionAssignment(sessionId, { title: newTitle.trim(), assignment_type_id: newTypeId });
+      setNewTitle("");
+      setNewTypeId("");
+      if (selectedSession?.class_id) {
+        await listClassAssignments(selectedSession.class_id, {
+          page: 1,
+          page_size: 100,
+          session_id: selectedSession.id,
+        });
+      }
+      toast.success("Đã tạo bài tập");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Tạo bài tập thất bại");
     }
   };
 
@@ -716,7 +752,21 @@ export default function DashboardSessionDetailPage() {
 
       {activeTab === "assignments" ? (
         <SectionCard title="Bài tập của buổi học">
-          <div className="mb-5 rounded-2xl border border-gray-100 bg-gray-50 p-4">
+          <div className="mb-5 space-y-4">
+            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+              <p className="mb-3 text-sm font-semibold text-gray-800">Tạo bài tập mới</p>
+              <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+                <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Tiêu đề bài tập" />
+                <Select value={newTypeId} onValueChange={setNewTypeId}>
+                  <SelectTrigger><SelectValue placeholder="Chọn loại" /></SelectTrigger>
+                  <SelectContent>
+                    {assignmentTypes.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button type="button" onClick={() => void handleCreateAssignment()}>Tạo</Button>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
             <div className="grid gap-3 md:grid-cols-[1fr_auto]">
               <SearchableSelect
                 value={templateAssignmentId}
@@ -755,12 +805,16 @@ export default function DashboardSessionDetailPage() {
                           "Không có mô tả"}
                       </p>
                     </div>
+                    <div className="flex gap-2">
                     <Badge
                       variant="outline"
                       className="border-brand-100 bg-brand-50 text-brand-700"
                     >
                       {assignment.status}
                     </Badge>
+                    <Button type="button" variant="outline" size="sm" onClick={() => { setQuestionAssignment(assignment as unknown as Assignment); setQuestionsOpen(true); }}>Câu hỏi</Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => navigate(PRIVATE_ROUTES.DASHBOARD_ASSIGNMENTS_GRADING.replace(":assignmentId", assignment.id))}>Trả lời</Button>
+                    </div>
                   </div>
                   <div className="mt-3 grid gap-2 text-sm text-gray-500 md:grid-cols-3">
                     <span>Loại: {assignment.assignment_type?.name ?? "-"}</span>
@@ -776,8 +830,11 @@ export default function DashboardSessionDetailPage() {
               ))}
             </div>
           )}
+          </div>
         </SectionCard>
       ) : null}
+
+      <AssignmentQuestionsDialog assignment={questionAssignment} open={questionsOpen} onOpenChange={setQuestionsOpen} />
     </section>
   );
 }

@@ -1,11 +1,15 @@
+from datetime import timedelta, datetime, timezone
+
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.security import create_access_token, create_refresh_token, decode_refresh_token, hash_password, verify_password
+from app.core.config import settings
+from app.core.security import create_access_token, create_refresh_token, decode_refresh_token, decode_token, hash_password, verify_password
 from app.models.rbac.user import UserStatus
 from app.repositories.user import UserRepository
-from app.schemas.auth import AuthUser, LoginPayload, LoginRequest, RegisterStudentRequest
+from app.schemas.auth import AuthUser, ForgotPasswordRequest, LoginPayload, LoginRequest, RegisterStudentRequest, ResetPasswordRequest
 from app.schemas.student import StudentCreate
+from app.services.email_service import send_reset_password_email
 from app.services.rbac_service import RBACService
 from app.services.student_service import StudentService
 
@@ -54,20 +58,10 @@ class AuthService:
                 "id": str(user.id),
                 "full_name": user.full_name,
                 "email": user.email,
-                "avatar_url": getattr(user, "avatar_url", None),
-                "status": user.status.value if getattr(user, "status", None) else None,
-                "is_verified": getattr(user, "is_verified", None),
+                "status": user.status.value,
+                "is_verified": user.is_verified,
             },
-            "student": {
-                "id": str(student.id),
-                "date_of_birth": student.date_of_birth,
-                "gender": student.gender,
-                "address": student.address,
-                "level": student.level.value if student.level else None,
-                "learning_goal": student.learning_goal,
-                "parent_name": student.parent_name,
-                "parent_phone": student.parent_phone,
-            },
+            "student": {"id": str(student.id)},
             "roles": roles,
             "permissions": permissions,
         }
@@ -92,6 +86,35 @@ class AuthService:
             "refresh_token": new_refresh_token,
             "token_type": "bearer",
         }
+
+    def forgot_password(self, payload: ForgotPasswordRequest) -> dict:
+        user = self.user_repo.get_active_by_email(str(payload.email))
+        if not user:
+            return {"message": "If the email exists, a reset link has been sent"}
+        token = create_access_token(str(user.id), user.email, expires_delta=timedelta(minutes=15))
+        reset_link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+        send_reset_password_email(str(payload.email), reset_link)
+        return {"message": "If the email exists, a reset link has been sent"}
+
+    def reset_password(self, payload: ResetPasswordRequest) -> dict:
+        try:
+            token_data = decode_token(payload.token)
+            if token_data.get("token_type") == "access":
+                user_id = token_data.get("user_id")
+            else:
+                raise HTTPException(status_code=400, detail="Invalid token")
+            exp = token_data.get("exp")
+            if exp and datetime.fromtimestamp(exp, tz=timezone.utc) < datetime.now(timezone.utc):
+                raise HTTPException(status_code=400, detail="Token expired")
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid or expired token")
+        user = self.user_repo.get_active_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=400, detail="User not found")
+        user.password_hash = hash_password(payload.password)
+        self.user_repo.update(user)
+        self.db.commit()
+        return {"message": "Password reset successfully"}
 
     @staticmethod
     def hash_password(raw_password: str) -> str:

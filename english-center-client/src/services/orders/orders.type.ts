@@ -46,6 +46,7 @@ export type Payment = {
 export type Order = {
   id: string;
   user_id: string;
+  student_id: string | null;
   order_code: string;
   invoice_number: string | null;
   status: string;
@@ -77,4 +78,20 @@ export type ListOrdersQuery = {
 export type ListMyOrdersQuery = {
   page?: number;
   page_size?: number;
+};
+
+export type InstallmentInput = {
+  due_date: string;
+  amount: number;
+  note?: string | null;
+};
+
+export type StaffCreateOrderRequest = {
+  student_id: string;
+  course_id: string;
+  class_id: string;
+  note?: string | null;
+  plan_type?: string | null;
+  deposit_amount?: number | null;
+  installments?: InstallmentInput[];
 };

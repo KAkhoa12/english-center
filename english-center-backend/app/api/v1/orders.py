@@ -7,7 +7,7 @@ from app.core.response import api_response, build_pagination
 from app.db.session import get_db
 from app.dependencies.permissions import require_permission
 from app.models.rbac.user import User
-from app.schemas.commerce import CheckoutRequest
+from app.schemas.commerce import CheckoutRequest, ConvertConsultationRequest, StaffCreateOrderRequest
 from app.schemas.common import PaginationParams
 from app.services.commerce_service import OrderSerializer, OrderService
 
@@ -71,3 +71,20 @@ def get_order_payment_status(order_id: str, db: Annotated[Session, Depends(get_d
 def cancel_order(order_id: str, db: Annotated[Session, Depends(get_db)], current_user: User = Depends(require_permission("order.update"))):
     order = OrderService(db).cancel_order(order_id, current_user)
     return api_response(True, "Order cancelled successfully", OrderSerializer(db).order_detail(order), None)
+
+
+@router.post("/consultations/{consultation_id}/convert")
+def convert_consultation(
+    consultation_id: str,
+    payload: ConvertConsultationRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: User = Depends(require_permission("order.create")),
+):
+    order = OrderService(db).convert_consultation(consultation_id, payload, current_user)
+    return api_response(True, "Consultation converted to order", OrderSerializer(db).order_detail(order), None)
+
+
+@router.post("/create-for-student")
+def create_order_for_student(payload: StaffCreateOrderRequest, db: Annotated[Session, Depends(get_db)], current_user: User = Depends(require_permission("order.create"))):
+    order = OrderService(db).create_order_for_student(payload, current_user)
+    return api_response(True, "Order created successfully", OrderSerializer(db).order_detail(order), None)

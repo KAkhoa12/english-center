@@ -1,6 +1,7 @@
 import enum
 
-from sqlalchemy import Boolean, Enum, String
+from sqlalchemy import Boolean, Enum, ForeignKey, String
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -22,5 +23,8 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     status: Mapped[UserStatus] = mapped_column(Enum(UserStatus, name="user_status"), default=UserStatus.active)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    guardian_id: Mapped[str | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    guardian = relationship("User", remote_side="User.id", backref="wards")
 
     roles = relationship("UserRole", back_populates="user")

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.core.response import api_response, build_pagination
@@ -8,7 +8,9 @@ from app.db.session import get_db
 from app.dependencies.permissions import require_permission
 from app.schemas.common import PaginationParams
 from app.schemas.user import AssignRolesRequest, UserCreate, UserUpdate
+from app.services.media_service import MediaService
 from app.services.user_service import UserService
+from app.utils.file import get_upload_file_size, validate_file_extension, validate_file_size
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -22,6 +24,7 @@ def _user_dict(user):
         "avatar_url": user.avatar_url,
         "status": user.status.value,
         "is_verified": user.is_verified,
+        "guardian_id": str(user.guardian_id) if user.guardian_id else None,
     }
 
 
@@ -53,6 +56,33 @@ def get_user(user_id: str, db: Annotated[Session, Depends(get_db)]):
 @router.patch("/{user_id}", dependencies=[Depends(require_permission("user.update"))])
 def update_user(user_id: str, payload: UserUpdate, db: Annotated[Session, Depends(get_db)]):
     return api_response(True, "User updated successfully", _user_dict(UserService(db).update_user(user_id, payload)), None)
+
+
+@router.post("/{user_id}/avatar", dependencies=[Depends(require_permission("user.update"))])
+def upload_user_avatar(user_id: str, db: Annotated[Session, Depends(get_db)], file: UploadFile = File(...)):
+    file_size = get_upload_file_size(file)
+    validate_file_extension(file.filename, "avatar")
+    validate_file_size(file_size, "avatar")
+    media = MediaService(db).upload_media(
+        bucket_name="avatars",
+        file=file,
+        file_size=file_size,
+        folder=f"users/{user_id}",
+    )
+    user = UserService(db).update_avatar_url(user_id, media.object_name)
+    return api_response(True, "Avatar updated successfully", _user_dict(user), None)
+
+
+@router.delete("/{user_id}/soft", dependencies=[Depends(require_permission("user.delete"))])
+def soft_delete_user(user_id: str, db: Annotated[Session, Depends(get_db)]):
+    UserService(db).soft_delete_user(user_id)
+    return api_response(True, "User soft deleted successfully", None, None)
+
+
+@router.post("/{user_id}/restore", dependencies=[Depends(require_permission("user.update"))])
+def restore_user(user_id: str, db: Annotated[Session, Depends(get_db)]):
+    user = UserService(db).restore_user(user_id)
+    return api_response(True, "User restored successfully", _user_dict(user), None)
 
 
 @router.delete("/{user_id}", dependencies=[Depends(require_permission("user.delete"))])

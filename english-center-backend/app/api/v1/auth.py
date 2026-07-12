@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.response import api_response
 from app.db.session import get_db
 from app.dependencies.auth import require_jwt
-from app.schemas.auth import AuthUser, LoginRequest, RefreshTokenRequest, RegisterStudentRequest
+from app.schemas.auth import AuthUser, ForgotPasswordRequest, LoginRequest, RefreshTokenRequest, RegisterStudentRequest, ResetPasswordRequest
 from app.services.auth_service import AuthService
 from app.services.rbac_service import RBACService
 
@@ -29,6 +29,18 @@ def register(payload: RegisterStudentRequest, db: Annotated[Session, Depends(get
 def refresh(payload: RefreshTokenRequest, db: Annotated[Session, Depends(get_db)]):
     data = AuthService(db).refresh_token(payload.refresh_token)
     return api_response(True, "Token refreshed successfully", data, None)
+
+
+@router.post("/forgot-password")
+def forgot_password(payload: ForgotPasswordRequest, db: Annotated[Session, Depends(get_db)]):
+    data = AuthService(db).forgot_password(payload)
+    return api_response(True, "Reset link sent if email exists", data, None)
+
+
+@router.post("/reset-password")
+def reset_password(payload: ResetPasswordRequest, db: Annotated[Session, Depends(get_db)]):
+    data = AuthService(db).reset_password(payload)
+    return api_response(True, "Password reset successfully", data, None)
 
 
 @router.get("/me")

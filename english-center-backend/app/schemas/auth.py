@@ -1,6 +1,3 @@
-from datetime import date
-from typing import Literal
-
 from pydantic import BaseModel, EmailStr
 
 
@@ -12,16 +9,16 @@ class LoginRequest(BaseModel):
 class RegisterStudentRequest(BaseModel):
     full_name: str
     email: EmailStr
-    phone: str | None = None
     password: str
-    avatar_url: str | None = None
-    date_of_birth: date | None = None
-    gender: str | None = None
-    address: str | None = None
-    level: Literal["beginner", "elementary", "intermediate", "upper_intermediate", "advanced"] | None = None
-    learning_goal: str | None = None
-    parent_name: str | None = None
-    parent_phone: str | None = None
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str
 
 
 class AuthUser(BaseModel):

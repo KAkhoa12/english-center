@@ -19,22 +19,7 @@ export type LoginResponse = {
 export type RegisterRequest = {
   full_name: string;
   email: string;
-  phone: string | null;
   password: string;
-  avatar_url: string | null;
-  date_of_birth: string | null;
-  gender: string | null;
-  address: string | null;
-  level:
-    | "beginner"
-    | "elementary"
-    | "intermediate"
-    | "upper_intermediate"
-    | "advanced"
-    | null;
-  learning_goal: string | null;
-  parent_name: string | null;
-  parent_phone: string | null;
 }
 
 export type RegisterResponse = {
@@ -45,23 +30,19 @@ export type RegisterResponse = {
     id: string;
     full_name: string;
     email: string;
-    phone: string | null;
-    avatar_url: string | null;
     status: string;
     is_verified: boolean;
   };
   student: {
     id: string;
-    date_of_birth: string | null;
-    gender: string | null;
-    address: string | null;
-    level: string | null;
-    learning_goal: string | null;
-    parent_name: string | null;
-    parent_phone: string | null;
   };
   roles: string[];
   permissions: string[];
+}
+
+export type ResetPasswordRequest = {
+  token: string;
+  password: string;
 }
 
 export type RefreshTokenRequest = {

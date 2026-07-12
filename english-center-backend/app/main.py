@@ -36,6 +36,7 @@ from app.api.v1 import (
     payments,
     permissions,
     profile,
+    public_contact,
     roles,
     rooms,
     staff,
@@ -82,6 +83,8 @@ app.add_middleware(
         f"{settings.API_V1_PREFIX}/auth/login",
         f"{settings.API_V1_PREFIX}/auth/register",
         f"{settings.API_V1_PREFIX}/auth/refresh",
+        f"{settings.API_V1_PREFIX}/auth/forgot-password",
+        f"{settings.API_V1_PREFIX}/auth/reset-password",
         f"{settings.API_V1_PREFIX}/payments/sepay/ipn",
         f"{settings.API_V1_PREFIX}/payment/webhook/sepay",
     },
@@ -134,6 +137,7 @@ app.include_router(invoices.router, prefix=settings.API_V1_PREFIX)
 app.include_router(payments.router, prefix=settings.API_V1_PREFIX)
 app.include_router(enrollments.router, prefix=settings.API_V1_PREFIX)
 app.include_router(guest_enrollments.router, prefix=settings.API_V1_PREFIX)
+app.include_router(public_contact.router, prefix=settings.API_V1_PREFIX)
 app.include_router(rooms.router, prefix=settings.API_V1_PREFIX)
 app.include_router(classes.router, prefix=settings.API_V1_PREFIX)
 app.include_router(class_schedules.router, prefix=settings.API_V1_PREFIX)

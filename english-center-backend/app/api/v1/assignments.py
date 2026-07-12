@@ -28,6 +28,18 @@ def create_assignment(
     return api_response(True, "Assignment created successfully", service.assignment_dict(item, current_user, detail=True), None)
 
 
+@router.post("/sessions/{session_id}/assignments")
+def create_session_assignment(
+    session_id: str,
+    payload: AssignmentCreate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: User = Depends(require_permission(AssignmentPermission.CREATE)),
+):
+    service = AssignmentService(db)
+    item = service.create_session_assignment(session_id, payload, current_user)
+    return api_response(True, "Session assignment created successfully", service.assignment_dict(item, current_user, detail=True), None)
+
+
 @router.post("/lessons/{lesson_id}/assignments")
 def create_lesson_assignment(
     lesson_id: str,
@@ -256,4 +268,4 @@ def my_assignments(
     query = PaginationParams(page=page, page_size=page_size, search=search)
     service = AssignmentService(db)
     items, total = service.get_my_assignments(current_user, query, status, assignment_type_id, class_id, submitted_status)
-    return api_response(True, "My assignments retrieved successfully", [service.assignment_dict(item, current_user) for item in items], build_pagination(page, page_size, total))
+    return api_response(True, "My assignments retrieved successfully", [service.assignment_dict(item, current_user, detail=True) for item in items], build_pagination(page, page_size, total))

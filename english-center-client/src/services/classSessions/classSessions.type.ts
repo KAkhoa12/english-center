@@ -51,6 +51,50 @@ export type ClassScheduleRef = {
   end_time: string;
 };
 
+export type SessionTeacherUser = {
+  id: string;
+  full_name: string;
+  email: string;
+};
+
+export type SessionMediaItem = {
+  id: string;
+  class_session_id: string;
+  media_id: string;
+  title: string | null;
+  description: string | null;
+  order_index: number;
+  media: {
+    id: string;
+    url: string;
+    original_filename: string | null;
+    content_type: string | null;
+    size: number | null;
+  } | null;
+};
+
+export type SessionAssignmentAttachment = {
+  id: string;
+  title: string | null;
+  attachment_type: string;
+  presigned_url: string | null;
+};
+
+export type SessionAssignment = {
+  id: string;
+  title: string;
+  description: string | null;
+  instruction: string | null;
+  assignment_type: { id: string; code: string; name: string } | null;
+  status: string;
+  max_score: number;
+  duration_time: number | null;
+  total_attempt: number;
+  due_at: string | null;
+  allow_late_submission: boolean;
+  attachments: SessionAssignmentAttachment[];
+};
+
 export type ClassSession = {
   id: string;
   class_id: string;
@@ -75,8 +119,10 @@ export type ClassSession = {
   teacher?: SessionTeacherRef;
   room?: SessionRoomRef;
   lesson?: SessionLessonRef;
+  teachers?: SessionTeacherUser[];
   attendance_summary?: SessionAttendanceSummary;
-  media?: SessionMediaRef[];
+  media?: SessionMediaItem[];
+  assignments?: SessionAssignment[];
 };
 
 export type CreateClassSessionRequest = {

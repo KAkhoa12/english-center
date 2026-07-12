@@ -116,6 +116,17 @@ def delete_session(session_id: str, db: Annotated[Session, Depends(get_db)]):
     return api_response(True, "Class session deleted successfully", None, None)
 
 
+@router.get("/students/me/sessions/{session_id}")
+def get_my_session_detail(
+    session_id: str,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: User = Depends(require_jwt),
+):
+    service = ClassSessionService(db)
+    data = service.get_my_session_detail(current_user, session_id)
+    return api_response(True, "Session detail retrieved successfully", data, None)
+
+
 @router.get("/students/me/sessions")
 def my_sessions(
     db: Annotated[Session, Depends(get_db)],

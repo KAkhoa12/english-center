@@ -5,6 +5,7 @@ import HomePage from '@/pages/Home';
 import AuthLayout from '@/shared/layouts/AuthLayout';
 import LoginPage from '@/pages/Login';
 import RegisterPage from '@/pages/Regiter';
+import ResetPasswordPage from '@/pages/ResetPassword';
 import CoursesPage from '@/pages/Courses';
 import CourseDetailPage from '@/pages/CoursesDetail';
 
@@ -37,6 +38,10 @@ export const publicRoutes: RouteObject[] = [
       {
         path: PUBLIC_ROUTES.REGISTER,
         element: <RegisterPage />,
+      },
+      {
+        path: PUBLIC_ROUTES.RESET_PASSWORD,
+        element: <ResetPasswordPage />,
       },
     ],
   },

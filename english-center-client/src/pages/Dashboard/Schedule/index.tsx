@@ -1,16 +1,19 @@
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { CalendarDays } from "lucide-react";
 
 import { DashboardListPageHeader, SectionCard } from "@/components/Dashboard/Comon";
 import { useClassSessionsStore } from "@/services/classSessions/classSessions.store";
+import { PRIVATE_ROUTES } from "@/shared/routes";
 
 const formatDate = (value: string) => new Date(value).toLocaleDateString("vi-VN");
 
 export default function DashboardSchedulePage() {
+  const navigate = useNavigate();
   const { sessions, isLoading, mySessions } = useClassSessionsStore();
 
   useEffect(() => {
-    void mySessions({ page: 1, page_size: 20 });
+    void mySessions({ page: 1, page_size: 100 });
   }, [mySessions]);
 
   return (
@@ -27,9 +30,11 @@ export default function DashboardSchedulePage() {
         ) : (
           <div className="space-y-3">
             {sessions.map((session) => (
-              <div
+              <button
                 key={session.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3"
+                type="button"
+                onClick={() => navigate(PRIVATE_ROUTES.DASHBOARD_SCHEDULE_DETAIL.replace(":sessionId", session.id))}
+                className="flex w-full flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-left transition hover:border-brand-200 hover:bg-brand-50"
               >
                 <div>
                   <p className="font-semibold text-gray-900">{session.title}</p>
@@ -41,7 +46,7 @@ export default function DashboardSchedulePage() {
                   <CalendarDays className="h-4 w-4" />
                   {session.start_time} - {session.end_time}
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}

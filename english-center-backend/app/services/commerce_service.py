@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.class_model import ClassStatus, CourseClass
 from app.models.class_student import ClassEnrollmentStatus, ClassStudent
+from app.models.consultation import Consultation, ConsultationStatus
 from app.models.commerce import (
     Cart,
     CartItem,
@@ -29,17 +30,20 @@ from app.models.commerce import (
     PaymentWebhookLog,
 )
 from app.models.course import CourseMode, CourseStatus
+from app.models.payment_plan import PaymentInstallment, PaymentInstallmentStatus, PaymentPlan, PaymentPlanStatus, PaymentPlanType
 from app.models import User
 from app.repositories.cart import CartItemRepository, CartRepository, CourseWishlistRepository
+from app.repositories.consultation import ConsultationRepository
 from app.repositories.course import CourseRepository
 from app.repositories.course_class import CourseClassRepository
 from app.repositories.course_enrollment import CourseEnrollmentRepository
 from app.repositories.invoice import InvoiceItemRepository, InvoiceRepository
 from app.repositories.order import OrderItemRepository, OrderRepository
 from app.repositories.payment import PaymentRepository, PaymentWebhookLogRepository
+from app.repositories.payment_plan import PaymentInstallmentRepository, PaymentPlanRepository
 from app.repositories.student import StudentRepository
 from app.repositories.class_student import ClassStudentRepository
-from app.schemas.commerce import CheckoutRequest
+from app.schemas.commerce import CheckoutRequest, ConvertConsultationRequest, CreatePaymentPlanRequest, RecordInstallmentPaymentRequest, StaffCreateOrderRequest
 from app.schemas.common import PaginationParams
 from app.services.course_service import CourseService
 from app.services.rbac_service import RBACService
@@ -346,6 +350,7 @@ class OrderSerializer:
         return {
             "id": str(order.id),
             "user_id": str(order.user_id),
+            "student_id": str(order.student_id) if order.student_id else None,
             "order_code": order.order_code,
             "invoice_number": invoice.invoice_number if invoice else None,
             "status": order.status.value,
@@ -362,8 +367,8 @@ class OrderSerializer:
                     "course_name": item.course_name,
                     "course_code": item.course_code,
                     "unit_price": money(item.unit_price),
-                    "quantity": item.quantity,
-                    "total_price": money(item.total_price),
+                    "quantity": 1,
+                    "total_price": money(item.final_amount),
                 }
                 for item in self.order_items(str(order.id))
             ],
@@ -470,6 +475,7 @@ class OrderService(AccessMixin):
         self.course_repo = CourseRepository(db)
         self.class_repo = CourseClassRepository(db)
         self.class_student_repo = ClassStudentRepository(db)
+        self.consultation_repo = ConsultationRepository(db)
 
     def _validate_checkout_item(self, item: CartItem, student: Any | None) -> None:
         course = self.course_repo.get(str(item.course_id))
@@ -609,6 +615,109 @@ class OrderService(AccessMixin):
         self.db.refresh(order)
         return order
 
+    def convert_consultation(self, consultation_id: str, payload: ConvertConsultationRequest, user: User) -> Order:
+        cons = self.consultation_repo.get_active_by_id(consultation_id)
+        if not cons:
+            raise HTTPException(status_code=404, detail="Consultation not found")
+        if cons.status in {ConsultationStatus.converted, ConsultationStatus.rejected, ConsultationStatus.cancelled}:
+            raise HTTPException(status_code=400, detail="Consultation already converted or closed")
+        if not cons.interested_course_id or not cons.interested_class_id:
+            raise HTTPException(status_code=400, detail="Consultation missing course/class info")
+
+        course = self.course_repo.get(str(cons.interested_course_id))
+        if not course:
+            raise HTTPException(status_code=404, detail="Course not found")
+        class_obj = self.class_repo.get_active_by_id(str(cons.interested_class_id))
+        if not class_obj:
+            raise HTTPException(status_code=404, detail="Class not found")
+
+        student = self.student_repo.get(payload.student_id)
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+
+        order_item = OrderItem(
+            order_id=None, course_id=course.id, class_id=class_obj.id,
+            student_id=student.id, course_name=course.name, course_code=course.code,
+            unit_price=course.price, discount_amount=0, final_amount=course.price,
+        )
+        order = self.order_repo.create(Order(
+            user_id=student.user_id, student_id=student.id,
+            consultation_id=cons.id, order_code=self._next_code("ORD"),
+            status=OrderStatus.awaiting_payment, currency=settings.SEPAY_CURRENCY,
+            subtotal_amount=course.price, discount_amount=0, total_amount=course.price,
+            note=payload.note,
+        ))
+        order_item.order_id = order.id
+        self.order_item_repo.create(order_item)
+
+        invoice = self.invoice_repo.create(Invoice(
+            order_id=order.id, user_id=student.user_id,
+            invoice_number=self._next_code("INV"),
+            invoice_status=InvoiceStatus.issued, issued_at=now(),
+            buyer_name=cons.customer_name,
+            buyer_email=cons.customer_email,
+            buyer_phone=cons.customer_phone,
+            currency=order.currency, total_amount=order.total_amount,
+        ))
+        self.invoice_item_repo.create(InvoiceItem(
+            invoice_id=invoice.id, course_id=course.id, class_id=class_obj.id,
+            item_name=course.name, item_code=course.code,
+            unit_price=course.price, quantity=1, total_price=course.price,
+        ))
+
+        if payload.plan_type:
+            plan_data = CreatePaymentPlanRequest(
+                plan_type=payload.plan_type, deposit_amount=payload.deposit_amount,
+                installments=payload.installments,
+            )
+            PaymentPlanService(self.db).create_plan(str(order.id), plan_data, user)
+
+        cons.status = ConsultationStatus.converted
+        self.db.commit()
+        self.db.refresh(order)
+        return order
+
+    def create_order_for_student(self, payload: StaffCreateOrderRequest, user: User) -> Order:
+        course = self.course_repo.get(payload.course_id)
+        if not course:
+            raise HTTPException(status_code=404, detail="Course not found")
+        class_obj = self.class_repo.get_active_by_id(payload.class_id)
+        if not class_obj:
+            raise HTTPException(status_code=404, detail="Class not found")
+        student = self.student_repo.get(payload.student_id)
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+
+        order = self.order_repo.create(Order(
+            user_id=student.user_id, student_id=student.id,
+            order_code=self._next_code("ORD"),
+            status=OrderStatus.awaiting_payment, currency=settings.SEPAY_CURRENCY,
+            subtotal_amount=course.price, discount_amount=0, total_amount=course.price,
+            note=payload.note,
+        ))
+        self.order_item_repo.create(OrderItem(
+            order_id=order.id, course_id=course.id, class_id=class_obj.id,
+            student_id=student.id, course_name=course.name, course_code=course.code,
+            unit_price=course.price, discount_amount=0, final_amount=course.price,
+        ))
+        invoice = self.invoice_repo.create(Invoice(
+            order_id=order.id, user_id=student.user_id,
+            invoice_number=self._next_code("INV"),
+            invoice_status=InvoiceStatus.issued, issued_at=now(),
+            currency=order.currency, total_amount=order.total_amount,
+        ))
+        if payload.plan_type:
+            PaymentPlanService(self.db).create_plan(str(order.id), CreatePaymentPlanRequest(
+                plan_type=payload.plan_type, deposit_amount=payload.deposit_amount,
+                installments=payload.installments,
+                installment_count=payload.installment_count,
+                grace_period_days=payload.grace_period_days,
+            ), user)
+        EnrollmentService(self.db).create_enrollments_from_order(order)
+        self.db.commit()
+        self.db.refresh(order)
+        return order
+
 
 class EnrollmentService(AccessMixin):
     def __init__(self, db: Session) -> None:
@@ -617,6 +726,7 @@ class EnrollmentService(AccessMixin):
         self.course_repo = CourseRepository(db)
         self.class_repo = CourseClassRepository(db)
         self.class_student_repo = ClassStudentRepository(db)
+        self.student_repo = StudentRepository(db)
 
     def _upsert_class_student(self, class_id: str, student_id: str, enrollment_id: str) -> None:
         class_obj = self.class_repo.get_active_by_id(class_id)
@@ -648,14 +758,12 @@ class EnrollmentService(AccessMixin):
     def create_enrollments_from_order(self, order: Order) -> None:
         items = OrderSerializer(self.db).order_items(str(order.id))
         for item in items:
-            exists = self.enrollment_repo.get_by_user_and_course(str(order.user_id), str(item.course_id))
-            if not exists:
+            exists = self.enrollment_repo.get_by_student_and_course(str(order.student_id) if order.student_id else "", str(item.course_id))
+            if not exists and order.student_id:
                 exists = self.enrollment_repo.create(
                     CourseEnrollment(
-                        user_id=order.user_id,
                         student_id=order.student_id,
                         course_id=item.course_id,
-                        order_id=order.id,
                         order_item_id=item.id,
                         enrollment_status=EnrollmentStatus.active,
                         enrolled_at=now(),
@@ -684,14 +792,19 @@ class EnrollmentService(AccessMixin):
         }
 
     def get_enrollments(self, query: PaginationParams, user: User) -> tuple[list[CourseEnrollment], int]:
-        filtered_user_id = None if self.can_access_all(user, "order.all") else str(user.id)
-        items = self.enrollment_repo.list_filtered(filtered_user_id)
+        filtered_student_id = None
+        if not self.can_access_all(user, "order.all"):
+            student = self.student_repo.get_by_user_id(str(user.id))
+            filtered_student_id = str(student.id) if student else "__none__"
+        items = self.enrollment_repo.list_filtered(filtered_student_id)
         total = len(items)
         items = items[(query.page - 1) * query.page_size : query.page * query.page_size]
         return items, total
 
     def get_my_enrollments(self, query: PaginationParams, user: User) -> tuple[list[CourseEnrollment], int]:
-        items = self.enrollment_repo.list_filtered(str(user.id))
+        student = self.student_repo.get_by_user_id(str(user.id))
+        student_id = str(student.id) if student else "__none__"
+        items = self.enrollment_repo.list_filtered(student_id)
         total = len(items)
         items = items[(query.page - 1) * query.page_size : query.page * query.page_size]
         return items, total
@@ -903,6 +1016,176 @@ class PaymentService(AccessMixin):
         log.processed_at = now()
         self.db.commit()
         return True, 200
+
+
+class PaymentPlanService(AccessMixin):
+    def __init__(self, db: Session) -> None:
+        super().__init__(db)
+        self.plan_repo = PaymentPlanRepository(db)
+        self.installment_repo = PaymentInstallmentRepository(db)
+        self.payment_repo = PaymentRepository(db)
+        self.order_service = OrderService(db)
+
+    def create_plan(self, order_id: str, data: CreatePaymentPlanRequest, user: User) -> PaymentPlan:
+        order = self.order_service.get_order(order_id)
+        self.order_service.assert_order_access(order, user)
+        if order.status in {OrderStatus.paid, OrderStatus.cancelled, OrderStatus.expired}:
+            raise HTTPException(status_code=400, detail="Order cannot have payment plan")
+        if self.plan_repo.get_by_order(str(order.id)):
+            raise HTTPException(status_code=400, detail="Payment plan already exists for this order")
+
+        plan = self.plan_repo.create(PaymentPlan(
+            order_id=order.id,
+            plan_type=PaymentPlanType(data.plan_type),
+            total_amount=order.total_amount,
+            deposit_amount=data.deposit_amount,
+            installment_count=data.installment_count or len(data.installments) or None,
+            grace_period_days=data.grace_period_days,
+            status=PaymentPlanStatus.active,
+            created_by=user.id,
+            created_at=now(),
+            updated_at=now(),
+        ))
+        if data.installment_count and not data.installments:
+            total = float(order.total_amount)
+            base = round(total / data.installment_count, 2)
+            for i in range(data.installment_count):
+                amount = round(total - base * (data.installment_count - 1), 2) if i == data.installment_count - 1 else base
+                self.installment_repo.create(PaymentInstallment(
+                    payment_plan_id=plan.id,
+                    installment_number=i + 1,
+                    name=f"Đợt {i + 1}",
+                    amount=amount,
+                    due_date=None,
+                    grace_period_days=data.grace_period_days,
+                    status=PaymentInstallmentStatus.pending,
+                    created_at=now(),
+                    updated_at=now(),
+                ))
+        else:
+            for inst in data.installments:
+                self.installment_repo.create(PaymentInstallment(
+                    payment_plan_id=plan.id,
+                    installment_number=inst.installment_number,
+                    name=inst.name,
+                    amount=inst.amount,
+                    due_date=inst.due_date,
+                    grace_period_days=inst.grace_period_days or data.grace_period_days,
+                    status=PaymentInstallmentStatus.pending,
+                    created_at=now(),
+                    updated_at=now(),
+                ))
+        self.db.commit()
+        return plan
+
+    def get_plan_by_order(self, order_id: str, user: User) -> dict | None:
+        order = self.order_service.get_order(order_id)
+        self.order_service.assert_order_access(order, user)
+        plan = self.plan_repo.get_by_order(str(order.id))
+        return self._plan_dict(plan) if plan else None
+
+    def list_plans(self, status: str | None = None) -> list[dict]:
+        plans = self.plan_repo.list_all(status=status)
+        return [self._plan_dict(p) for p in plans]
+
+    def list_my_plans(self, user: User) -> list[dict]:
+        plans = self.plan_repo.list_by_user_id(str(user.id))
+        return [self._plan_dict(p) for p in plans]
+
+    def get_plan_detail(self, plan_id: str, user: User) -> dict:
+        plan = self.plan_repo.get(plan_id)
+        if not plan:
+            raise HTTPException(status_code=404, detail="Payment plan not found")
+        order = self.order_service.get_order(str(plan.order_id))
+        self.order_service.assert_order_access(order, user)
+        return self._plan_dict(plan)
+
+    def get_installments(self, plan_id: str, user: User) -> list[dict]:
+        plan = self.plan_repo.get(plan_id)
+        if not plan:
+            raise HTTPException(status_code=404, detail="Payment plan not found")
+        order = self.order_service.get_order(str(plan.order_id))
+        self.order_service.assert_order_access(order, user)
+        return [self._installment_dict(i) for i in self.installment_repo.list_by_plan(str(plan.id))]
+
+    def record_payment(
+        self, installment_id: str, amount: float, payment_method: str,
+        collected_by: User, reference: str | None = None, note: str | None = None,
+    ) -> PaymentInstallment:
+        installment = self.installment_repo.get(installment_id)
+        if not installment:
+            raise HTTPException(status_code=404, detail="Installment not found")
+        plan = self.plan_repo.get(str(installment.payment_plan_id))
+        if not plan:
+            raise HTTPException(status_code=404, detail="Payment plan not found")
+        order = self.order_service.get_order(str(plan.order_id))
+        invoice = OrderSerializer(self.db).invoice(str(order.id))
+
+        payment = self.payment_repo.create(Payment(
+            order_id=order.id,
+            invoice_id=invoice.id if invoice else None,
+            installment_id=installment.id,
+            user_id=order.user_id,
+            collected_by=collected_by.id,
+            provider=PaymentProvider.cash if payment_method == "CASH" else PaymentProvider.manual,
+            payment_method=parse_enum(PaymentMethod, payment_method, "payment method"),
+            status=PaymentStatus.success,
+            amount=amount,
+            currency=order.currency,
+            external_transaction_id=reference,
+            provider_transaction_id=reference,
+            paid_at=now(),
+            note=note,
+        ))
+        current_paid = float(installment.paid_amount or 0) + amount
+        installment.paid_amount = current_paid
+        if current_paid >= float(installment.amount):
+            installment.status = PaymentInstallmentStatus.paid
+            installment.paid_at = now()
+        else:
+            installment.status = PaymentInstallmentStatus.partially_paid
+        self.db.commit()
+        self.db.refresh(installment)
+        self._check_plan_completion(plan)
+        return installment
+
+    def _check_plan_completion(self, plan: PaymentPlan) -> None:
+        installments = self.installment_repo.list_by_plan(str(plan.id))
+        if all(i.status == PaymentInstallmentStatus.paid for i in installments):
+            plan.status = PaymentPlanStatus.completed
+            order = self.order_service.get_order(str(plan.order_id))
+            invoice = OrderSerializer(self.db).invoice(str(order.id))
+            PaymentService(self.db)._apply_paid_state(order, invoice, None)
+            self.db.commit()
+
+    def _plan_dict(self, plan: PaymentPlan) -> dict:
+        return {
+            "id": str(plan.id),
+            "order_id": str(plan.order_id),
+            "plan_type": plan.plan_type.value if hasattr(plan.plan_type, "value") else plan.plan_type,
+            "total_amount": float(plan.total_amount),
+            "deposit_amount": float(plan.deposit_amount) if plan.deposit_amount else None,
+            "installment_count": plan.installment_count,
+            "grace_period_days": plan.grace_period_days,
+            "status": plan.status.value if hasattr(plan.status, "value") else plan.status,
+            "created_by": str(plan.created_by) if plan.created_by else None,
+            "installments": [self._installment_dict(i) for i in self.installment_repo.list_by_plan(str(plan.id))],
+        }
+
+    @staticmethod
+    def _installment_dict(inst: PaymentInstallment) -> dict:
+        return {
+            "id": str(inst.id),
+            "payment_plan_id": str(inst.payment_plan_id),
+            "installment_number": inst.installment_number,
+            "name": inst.name,
+            "amount": float(inst.amount),
+            "due_date": inst.due_date.isoformat() if inst.due_date else None,
+            "grace_period_days": inst.grace_period_days,
+            "status": inst.status.value if hasattr(inst.status, "value") else inst.status,
+            "paid_amount": float(inst.paid_amount) if inst.paid_amount else None,
+            "paid_at": inst.paid_at.isoformat() if inst.paid_at else None,
+        }
 
 
 def mark_order_paid_for_testing(

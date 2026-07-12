@@ -51,4 +51,7 @@ export const classSessionsApi = {
 
   mySessions: (query?: ListMySessionsQuery) =>
     apiClient.getWithMeta<ClassSession[]>(appendQuery("/students/me/sessions", query)),
+
+  getMySessionDetail: (sessionId: string) =>
+    apiClient.get<ClassSession>(`/students/me/sessions/${sessionId}`),
 };

@@ -70,6 +70,8 @@ export type Assignment = {
   assignment_type: AssignmentTypeRef | null;
   status: AssignmentStatus;
   max_score: number;
+  duration_time: number | null;
+  total_attempt: number;
   due_at: string | null;
   allow_late_submission: boolean;
   class: { id: string; name: string } | null;
@@ -92,6 +94,8 @@ export type AssignmentCreateRequest = {
   assignment_type_id: string;
   status?: AssignmentStatus;
   max_score?: number;
+  duration_time?: number | null;
+  total_attempt?: number;
   due_at?: string | null;
   allow_late_submission?: boolean;
 };
@@ -105,6 +109,8 @@ export type AssignmentUpdateRequest = {
   assignment_type_id?: string | null;
   status?: AssignmentStatus | null;
   max_score?: number | null;
+  duration_time?: number | null;
+  total_attempt?: number | null;
   due_at?: string | null;
   allow_late_submission?: boolean | null;
 };
@@ -134,11 +140,9 @@ export type AssignmentAttachmentUpdateRequest = Partial<AssignmentAttachmentCrea
 
 export type SubmissionAttachmentCreateRequest = {
   title?: string | null;
-  file_bucket: string;
-  file_object_name: string;
+  media_id: string;
+  location_folder?: string | null;
   original_filename?: string | null;
-  content_type?: string | null;
-  file_size?: number | null;
 };
 
 export type AssignmentSubmissionCreateRequest = {

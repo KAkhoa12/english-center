@@ -82,6 +82,22 @@ class UserService:
         self.user_repo.soft_delete(user)
         self.db.commit()
 
+    def restore_user(self, user_id: str) -> User:
+        user = self.user_repo.get(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        user.deleted_at = None
+        self.user_repo.update(user)
+        self.db.commit()
+        return user
+
+    def update_avatar_url(self, user_id: str, avatar_url: str) -> User:
+        user = self.get_user_by_id(user_id)
+        user.avatar_url = avatar_url
+        self.user_repo.update(user)
+        self.db.commit()
+        return user
+
     def assign_roles(self, user_id: str, role_ids: list[str]) -> None:
         user = self.get_user_by_id(user_id)
         _ = user

@@ -15,8 +15,13 @@ from app.models.rbac.user import User
 from app.repositories.attendance import AttendanceRepository
 from app.repositories.class_schedule import ClassScheduleRepository
 from app.repositories.class_session import ClassSessionRepository
+from app.repositories.assignment import AssignmentRepository
+from app.repositories.assignment_type import AssignmentTypeRepository
+from app.repositories.class_session_media import ClassSessionMediaRepository
 from app.repositories.class_student import ClassStudentRepository
 from app.repositories.lesson import LessonRepository
+from app.repositories.assignment_attachment import AssignmentAttachmentRepository
+from app.repositories.media import MediaRepository
 from app.repositories.room import RoomRepository
 from app.repositories.teacher import TeacherRepository
 from app.repositories.user import UserRepository
@@ -24,6 +29,8 @@ from app.schemas.class_session import ClassSessionBulkCreate, ClassSessionCreate
 from app.schemas.common import PaginationParams
 from app.services.class_service import AcademicAccessMixin, ClassService, _enum, _enum_required
 from app.services.course_service import CourseService
+from app.services.media_service import MediaService
+from app.services.media_service import MediaService
 
 
 SCHEDULE_WEEKDAY_MAP = {
@@ -47,6 +54,8 @@ class ClassSessionService(AcademicAccessMixin):
         self.room_repo = RoomRepository(db)
         self.teacher_repo = TeacherRepository(db)
         self.user_repo = UserRepository(db)
+        self.media_service = MediaService(db)
+        self.assignment_attachment_repo = AssignmentAttachmentRepository(db)
 
     def _get_room(self, room_id: str | None) -> Room | None:
         if not room_id:
@@ -209,9 +218,65 @@ class ClassSessionService(AcademicAccessMixin):
                 ],
                 "room": {"id": str(room.id), "name": room.name} if room else None,
                 "attendance_summary": self._session_summary(session),
+                "media": self._session_media_dict(str(session.id)),
+                "assignments": self._session_assignments_dict(str(session.id)),
             }
         )
         return data
+
+    def _session_media_dict(self, session_id: str) -> list[dict[str, Any]]:
+        csm_repo = ClassSessionMediaRepository(self.db)
+        media_repo = MediaRepository(self.db)
+        media_svc = MediaService(self.db)
+        return [
+            {
+                "id": str(item.id),
+                "class_session_id": str(item.class_session_id),
+                "media_id": str(item.media_id),
+                "title": item.title,
+                "description": item.description,
+                "order_index": item.order_index,
+                "media": media_svc.media_dict(media) if (media := media_repo.get_active_by_id(str(item.media_id))) else None,
+            }
+            for item in csm_repo.list_by_session_id(session_id)
+        ]
+
+    def _session_assignments_dict(self, session_id: str) -> list[dict[str, Any]]:
+        assignment_repo = AssignmentRepository(self.db)
+        result = []
+        for a in assignment_repo.list_by_session_id(session_id):
+            assignment_type = None
+            if a.assignment_type_id:
+                at = AssignmentTypeRepository(self.db).get(str(a.assignment_type_id))
+                if at:
+                    assignment_type = {"id": str(at.id), "code": at.code, "name": at.name}
+            result.append({
+                "id": str(a.id),
+                "class_id": str(a.class_id) if a.class_id else None,
+                "session_id": str(a.session_id) if a.session_id else None,
+                "lesson_id": str(a.lesson_id) if a.lesson_id else None,
+                "title": a.title,
+                "description": a.description,
+                "instruction": a.instruction,
+                "assignment_type": assignment_type,
+                "status": a.status.value,
+                "max_score": float(a.max_score),
+                "duration_time": a.duration_time,
+                "total_attempt": a.total_attempt,
+                "due_at": str(a.due_at) if a.due_at else None,
+                "allow_late_submission": a.allow_late_submission,
+                "created_at": str(a.created_at) if a.created_at else None,
+                "attachments": [
+                    {
+                        "id": str(att.id),
+                        "title": att.title,
+                        "attachment_type": att.attachment_type.value,
+                        "presigned_url": self.media_service.get_presigned_url(str(att.media_id)) if att.media_id else None,
+                    }
+                    for att in self.assignment_attachment_repo.list_by_assignment_id(str(a.id))
+                ],
+            })
+        return result
 
     def create_session(self, class_id: str, payload: ClassSessionCreate) -> ClassSession:
         class_obj = ClassService(self.db).get_class_by_id(class_id)
@@ -472,3 +537,15 @@ class ClassSessionService(AcademicAccessMixin):
             from_date=from_date,
             to_date=to_date,
         )
+
+    def get_my_session_detail(self, user: User, session_id: str) -> dict[str, Any]:
+        student = self.get_student_profile_by_user(str(user.id))
+        if not student:
+            raise HTTPException(status_code=404, detail="Student profile not found")
+        session = self.get_session_by_id(session_id)
+        enrollment = self.class_student_repo.get_by_class_and_student(
+            str(session.class_id), str(student.id)
+        )
+        if not enrollment:
+            raise HTTPException(status_code=403, detail="You are not enrolled in this class")
+        return self.session_detail_dict(session)

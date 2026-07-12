@@ -8,6 +8,7 @@ import type {
   ListMyOrdersQuery,
   ListOrdersQuery,
   Order,
+  StaffCreateOrderRequest,
 } from "./orders.type";
 
 const unwrap = <T>(response: ApiResponse<T>, fallbackMessage: string): T => {
@@ -29,6 +30,7 @@ type OrdersState = {
   getOrderByInvoice: (invoiceNumber: string) => Promise<Order | null>;
   getOrderPaymentStatus: (orderId: string) => Promise<Order>;
   cancelOrder: (orderId: string) => Promise<Order>;
+  createOrderForStudent: (data: StaffCreateOrderRequest) => Promise<Order>;
   clearSelectedOrder: () => void;
   clearError: () => void;
 };
@@ -89,6 +91,13 @@ export const useOrdersStore = create<OrdersState>()((set) => ({
       orders: state.orders.map((item) => (item.id === order.id ? order : item)),
       selectedOrder: state.selectedOrder?.id === order.id ? order : state.selectedOrder,
     }));
+    return order;
+  },
+
+  createOrderForStudent: async (data) => {
+    const response = await ordersApi.createOrderForStudent(data);
+    const order = unwrap(response, "Tao don hang that bai");
+    set((state) => ({ orders: [order, ...state.orders], selectedOrder: order }));
     return order;
   },
 

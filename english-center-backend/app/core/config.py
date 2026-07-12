@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     OLLAMA_EMBEDDING_MODEL: str = "nomic-embed-text"
     OLLAMA_TIMEOUT_SECONDS: int = Field(default=120, ge=1, le=3600)
     OLLAMA_TEMPERATURE: float = Field(default=0.2, ge=0.0, le=1)
-
+    RESEND_API_KEY: str
     LANGGRAPH_CHECKPOINTER: str = "memory"
     LANGGRAPH_THREAD_ID_PREFIX: str = "ec"
     LANGGRAPH_RECURSION_LIMIT: int = Field(default=50, ge=1, le=500)

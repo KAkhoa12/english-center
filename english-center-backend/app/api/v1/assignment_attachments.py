@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
 from app.core.response import api_response
@@ -9,6 +9,8 @@ from app.dependencies.permissions import require_permission
 from app.models.rbac.user import User
 from app.schemas.assignment import AssignmentAttachmentCreate, AssignmentAttachmentUpdate
 from app.services.assignment_service import AssignmentAttachmentService, AssignmentService
+from app.services.media_service import MediaService
+from app.utils.file import get_upload_file_size, validate_file_extension, validate_file_size
 
 router = APIRouter(tags=["assignment-attachments"])
 
@@ -23,6 +25,31 @@ def create_assignment_attachment(
     service = AssignmentAttachmentService(db)
     item = service.create_attachment(assignment_id, payload, current_user)
     return api_response(True, "Assignment attachment created successfully", service.attachment_dict(item), None)
+
+
+@router.post("/assignments/{assignment_id}/attachments/upload")
+def upload_assignment_attachment(
+    assignment_id: str,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: User = Depends(require_permission("assignment_attachment.create")),
+    title: Annotated[str | None, Form()] = None,
+    file: UploadFile = File(...),
+):
+    file_size = get_upload_file_size(file)
+    validate_file_extension(file.filename, "assignment")
+    validate_file_size(file_size, "assignment")
+
+    media = MediaService(db).upload_media(
+        bucket_name="media",
+        file=file,
+        file_size=file_size,
+        folder="assignment_attachments",
+        uploaded_by=str(current_user.id),
+    )
+    payload = AssignmentAttachmentCreate(title=title or file.filename, attachment_type="file", media_id=str(media.id))
+    service = AssignmentAttachmentService(db)
+    item = service.create_attachment(assignment_id, payload, current_user)
+    return api_response(True, "Assignment attachment uploaded successfully", service.attachment_dict(item), None)
 
 
 @router.get("/assignments/{assignment_id}/attachments")

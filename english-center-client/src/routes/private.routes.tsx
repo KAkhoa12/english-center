@@ -26,6 +26,8 @@ import DashboardClassesPage from "@/pages/Dashboard/Classes";
 import DashboardClassCreatePage from "@/pages/Dashboard/Classes/Create";
 import DashboardClassEditPage from "@/pages/Dashboard/Classes/Edit";
 import DashboardAssignmentsPage from "@/pages/Dashboard/Assignments";
+import DashboardAssignmentDetailPage from "@/pages/Dashboard/Assignments/Detail";
+import DashboardAssignmentGradingPage from "@/pages/Dashboard/Assignments/Grading";
 import DashboardAssignmentTypesPage from "@/pages/Dashboard/AssignmentTypes";
 import DashboardAttendancePage from "@/pages/Dashboard/Attendance";
 import DashboardCertificatesPage from "@/pages/Dashboard/Certificates";
@@ -42,6 +44,7 @@ import DashboardRoomsPage from "@/pages/Dashboard/Rooms";
 import DashboardRoomCreatePage from "@/pages/Dashboard/Rooms/Create";
 import DashboardRoomEditPage from "@/pages/Dashboard/Rooms/Edit";
 import DashboardSchedulePage from "@/pages/Dashboard/Schedule";
+import DashboardScheduleDetailPage from "@/pages/Dashboard/Schedule/Detail";
 import DashboardStaffPage from "@/pages/Dashboard/Staff";
 import DashboardStaffCreatePage from "@/pages/Dashboard/Staff/Create";
 import DashboardStaffEditPage from "@/pages/Dashboard/Staff/Edit";
@@ -54,6 +57,10 @@ import DashboardTeacherEditPage from "@/pages/Dashboard/Teachers/Edit";
 import DashboardTeachingSchedulePage from "@/pages/Dashboard/TeachingSchedule";
 import DashboardSessionsPage from "@/pages/Dashboard/Sessions";
 import DashboardSessionDetailPage from "@/pages/Dashboard/Sessions/Detail";
+import DashboardOrderCreatePage from "@/pages/Dashboard/Orders/Create";
+import DashboardPaymentPlansPage from "@/pages/Dashboard/Finance/PaymentPlans";
+import DashboardPaymentPlanDetailPage from "@/pages/Dashboard/Finance/PaymentPlans/Detail";
+import MyPaymentPlansPage from "@/pages/MyPaymentPlans";
 import FavoritesPage from "@/pages/Favorites";
 import MyCoursesPage from "@/pages/MyCourses";
 import MyInvoicesPage from "@/pages/MyInvoices";
@@ -348,6 +355,46 @@ export const privateRoutes: RouteObject[] = [
             ),
           },
           {
+            path: PRIVATE_ROUTES.DASHBOARD_ORDERS_CREATE,
+            element: (
+              <DashboardAccessGuard allowedRoles={["admin", "staff"]} requiredPermissions={["order.create"]}>
+                <DashboardOrderCreatePage />
+              </DashboardAccessGuard>
+            ),
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_FINANCE_PAYMENT_PLANS,
+            element: (
+              <DashboardAccessGuard allowedRoles={["admin", "staff"]} requiredPermissions={["payment.read"]}>
+                <DashboardPaymentPlansPage />
+              </DashboardAccessGuard>
+            ),
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_FINANCE_PAYMENT_PLAN_DETAIL,
+            element: (
+              <DashboardAccessGuard allowedRoles={["admin", "staff"]} requiredPermissions={["payment.read"]}>
+                <DashboardPaymentPlanDetailPage />
+              </DashboardAccessGuard>
+            ),
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_MY_PAYMENT_PLANS,
+            element: (
+              <DashboardAccessGuard allowedRoles={["admin", "staff", "teacher", "student"]}>
+                <MyPaymentPlansPage />
+              </DashboardAccessGuard>
+            ),
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_MY_PAYMENT_PLAN_DETAIL,
+            element: (
+              <DashboardAccessGuard allowedRoles={["admin", "staff", "teacher", "student"]}>
+                <DashboardPaymentPlanDetailPage />
+              </DashboardAccessGuard>
+            ),
+          },
+          {
             path: PRIVATE_ROUTES.DASHBOARD_DOCUMENTS,
             element: (
               <DashboardAccessGuard allowedRoles={["admin", "staff", "teacher"]}>
@@ -431,6 +478,22 @@ export const privateRoutes: RouteObject[] = [
             ),
           },
           {
+            path: PRIVATE_ROUTES.DASHBOARD_ASSIGNMENTS_DETAIL,
+            element: (
+              <DashboardAccessGuard allowedRoles={["student", "admin", "staff", "teacher"]}>
+                <DashboardAssignmentDetailPage />
+              </DashboardAccessGuard>
+            ),
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_ASSIGNMENTS_GRADING,
+            element: (
+              <DashboardAccessGuard allowedRoles={["admin", "staff", "teacher"]} requiredPermissions={["assignment_grade.read"]}>
+                <DashboardAssignmentGradingPage />
+              </DashboardAccessGuard>
+            ),
+          },
+          {
             path: PRIVATE_ROUTES.DASHBOARD_ASSIGNMENT_TYPES,
             element: (
               <DashboardAccessGuard
@@ -473,6 +536,14 @@ export const privateRoutes: RouteObject[] = [
                 requiredPermissions={["class_session.read"]}
               >
                 <DashboardTeachingSchedulePage />
+              </DashboardAccessGuard>
+            ),
+          },
+          {
+            path: PRIVATE_ROUTES.DASHBOARD_SCHEDULE_DETAIL,
+            element: (
+              <DashboardAccessGuard allowedRoles={["student", "teacher", "admin", "staff"]}>
+                <DashboardScheduleDetailPage />
               </DashboardAccessGuard>
             ),
           },

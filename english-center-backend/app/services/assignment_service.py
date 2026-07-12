@@ -201,6 +201,36 @@ class AssignmentService(AssignmentAccessMixin):
             assignment_type_id=payload.assignment_type_id,
             status=_enum_required(AssignmentStatus, payload.status, "assignment status"),
             max_score=payload.max_score,
+            duration_time=payload.duration_time,
+            total_attempt=payload.total_attempt,
+            due_at=payload.due_at,
+            allow_late_submission=payload.allow_late_submission,
+            created_by=str(current_user.id),
+        )
+        created = self.assignment_repo.create(assignment)
+        self.db.commit()
+        return created
+
+    def create_session_assignment(self, session_id: str, payload: AssignmentCreate, current_user: User) -> Assignment:
+        session = self.class_session_repo.get_active_by_id(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Class session not found")
+        class_obj = ClassService(self.db).get_class_by_id(str(session.class_id))
+        fake_assignment = Assignment(class_id=class_obj.id, session_id=session_id, title=payload.title, max_score=payload.max_score, created_by=str(current_user.id))
+        self.assert_can_manage_assignment(fake_assignment, current_user)
+        self._get_assignment_type(payload.assignment_type_id)
+        assignment = Assignment(
+            class_id=str(class_obj.id),
+            session_id=str(session.id),
+            lesson_id=None,
+            title=payload.title.strip(),
+            description=payload.description,
+            instruction=payload.instruction,
+            assignment_type_id=payload.assignment_type_id,
+            status=_enum_required(AssignmentStatus, payload.status, "assignment status"),
+            max_score=payload.max_score,
+            duration_time=payload.duration_time,
+            total_attempt=payload.total_attempt,
             due_at=payload.due_at,
             allow_late_submission=payload.allow_late_submission,
             created_by=str(current_user.id),
@@ -222,6 +252,8 @@ class AssignmentService(AssignmentAccessMixin):
             assignment_type_id=payload.assignment_type_id,
             status=_enum_required(AssignmentStatus, payload.status, "assignment status"),
             max_score=payload.max_score,
+            duration_time=payload.duration_time,
+            total_attempt=payload.total_attempt,
             due_at=payload.due_at,
             allow_late_submission=payload.allow_late_submission,
             created_by=str(current_user.id),
@@ -250,6 +282,8 @@ class AssignmentService(AssignmentAccessMixin):
             assignment_type_id=payload.assignment_type_id,
             status=_enum_required(AssignmentStatus, payload.status, "assignment status"),
             max_score=payload.max_score,
+            duration_time=payload.duration_time,
+            total_attempt=payload.total_attempt,
             due_at=payload.due_at,
             allow_late_submission=payload.allow_late_submission,
             created_by=str(current_user.id),
@@ -316,6 +350,8 @@ class AssignmentService(AssignmentAccessMixin):
             assignment_type_id=template.assignment_type_id,
             status=_enum_required(AssignmentStatus, payload.status, "assignment status") if payload.status else template.status,
             max_score=template.max_score,
+            duration_time=template.duration_time,
+            total_attempt=template.total_attempt,
             due_at=payload.due_at if payload.due_at is not None else template.due_at,
             allow_late_submission=payload.allow_late_submission if payload.allow_late_submission is not None else template.allow_late_submission,
             created_by=str(current_user.id),
@@ -374,7 +410,7 @@ class AssignmentService(AssignmentAccessMixin):
         if not session:
             raise HTTPException(status_code=404, detail="Class session not found")
         class_obj = ClassService(self.db).get_class_by_id(str(session.class_id))
-        lesson_id = payload.lesson_id or str(session.lesson_id) if session.lesson_id else payload.lesson_id
+        lesson_id = payload.lesson_id
         self._validate_class_links(class_obj, str(session.id), lesson_id)
         assignment = self._build_assignment_from_template(template, current_user, str(class_obj.id), str(session.id), lesson_id, payload)
         self.assert_can_manage_assignment(assignment, current_user)
@@ -466,7 +502,7 @@ class AssignmentService(AssignmentAccessMixin):
                 raise HTTPException(status_code=400, detail="Template lesson assignments must not have session_id")
             if payload.lesson_id is not None:
                 self._get_template_lesson(payload.lesson_id)
-        for field in ["description", "instruction", "due_at", "allow_late_submission"]:
+        for field in ["description", "instruction", "due_at", "allow_late_submission", "duration_time", "total_attempt"]:
             value = getattr(payload, field)
             if value is not None:
                 setattr(assignment, field, value)
@@ -569,6 +605,8 @@ class AssignmentService(AssignmentAccessMixin):
             } if assignment_type else None,
             "status": assignment.status.value,
             "max_score": float(assignment.max_score),
+            "duration_time": assignment.duration_time,
+            "total_attempt": assignment.total_attempt,
             "due_at": assignment.due_at,
             "allow_late_submission": assignment.allow_late_submission,
             "class": {"id": str(class_obj.id), "name": class_obj.name} if class_obj else None,
@@ -702,11 +740,11 @@ class AssignmentSubmissionService(AssignmentAccessMixin):
                     assignment_id=str(assignment.id),
                     student_id=str(student.id),
                     user_id=str(current_user.id),
-                    note=payload.note,
+                    note=payload.content,
                     attempt_number=1,
                 )
                 submission = self.assignment_submission_repo.create(submission)
-            submission.note = payload.note
+            submission.note = payload.content
             submission.status = status
             submission.is_late = is_late
             submission.submitted_at = submitted_at or submission.submitted_at
@@ -766,8 +804,8 @@ class AssignmentSubmissionService(AssignmentAccessMixin):
             submission.status = status
             submission.is_late = is_late
             submission.submitted_at = submitted_at or submission.submitted_at
-        if payload.note is not None:
-            submission.note = payload.note
+        if payload.content is not None:
+            submission.note = payload.content
         updated = self.assignment_submission_repo.update(submission)
         self.db.commit()
         return updated
@@ -817,7 +855,7 @@ class AssignmentSubmissionService(AssignmentAccessMixin):
             "assignment_id": str(submission.assignment_id),
             "student_id": str(submission.student_id),
             "user_id": str(submission.user_id),
-            "note": submission.note,
+            "content": submission.note,
             "status": submission.status.value,
             "submitted_at": submission.submitted_at,
             "is_late": submission.is_late,

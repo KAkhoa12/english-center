@@ -8,6 +8,7 @@ import type {
   MeResponse,
   RefreshTokenRequest,
   RefreshTokenResponse,
+  ResetPasswordRequest,
 } from "./auth.type";
 
 export const authApi = {
@@ -29,6 +30,12 @@ export const authApi = {
   refreshToken: (data: RefreshTokenRequest) =>
     apiClient.post<RefreshTokenResponse, RefreshTokenRequest>(
       "/auth/refresh",
+      data
+    ),
+
+  resetPassword: (data: ResetPasswordRequest) =>
+    apiClient.post<{ message: string }, ResetPasswordRequest>(
+      "/auth/reset-password",
       data
     ),
 };

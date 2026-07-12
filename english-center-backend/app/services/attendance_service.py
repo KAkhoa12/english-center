@@ -56,7 +56,8 @@ class AttendanceService(AcademicAccessMixin):
         if not teacher:
             raise HTTPException(status_code=403, detail="Permission denied")
         class_obj = ClassService(self.db).get_class_by_id(str(session.class_id))
-        if (session.teacher_id and str(session.teacher_id) == str(teacher.id)) or (
+        session_svc = ClassSessionService(self.db)
+        if (str(user.id) in session_svc._session_teacher_user_ids(str(session.id))) or (
             class_obj.teacher_id and str(class_obj.teacher_id) == str(teacher.id)
         ):
             return

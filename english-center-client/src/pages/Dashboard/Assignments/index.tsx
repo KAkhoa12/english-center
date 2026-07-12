@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { DashboardListPageHeader, SectionCard } from "@/components/Dashboard/Comon";
@@ -8,15 +9,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useAssignmentQuestionOptionsStore } from "@/services/assignmentQuestionOptions/assignmentQuestionOptions.store";
-import type { AssignmentQuestionOption } from "@/services/assignmentQuestionOptions/assignmentQuestionOptions.type";
+import AssignmentQuestionsDialog from "@/components/AssignmentQuestionsDialog";
 import { useAssignmentQuestionsStore } from "@/services/assignmentQuestions/assignmentQuestions.store";
-import type { AssignmentQuestion } from "@/services/assignmentQuestions/assignmentQuestions.type";
 import { useAssignmentTypesStore } from "@/services/assignmentTypes/assignmentTypes.store";
 import { useAuthStore } from "@/services/auth/auth.store";
 import { useAssignmentsStore } from "@/services/assignments/assignments.store";
-import type { Assignment, AssignmentCreateRequest } from "@/services/assignments/assignments.type";
+import type { Assignment, AssignmentAttachment, AssignmentCreateRequest } from "@/services/assignments/assignments.type";
 import { hasRole } from "@/shared/auth/rbac";
+import { PRIVATE_ROUTES } from "@/shared/routes";
 
 const emptyForm: AssignmentCreateRequest = {
   title: "",
@@ -25,226 +25,20 @@ const emptyForm: AssignmentCreateRequest = {
   assignment_type_id: "",
   status: "draft",
   max_score: 10,
+  duration_time: null,
+  total_attempt: 1,
   due_at: null,
   allow_late_submission: true,
 };
 
-const questionTypes = [
-  { value: "text_answer", label: "Tự luận" },
-  { value: "single_choice", label: "Một đáp án" },
-  { value: "multiple_choice", label: "Nhiều đáp án" },
-  { value: "file_upload", label: "Nộp file" },
-];
-
-const emptyQuestionForm = { question_type: "text_answer", question_text: "", score: 0, order_index: 0, is_required: true };
-const emptyOptionForm = { option_text: "", is_correct: false, order_index: 0 };
-
-type QuestionForm = typeof emptyQuestionForm;
-type OptionForm = typeof emptyOptionForm & { questionId: string | null; optionId: string | null };
-
 const formatDueDate = (value: string | null) => value ? new Date(value).toLocaleString("vi-VN") : "Không giới hạn";
 const toDatetimeLocal = (value: string | null) => value ? value.slice(0, 16) : "";
 const fromDatetimeLocal = (value: string) => value ? new Date(value).toISOString() : null;
-const isChoiceQuestion = (type: string) => type === "single_choice" || type === "multiple_choice";
-
-function AssignmentQuestionsDialog({ assignment, open, onOpenChange }: { assignment: Assignment | null; open: boolean; onOpenChange: (open: boolean) => void }) {
-  const { questions, isLoading, listQuestions, createQuestion, updateQuestion, deleteQuestion } = useAssignmentQuestionsStore();
-  const { createOption, updateOption, deleteOption } = useAssignmentQuestionOptionsStore();
-  const [questionForm, setQuestionForm] = useState<QuestionForm>(emptyQuestionForm);
-  const [editingQuestion, setEditingQuestion] = useState<AssignmentQuestion | null>(null);
-  const [optionForm, setOptionForm] = useState<OptionForm>({ ...emptyOptionForm, questionId: null, optionId: null });
-
-  useEffect(() => {
-    if (!open || !assignment?.id) return;
-    void listQuestions(assignment.id).catch((error) => toast.error(error instanceof Error ? error.message : "Không thể tải câu hỏi"));
-  }, [assignment?.id, listQuestions, open]);
-
-  const refreshQuestions = async () => {
-    if (assignment?.id) await listQuestions(assignment.id);
-  };
-
-  const resetQuestionForm = () => {
-    setEditingQuestion(null);
-    setQuestionForm(emptyQuestionForm);
-  };
-
-  const startEditQuestion = (question: AssignmentQuestion) => {
-    setEditingQuestion(question);
-    setQuestionForm({
-      question_type: question.question_type,
-      question_text: question.question_text,
-      score: question.score,
-      order_index: question.order_index,
-      is_required: question.is_required,
-    });
-  };
-
-  const handleSaveQuestion = async () => {
-    if (!assignment?.id) return;
-    if (!questionForm.question_text.trim()) {
-      toast.error("Vui lòng nhập nội dung câu hỏi");
-      return;
-    }
-    try {
-      const payload = { ...questionForm, question_text: questionForm.question_text.trim() };
-      if (editingQuestion) {
-        await updateQuestion(editingQuestion.id, payload);
-        toast.success("Đã cập nhật câu hỏi");
-      } else {
-        await createQuestion(assignment.id, payload);
-        toast.success("Đã tạo câu hỏi");
-      }
-      resetQuestionForm();
-      await refreshQuestions();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Lưu câu hỏi thất bại");
-    }
-  };
-
-  const handleDeleteQuestion = async (questionId: string) => {
-    try {
-      await deleteQuestion(questionId);
-      toast.success("Đã xóa câu hỏi");
-      await refreshQuestions();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Xóa câu hỏi thất bại");
-    }
-  };
-
-  const startOption = (questionId: string, option?: AssignmentQuestionOption) => {
-    setOptionForm({
-      questionId,
-      optionId: option?.id ?? null,
-      option_text: option?.option_text ?? "",
-      is_correct: option?.is_correct ?? false,
-      order_index: option?.order_index ?? 0,
-    });
-  };
-
-  const resetOptionForm = () => setOptionForm({ ...emptyOptionForm, questionId: null, optionId: null });
-
-  const handleSaveOption = async () => {
-    if (!optionForm.questionId) return;
-    if (!optionForm.option_text.trim()) {
-      toast.error("Vui lòng nhập nội dung lựa chọn");
-      return;
-    }
-    try {
-      const payload = { option_text: optionForm.option_text.trim(), is_correct: optionForm.is_correct, order_index: optionForm.order_index };
-      if (optionForm.optionId) {
-        await updateOption(optionForm.optionId, payload);
-        toast.success("Đã cập nhật lựa chọn");
-      } else {
-        await createOption(optionForm.questionId, payload);
-        toast.success("Đã thêm lựa chọn");
-      }
-      resetOptionForm();
-      await refreshQuestions();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Lưu lựa chọn thất bại");
-    }
-  };
-
-  const handleDeleteOption = async (optionId: string) => {
-    try {
-      await deleteOption(optionId);
-      toast.success("Đã xóa lựa chọn");
-      await refreshQuestions();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Xóa lựa chọn thất bại");
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
-        <DialogHeader>
-          <DialogTitle>Quản lý câu hỏi</DialogTitle>
-          <DialogDescription>{assignment?.title ?? "Bài tập"}</DialogDescription>
-        </DialogHeader>
-
-        <div className="grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
-          <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-            <h3 className="font-semibold text-gray-950">{editingQuestion ? "Cập nhật câu hỏi" : "Thêm câu hỏi"}</h3>
-            <div className="mt-4 grid gap-3">
-              <label className="space-y-2 text-sm font-medium text-gray-700">Loại câu hỏi<Select value={questionForm.question_type} onValueChange={(question_type) => setQuestionForm((current) => ({ ...current, question_type }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{questionTypes.map((type) => <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>)}</SelectContent></Select></label>
-              <label className="space-y-2 text-sm font-medium text-gray-700">Nội dung<Textarea value={questionForm.question_text} onChange={(event) => setQuestionForm((current) => ({ ...current, question_text: event.target.value }))} /></label>
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="space-y-2 text-sm font-medium text-gray-700">Điểm<Input type="number" min={0} value={questionForm.score} onChange={(event) => setQuestionForm((current) => ({ ...current, score: Number(event.target.value || 0) }))} /></label>
-                <label className="space-y-2 text-sm font-medium text-gray-700">Thứ tự<Input type="number" min={0} value={questionForm.order_index} onChange={(event) => setQuestionForm((current) => ({ ...current, order_index: Number(event.target.value || 0) }))} /></label>
-              </div>
-              <label className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-sm text-gray-700">Bắt buộc trả lời<input type="checkbox" checked={questionForm.is_required} onChange={(event) => setQuestionForm((current) => ({ ...current, is_required: event.target.checked }))} className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500" /></label>
-              <div className="flex justify-end gap-2">
-                {editingQuestion ? <Button type="button" variant="outline" onClick={resetQuestionForm}>Hủy</Button> : null}
-                <Button type="button" onClick={() => void handleSaveQuestion()}>{editingQuestion ? "Lưu câu hỏi" : "Thêm câu hỏi"}</Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {isLoading ? <p className="text-sm text-gray-500">Đang tải câu hỏi...</p> : questions.length === 0 ? <p className="text-sm text-gray-500">Chưa có câu hỏi nào.</p> : questions.map((question) => (
-              <div key={question.id} className="rounded-2xl border border-gray-100 bg-white p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="outline">{question.question_type}</Badge>
-                      <Badge className="bg-brand-50 text-brand-700">{question.score} điểm</Badge>
-                      {question.is_required ? <Badge className="bg-rose-50 text-rose-600">bắt buộc</Badge> : null}
-                    </div>
-                    <p className="mt-2 font-semibold text-gray-900">{question.question_text}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button type="button" variant="outline" size="sm" onClick={() => startEditQuestion(question)}>Sửa</Button>
-                    <Button type="button" variant="destructive" size="sm" onClick={() => void handleDeleteQuestion(question.id)}>Xóa</Button>
-                  </div>
-                </div>
-
-                {isChoiceQuestion(question.question_type) ? (
-                  <div className="mt-4 space-y-2 rounded-2xl bg-gray-50 p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-gray-700">Lựa chọn đáp án</p>
-                      <Button type="button" variant="outline" size="sm" onClick={() => startOption(question.id)}>Thêm lựa chọn</Button>
-                    </div>
-                    {question.options?.length ? question.options.map((option) => (
-                      <div key={option.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white px-3 py-2 text-sm">
-                        <span className="text-gray-700">{option.order_index}. {option.option_text}</span>
-                        <div className="flex items-center gap-2">
-                          {option.is_correct ? <Badge className="bg-emerald-50 text-emerald-600">đúng</Badge> : null}
-                          <Button type="button" variant="outline" size="sm" onClick={() => startOption(question.id, option)}>Sửa</Button>
-                          <Button type="button" variant="destructive" size="sm" onClick={() => void handleDeleteOption(option.id)}>Xóa</Button>
-                        </div>
-                      </div>
-                    )) : <p className="text-sm text-gray-500">Chưa có lựa chọn.</p>}
-
-                    {optionForm.questionId === question.id ? (
-                      <div className="grid gap-2 rounded-xl border border-gray-100 bg-white p-3 md:grid-cols-[1fr_90px_auto_auto]">
-                        <Input value={optionForm.option_text} onChange={(event) => setOptionForm((current) => ({ ...current, option_text: event.target.value }))} placeholder="Nội dung lựa chọn" />
-                        <Input type="number" min={0} value={optionForm.order_index} onChange={(event) => setOptionForm((current) => ({ ...current, order_index: Number(event.target.value || 0) }))} />
-                        <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={optionForm.is_correct} onChange={(event) => setOptionForm((current) => ({ ...current, is_correct: event.target.checked }))} />Đúng</label>
-                        <div className="flex gap-2">
-                          <Button type="button" size="sm" onClick={() => void handleSaveOption()}>{optionForm.optionId ? "Lưu" : "Thêm"}</Button>
-                          <Button type="button" variant="outline" size="sm" onClick={resetOptionForm}>Hủy</Button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Đóng</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 export default function DashboardAssignmentsPage() {
   const me = useAuthStore((state) => state.me);
-  const { assignments, availableAssignments, isLoading, myAssignments, listAvailableAssignments, createAvailableAssignment, updateAvailableAssignment, deleteAvailableAssignment } = useAssignmentsStore();
+  const navigate = useNavigate();
+  const { assignments, availableAssignments, attachments, isLoading, myAssignments, listAvailableAssignments, createAvailableAssignment, updateAvailableAssignment, deleteAvailableAssignment, listAttachments, uploadAttachment, deleteAttachment } = useAssignmentsStore();
   const { questionsByAssignmentId, listQuestions: listAssignmentQuestions } = useAssignmentQuestionsStore();
   const { assignmentTypes, listAssignmentTypes } = useAssignmentTypesStore();
   const [form, setForm] = useState<AssignmentCreateRequest>(emptyForm);
@@ -290,6 +84,8 @@ export default function DashboardAssignmentsPage() {
       assignment_type_id: assignment.assignment_type_id,
       status: assignment.status,
       max_score: assignment.max_score,
+      duration_time: assignment.duration_time,
+      total_attempt: assignment.total_attempt,
       due_at: assignment.due_at,
       allow_late_submission: assignment.allow_late_submission,
     });
@@ -346,13 +142,13 @@ export default function DashboardAssignmentsPage() {
           {isLoading ? <p className="text-sm text-gray-500">Đang tải bài tập...</p> : assignments.length === 0 ? <p className="text-sm text-gray-500">Chưa có bài tập nào.</p> : (
             <div className="space-y-3">
               {assignments.map((assignment) => (
-                <div key={assignment.id} className="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3">
+                <div key={assignment.id} className="cursor-pointer rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 transition hover:border-brand-200 hover:bg-brand-50/50" onClick={() => navigate(PRIVATE_ROUTES.DASHBOARD_ASSIGNMENTS_DETAIL.replace(":assignmentId", assignment.id))}>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="font-semibold text-gray-900">{assignment.title}</p>
                       <p className="mt-1 text-sm text-gray-500">{assignment.class?.name ?? "Lớp học"} · Hạn nộp: {formatDueDate(assignment.due_at)}</p>
                     </div>
-                    <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-600">{assignment.my_submission?.status ?? assignment.status}</span>
+                    <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-600">{assignment.my_submission?.status === "submitted" ? "Đã nộp" : assignment.my_submission?.status === "graded" ? "Đã chấm" : assignment.my_submission?.status === "late" ? "Nộp muộn" : "Chưa nộp"}</span>
                   </div>
                 </div>
               ))}
@@ -368,8 +164,12 @@ export default function DashboardAssignmentsPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="space-y-2 text-sm font-medium text-gray-700">Trạng thái<Select value={form.status} onValueChange={(status) => patchForm({ status })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="draft">Nháp</SelectItem><SelectItem value="published">Xuất bản</SelectItem><SelectItem value="closed">Đóng</SelectItem></SelectContent></Select></label>
                 <label className="space-y-2 text-sm font-medium text-gray-700">Điểm tối đa<Input type="number" min={1} value={form.max_score ?? 10} onChange={(event) => patchForm({ max_score: Number(event.target.value || 10) })} /></label>
+                <label className="space-y-2 text-sm font-medium text-gray-700">Thời gian làm (phút)<Input type="number" min={0} value={form.duration_time ?? ""} onChange={(event) => patchForm({ duration_time: event.target.value ? Number(event.target.value) : null })} /></label>
               </div>
-              <label className="space-y-2 text-sm font-medium text-gray-700">Hạn nộp mẫu<Input type="datetime-local" value={toDatetimeLocal(form.due_at ?? null)} onChange={(event) => patchForm({ due_at: fromDatetimeLocal(event.target.value) })} /></label>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-2 text-sm font-medium text-gray-700">Số lần nộp tối đa<Input type="number" min={1} value={form.total_attempt ?? 1} onChange={(event) => patchForm({ total_attempt: Number(event.target.value || 1) })} /></label>
+                <label className="space-y-2 text-sm font-medium text-gray-700">Hạn nộp mẫu<Input type="datetime-local" value={toDatetimeLocal(form.due_at ?? null)} onChange={(event) => patchForm({ due_at: fromDatetimeLocal(event.target.value) })} /></label>
+              </div>
               <label className="space-y-2 text-sm font-medium text-gray-700">Mô tả<Textarea value={form.description ?? ""} onChange={(event) => patchForm({ description: event.target.value })} /></label>
               <label className="space-y-2 text-sm font-medium text-gray-700">Hướng dẫn<Textarea value={form.instruction ?? ""} onChange={(event) => patchForm({ instruction: event.target.value })} /></label>
               <div className="flex justify-end gap-2">
@@ -424,6 +224,42 @@ export default function DashboardAssignmentsPage() {
                             ))}
                           </div>
                         ) : <p className="text-sm text-gray-500">Chưa có câu hỏi nào trong bài tập này.</p>}
+                      </div>
+
+                      <div className="mt-4 rounded-2xl border border-gray-100 bg-white p-3">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-gray-800">Tệp đính kèm</p>
+                          <label className="cursor-pointer">
+                            <span className="rounded-md bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700">Tải lên</span>
+                            <input type="file" className="hidden" onChange={async (event) => {
+                              const file = event.target.files?.[0];
+                              if (!file) return;
+                              const fd = new FormData();
+                              fd.append("file", file);
+                              fd.append("title", file.name);
+                              try {
+                                await uploadAttachment(assignment.id, fd);
+                                toast.success("Đã tải lên tệp đính kèm");
+                              } catch (error) {
+                                toast.error(error instanceof Error ? error.message : "Tải lên thất bại");
+                              }
+                              event.target.value = "";
+                            }} />
+                          </label>
+                        </div>
+                        {attachments.length ? (
+                          <div className="space-y-2">
+                            {attachments.filter((att) => att.assignment_id === assignment.id).map((att) => (
+                              <div key={att.id} className="flex items-center justify-between gap-2 rounded-xl bg-gray-50 px-3 py-2 text-sm">
+                                <span className="text-gray-700">{att.title}</span>
+                                <div className="flex items-center gap-2">
+                                  {att.presigned_url ? <a href={att.presigned_url} target="_blank" rel="noopener noreferrer" className="text-brand-600 underline">Xem</a> : null}
+                                  <button type="button" onClick={async () => { try { await deleteAttachment(att.id); toast.success("Đã xóa tệp"); } catch (error) { toast.error(error instanceof Error ? error.message : "Xóa thất bại"); } }} className="text-rose-600 hover:underline">Xóa</button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : <p className="text-sm text-gray-500">Chưa có tệp đính kèm.</p>}
                       </div>
                     </div>
                   );

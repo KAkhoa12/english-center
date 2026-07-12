@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 def _not_blank(value: str) -> str:
@@ -20,6 +20,8 @@ class AssignmentCreate(BaseModel):
     assignment_type_id: str
     status: str = "draft"
     max_score: Decimal = Field(default=10, gt=0)
+    duration_time: int | None = None
+    total_attempt: int = 1
     due_at: datetime | None = None
     allow_late_submission: bool = True
 
@@ -38,6 +40,8 @@ class AssignmentUpdate(BaseModel):
     assignment_type_id: str | None = None
     status: str | None = None
     max_score: Decimal | None = Field(default=None, gt=0)
+    duration_time: int | None = None
+    total_attempt: int | None = None
     due_at: datetime | None = None
     allow_late_submission: bool | None = None
 
@@ -82,14 +86,18 @@ class SubmissionAttachmentCreate(BaseModel):
 
 
 class AssignmentSubmissionCreate(BaseModel):
-    note: str | None = None
+    content: str | None = Field(default=None, alias="note")
     status: str = "submitted"
     attachments: list[SubmissionAttachmentCreate] | None = None
 
+    model_config = ConfigDict(populate_by_name=True)
+
 
 class AssignmentSubmissionUpdate(BaseModel):
-    note: str | None = None
+    content: str | None = Field(default=None, alias="note")
     status: str | None = None
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class AssignmentGradeCreate(BaseModel):

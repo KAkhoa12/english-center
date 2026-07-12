@@ -33,6 +33,7 @@ type ClassSessionsState = {
   getSession: (sessionId: string) => Promise<ClassSession>;
   updateSession: (sessionId: string, data: UpdateClassSessionRequest) => Promise<ClassSession>;
   deleteSession: (sessionId: string) => Promise<void>;
+  getMySessionDetail: (sessionId: string) => Promise<ClassSession>;
   clearSelectedSession: () => void;
   clearError: () => void;
 };
@@ -106,6 +107,13 @@ export const useClassSessionsStore = create<ClassSessionsState>()((set) => ({
       sessions: state.sessions.filter((item) => item.id !== sessionId),
       selectedSession: state.selectedSession?.id === sessionId ? null : state.selectedSession,
     }));
+  },
+
+  getMySessionDetail: async (sessionId) => {
+    const response = await classSessionsApi.getMySessionDetail(sessionId);
+    const session = unwrap(response, "Lay thong tin buoi hoc that bai");
+    set({ selectedSession: session });
+    return session;
   },
 
   clearSelectedSession: () => set({ selectedSession: null }),

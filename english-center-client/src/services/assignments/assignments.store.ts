@@ -48,6 +48,7 @@ type AssignmentsState = {
   updateAvailableAssignment: (assignmentId: string, data: AssignmentUpdateRequest) => Promise<Assignment>;
   deleteAvailableAssignment: (assignmentId: string) => Promise<void>;
   createClassAssignmentFromTemplate: (classId: string, templateAssignmentId: string, data?: AssignmentFromTemplateRequest) => Promise<Assignment>;
+  createSessionAssignment: (sessionId: string, data: AssignmentCreateRequest) => Promise<Assignment>;
   createSessionAssignmentFromTemplate: (sessionId: string, templateAssignmentId: string, data?: AssignmentFromTemplateRequest) => Promise<Assignment>;
   createLessonAssignmentFromTemplate: (lessonId: string, templateAssignmentId: string, data?: AssignmentFromTemplateRequest) => Promise<Assignment>;
   getAssignment: (assignmentId: string) => Promise<Assignment>;
@@ -57,6 +58,7 @@ type AssignmentsState = {
   closeAssignment: (assignmentId: string) => Promise<Assignment>;
   myAssignments: (query?: ListAssignmentsQuery) => Promise<Assignment[]>;
   createAttachment: (assignmentId: string, data: AssignmentAttachmentCreateRequest) => Promise<AssignmentAttachment>;
+  uploadAttachment: (assignmentId: string, data: FormData) => Promise<AssignmentAttachment>;
   listAttachments: (assignmentId: string) => Promise<AssignmentAttachment[]>;
   updateAttachment: (attachmentId: string, data: AssignmentAttachmentUpdateRequest) => Promise<AssignmentAttachment>;
   deleteAttachment: (attachmentId: string) => Promise<void>;
@@ -163,6 +165,13 @@ export const useAssignmentsStore = create<AssignmentsState>()((set) => ({
     return assignment;
   },
 
+  createSessionAssignment: async (sessionId, data) => {
+    const response = await assignmentsApi.createSessionAssignment(sessionId, data);
+    const assignment = unwrap(response, "Tao bai tap buoi hoc that bai");
+    set((state) => ({ assignments: [assignment, ...state.assignments], selectedAssignment: assignment }));
+    return assignment;
+  },
+
   createSessionAssignmentFromTemplate: async (sessionId, templateAssignmentId, data = {}) => {
     const response = await assignmentsApi.createSessionAssignmentFromTemplate(sessionId, templateAssignmentId, data);
     const assignment = unwrap(response, "Tao bai tap buoi hoc tu mau that bai");
@@ -233,6 +242,13 @@ export const useAssignmentsStore = create<AssignmentsState>()((set) => ({
   createAttachment: async (assignmentId, data) => {
     const response = await assignmentsApi.createAttachment(assignmentId, data);
     const attachment = unwrap(response, "Tao tep dinh kem that bai");
+    set((state) => ({ attachments: [...state.attachments, attachment] }));
+    return attachment;
+  },
+
+  uploadAttachment: async (assignmentId, data) => {
+    const response = await assignmentsApi.uploadAttachment(assignmentId, data);
+    const attachment = unwrap(response, "Tai tep len that bai");
     set((state) => ({ attachments: [...state.attachments, attachment] }));
     return attachment;
   },

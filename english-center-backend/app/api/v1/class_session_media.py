@@ -5,10 +5,12 @@ from sqlalchemy.orm import Session
 
 from app.core.response import api_response
 from app.db.session import get_db
+from app.dependencies.auth import require_jwt
 from app.dependencies.permissions import require_permission
 from app.models.rbac.user import User
 from app.schemas.class_session_media import ClassSessionMediaCreate, ClassSessionMediaUpdate
 from app.services.class_session_media_service import ClassSessionMediaService
+from app.services.class_session_service import ClassSessionService
 from app.utils.file import get_upload_file_size, validate_file_extension, validate_file_size
 
 router = APIRouter(tags=["class-session-media"])
@@ -36,8 +38,10 @@ def upload_session_media(
     order_index: Annotated[int, Form()] = 0,
     db: Annotated[Session, Depends(get_db)] = None,
     file: UploadFile = File(...),
-    current_user: User = Depends(require_permission("class_session.update")),
+    current_user: User = Depends(require_jwt),
 ):
+    session_svc = ClassSessionService(db)
+    session_svc._assert_session_access(session_svc.get_session_by_id(session_id), current_user)
     size = get_upload_file_size(file)
     validate_file_extension(file.filename or "file", "material")
     validate_file_size(size, "material")

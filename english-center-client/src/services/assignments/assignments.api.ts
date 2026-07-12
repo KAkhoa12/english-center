@@ -76,6 +76,12 @@ export const assignmentsApi = {
       data
     ),
 
+  createSessionAssignment: (sessionId: string, data: AssignmentCreateRequest) =>
+    apiClient.post<Assignment, AssignmentCreateRequest>(
+      `/sessions/${sessionId}/assignments`,
+      data
+    ),
+
   createSessionAssignmentFromTemplate: (sessionId: string, templateAssignmentId: string, data: AssignmentFromTemplateRequest) =>
     apiClient.post<Assignment, AssignmentFromTemplateRequest>(
       `/sessions/${sessionId}/assignments/from-template/${templateAssignmentId}`,
@@ -127,6 +133,12 @@ export const assignmentsApi = {
       `/assignments/${assignmentId}/attachments`
     ),
 
+  uploadAttachment: (assignmentId: string, data: FormData) =>
+    apiClient.postForm<AssignmentAttachment>(
+      `/assignments/${assignmentId}/attachments/upload`,
+      data
+    ),
+
   updateAttachment: (attachmentId: string, data: AssignmentAttachmentUpdateRequest) =>
     apiClient.patch<AssignmentAttachment, AssignmentAttachmentUpdateRequest>(
       `/assignment-attachments/${attachmentId}`,
@@ -145,6 +157,12 @@ export const assignmentsApi = {
   listSubmissions: (assignmentId: string, query?: ListSubmissionsQuery) =>
     apiClient.getWithMeta<AssignmentSubmission[]>(
       appendQuery(`/assignments/${assignmentId}/submissions`, query)
+    ),
+
+  uploadSubmissionAttachment: (submissionId: string, data: FormData) =>
+    apiClient.postForm<AssignmentAttachment>(
+      `/submissions/${submissionId}/attachments/upload`,
+      data
     ),
 
   getSubmission: (submissionId: string) =>

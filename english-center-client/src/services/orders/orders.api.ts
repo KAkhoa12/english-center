@@ -5,6 +5,7 @@ import type {
   ListMyOrdersQuery,
   ListOrdersQuery,
   Order,
+  StaffCreateOrderRequest,
 } from "./orders.type";
 
 const appendQuery = (url: string, query?: Record<string, unknown>): string => {
@@ -42,4 +43,7 @@ export const ordersApi = {
 
   cancelOrder: (orderId: string) =>
     apiClient.patch<Order, undefined>(`/orders/${orderId}/cancel`),
+
+  createOrderForStudent: (data: StaffCreateOrderRequest) =>
+    apiClient.post<Order, StaffCreateOrderRequest>("/orders/create-for-student", data),
 };
