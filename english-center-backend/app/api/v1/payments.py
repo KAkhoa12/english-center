@@ -9,8 +9,8 @@ from app.core.response import api_response
 from app.db.session import get_db
 from app.dependencies.permissions import require_permission
 from app.models.rbac.user import User
-from app.schemas.commerce import CreatePaymentPlanRequest, CreateSePayPaymentRequest, MarkOrderPaidRequest, RecordInstallmentPaymentRequest
-from app.services.commerce_service import OrderSerializer, OrderService, PaymentPlanService, PaymentService, mark_order_paid_for_testing
+from app.schemas.commerce import CreateSePayPaymentRequest, MarkOrderPaidRequest
+from app.services.commerce_service import OrderSerializer, PaymentService, mark_order_paid_for_testing
 
 router = APIRouter(tags=["payments"])
 
@@ -30,7 +30,7 @@ async def _read_json_body(request: Request) -> dict:
 @router.post("/payments/sepay/create")
 async def create_sepay_payment(payload: CreateSePayPaymentRequest, db: Annotated[Session, Depends(get_db)], current_user: User = Depends(require_permission("payment.create"))):
     service = PaymentService(db)
-    payment = await service.create_sepay_payment(payload.order_id, payload.payment_method, current_user)
+    payment = await service.create_sepay_payment(payload.order_id, payload.payment_method, payload.payment_type, current_user)
     data = OrderSerializer(db).payment_dict(payment)
     invoice = OrderSerializer(db).invoice(str(payment.order_id))
     data["invoice_number"] = invoice.invoice_number if invoice else None
@@ -81,75 +81,4 @@ async def payment_webhook_sepay(
     }
 
 
-@router.post("/orders/{order_id}/payment-plans")
-def create_payment_plan(
-    order_id: str,
-    payload: CreatePaymentPlanRequest,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: User = Depends(require_permission("payment.create")),
-):
-    plan = PaymentPlanService(db).create_plan(order_id, payload, current_user)
-    return api_response(True, "Payment plan created", PaymentPlanService(db)._plan_dict(plan), None)
 
-
-@router.get("/orders/{order_id}/payment-plans")
-def get_order_payment_plan(
-    order_id: str,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: User = Depends(require_permission("payment.read")),
-):
-    plan = PaymentPlanService(db).get_plan_by_order(order_id, current_user)
-    return api_response(True, "Payment plan retrieved", plan, None)
-
-
-@router.get("/payment-plans/{plan_id}/installments")
-def list_installments(
-    plan_id: str,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: User = Depends(require_permission("payment.read")),
-):
-    items = PaymentPlanService(db).get_installments(plan_id, current_user)
-    return api_response(True, "Installments retrieved", items, None)
-
-
-@router.post("/installments/{installment_id}/pay")
-def record_installment_payment(
-    installment_id: str,
-    payload: RecordInstallmentPaymentRequest,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: User = Depends(require_permission("payment.update")),
-):
-    inst = PaymentPlanService(db).record_payment(
-        installment_id, payload.amount, payload.payment_method,
-        current_user, payload.reference, payload.note,
-    )
-    return api_response(True, "Payment recorded", PaymentPlanService._installment_dict(inst), None)
-
-
-@router.get("/payment-plans")
-def list_payment_plans(
-    db: Annotated[Session, Depends(get_db)],
-    current_user: User = Depends(require_permission("payment.read")),
-    status: str | None = None,
-):
-    plans = PaymentPlanService(db).list_plans(status=status)
-    return api_response(True, "Payment plans retrieved", plans, None)
-
-
-@router.get("/payment-plans/my")
-def my_payment_plans(
-    db: Annotated[Session, Depends(get_db)],
-    current_user: User = Depends(require_permission("payment.read")),
-):
-    plans = PaymentPlanService(db).list_my_plans(current_user)
-    return api_response(True, "My payment plans retrieved", plans, None)
-
-
-@router.get("/payment-plans/{plan_id}")
-def get_payment_plan(
-    plan_id: str,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: User = Depends(require_permission("payment.read")),
-):
-    plan = PaymentPlanService(db).get_plan_detail(plan_id, current_user)
-    return api_response(True, "Payment plan retrieved", plan, None)

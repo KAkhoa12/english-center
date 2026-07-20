@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.models.attendance import AttendanceStatus
 from app.models.class_model import ClassStatus, CourseClass
 from app.models.class_session import ClassSchedule, ClassSession, ClassSessionTeacher, SessionMode, SessionStatus
-from app.models.course import Lesson
+
 from app.models.room import Room, RoomStatus
 from app.models.teacher import Teacher
 from app.models.rbac.user import User
@@ -19,7 +19,7 @@ from app.repositories.assignment import AssignmentRepository
 from app.repositories.assignment_type import AssignmentTypeRepository
 from app.repositories.class_session_media import ClassSessionMediaRepository
 from app.repositories.class_student import ClassStudentRepository
-from app.repositories.lesson import LessonRepository
+
 from app.repositories.assignment_attachment import AssignmentAttachmentRepository
 from app.repositories.media import MediaRepository
 from app.repositories.room import RoomRepository
@@ -254,7 +254,7 @@ class ClassSessionService(AcademicAccessMixin):
                 "id": str(a.id),
                 "class_id": str(a.class_id) if a.class_id else None,
                 "session_id": str(a.session_id) if a.session_id else None,
-                "lesson_id": str(a.lesson_id) if a.lesson_id else None,
+
                 "title": a.title,
                 "description": a.description,
                 "instruction": a.instruction,

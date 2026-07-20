@@ -17,27 +17,16 @@ from app.models.class_student import ClassStudent
 from app.models.chat import ChatMessage, ChatMessageAttachment, Conversation, ConversationParticipant
 from app.models.consultation import Consultation
 from app.models.commerce import (
-    Cart,
-    CartItem,
     CourseEnrollment,
     CourseWishlist,
-    Invoice,
     Order,
     OrderItem,
     Payment,
-    PaymentWebhookLog,
 )
-from app.models.media_share import MediaShare
-from app.models.payment_plan import PaymentInstallment, PaymentPlan, PaymentReminder
 from app.models.course import (
     Course,
     CourseCategory,
     CourseMedia,
-    CourseModule,
-    CourseTag,
-    CourseTagMapping,
-    Lesson,
-    LessonMaterial,
     Media,
 )
 from app.models import Permission, RolePermission, Role, UserRole, User
@@ -57,14 +46,9 @@ __all__ = [
     "Teacher",
     "StaffProfile",
     "CourseCategory",
-    "CourseTag",
     "Course",
     "Media",
     "CourseMedia",
-    "CourseTagMapping",
-    "CourseModule",
-    "Lesson",
-    "LessonMaterial",
     "Room",
     "CourseClass",
     "ClassStudent",
@@ -87,18 +71,10 @@ __all__ = [
     "SubmissionAnswerMedia",
     "SubmissionAttachment",
     "AssignmentGrade",
-    "Cart",
-    "CartItem",
     "CourseWishlist",
     "Order",
     "OrderItem",
-    "Invoice",
     "Payment",
-    "PaymentWebhookLog",
-    "MediaShare",
-    "PaymentPlan",
-    "PaymentInstallment",
-    "PaymentReminder",
     "CourseEnrollment",
     "AgentState",
     "ChatSessionMessage",

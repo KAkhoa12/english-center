@@ -44,9 +44,8 @@ def course_info(data: dict[str, Any]) -> CourseInfo:
         code=data.get("code"),
         description=data.get("description"),
         category_name=category.get("name"),
-        mode=data.get("mode"),
         level=data.get("target_level"),
-        total_lesson=data.get("total_sessions") or data.get("lessons_count"),
+        total_lesson=data.get("total_sessions"),
         price=int(float(data.get("price") or 0)),
         status=data.get("status"),
         tags=[tag.get("name") for tag in data.get("tags", []) if tag.get("name")],
@@ -110,7 +109,6 @@ def resolve_course_data(service: CourseService, state: AdvisorState, filters: Fi
     courses, _ = service.get_courses(
         course_query(filters),
         status="active",
-        mode=filters.course_mode,
         target_level=filters.level,
     )
 

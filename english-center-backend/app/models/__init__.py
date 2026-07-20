@@ -7,8 +7,6 @@ from app.models.agent_state import AgentMessageRole, AgentState, ChatSessionMess
 from app.models.class_session import ClassSchedule, ClassSession, ClassSessionMedia, ClassSessionTeacher
 from app.models.chat import ChatMessage, ChatMessageAttachment, Conversation, ConversationParticipant, ConversationType, ParticipantRole
 from app.models.consultation import Consultation
-from app.models.payment_plan import PaymentInstallment, PaymentPlan, PaymentReminder
-from app.models.media_share import MediaShare
 __all__ = [
     "User",
     "UserStatus",
@@ -32,8 +30,4 @@ __all__ = [
     "ChatMessage",
     "ChatMessageAttachment",
     "Consultation",
-    "MediaShare",
-    "PaymentPlan",
-    "PaymentInstallment",
-    "PaymentReminder",
 ]

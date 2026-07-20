@@ -8,22 +8,11 @@ from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.models.course import (
-    CategoryStatus,
     Course,
     CourseCategory,
     CourseMedia,
-    CourseMode,
-    CourseModule,
-    CourseModuleStatus,
-    CourseOutcome,
-    CourseRequirement,
     CourseStatus,
-    CourseTag,
-    CourseTagMapping,
     CourseTargetLevel,
-    Lesson,
-    LessonMaterial,
-    LessonStatus,
     Media,
 )
 from app.core.config import settings
@@ -34,37 +23,17 @@ from app.schemas.course import (
     CourseCreate,
     CourseMediaCreate,
     CourseMediaUpdate,
-    CourseModuleCreate,
-    CourseModuleUpdate,
-    CourseOutcomeCreate,
-    CourseOutcomeUpdate,
-    CourseRequirementCreate,
-    CourseRequirementUpdate,
-    CourseTagCreate,
-    CourseTagUpdate,
     CourseUpdate,
-    LessonCreate,
-    LessonMaterialCreate,
-    LessonMaterialUpdate,
-    LessonUpdate,
 )
 from app.repositories.course_media import CourseMediaRepository
 from app.repositories.course import CourseRepository
 from app.repositories.course_category import CourseCategoryRepository
 from app.repositories.course_class import CourseClassRepository
 from app.repositories.course_enrollment import CourseEnrollmentRepository
-from app.repositories.course_tag import CourseTagRepository
-from app.repositories.course_tag_mapping import CourseTagMappingRepository
 from app.repositories.class_student import ClassStudentRepository
-from app.repositories.course_requirement import CourseRequirementRepository
-from app.repositories.course_outcome import CourseOutcomeRepository
-from app.repositories.course_module import CourseModuleRepository
-from app.repositories.lesson import LessonRepository
-from app.repositories.lesson_material import LessonMaterialRepository
 from app.repositories.media import MediaRepository
 from app.services.media_service import MediaService
 from app.services.storage_service import StorageService
-from app.utils.editorjs import normalize_editorjs_content
 
 
 def slugify(value: str) -> str:
@@ -102,9 +71,6 @@ class CourseSerializationMixin:
     def _category_dict(self, category: CourseCategory) -> dict[str, Any]:
         return {"id": str(category.id), "name": category.name, "slug": category.slug}
 
-    def _tag_dict(self, tag: CourseTag) -> dict[str, Any]:
-        return {"id": str(tag.id), "name": tag.name, "slug": tag.slug}
-
     def _media_dict(self, media: Media) -> dict[str, Any]:
         return {
             "id": str(media.id),
@@ -113,41 +79,6 @@ class CourseSerializationMixin:
             "content_type": media.content_type,
             "size": media.size,
             "url": self._media_url(media),
-        }
-
-    def _requirement_dict(self, item: Any, order_index: int | None = None, course_id: str | None = None) -> dict[str, Any]:
-        if isinstance(item, dict):
-            return item
-        return {
-            "id": getattr(item, "id", None),
-            "course_id": course_id or getattr(item, "course_id", None),
-            "requirement_text": getattr(item, "requirement_text", item),
-            "order_index": getattr(item, "order_index", order_index or 0),
-        }
-
-    def _outcome_dict(self, item: Any, order_index: int | None = None, course_id: str | None = None) -> dict[str, Any]:
-        if isinstance(item, dict):
-            return item
-        return {
-            "id": getattr(item, "id", None),
-            "course_id": course_id or getattr(item, "course_id", None),
-            "outcome_text": getattr(item, "outcome_text", item),
-            "order_index": getattr(item, "order_index", order_index or 0),
-        }
-
-    def _module_dict(self, item: CourseModule) -> dict[str, Any]:
-        media = None
-        if item.media_id:
-            media = self.media_repo.get_active_by_id(str(item.media_id))
-        return {
-            "id": str(item.id),
-            "course_id": str(item.course_id),
-            "title": item.title,
-            "description": item.description,
-            "media_id": str(item.media_id) if item.media_id else None,
-            "media": self._media_dict(media) if media else None,
-            "order_index": item.order_index,
-            "status": item.status.value,
         }
 
     def _course_base_dict(self, course: Course) -> dict[str, Any]:
@@ -163,7 +94,6 @@ class CourseSerializationMixin:
             "slug": course.slug,
             "description": course.description,
             "category": self._category_dict(category) if category else None,
-            "mode": course.mode.value,
             "target_level": course.target_level.value if course.target_level else None,
             "total_sessions": course.total_sessions,
             "total_duration_time": course.total_duration_time,
@@ -187,18 +117,13 @@ class CourseCategoryService:
         slug = payload.slug or slugify(payload.name)
         if self.category_repo.get_by_name(payload.name) or self.category_repo.get_by_slug(slug):
             raise HTTPException(status_code=400, detail="Category name or slug already exists")
-        category = CourseCategory(
-            name=payload.name,
-            slug=slug,
-            description=payload.description,
-            status=_enum(CategoryStatus, payload.status, "status"),
-        )
+        category = CourseCategory(name=payload.name, slug=slug, description=payload.description, status=payload.status or "active")
         self.category_repo.create(category)
         self.db.commit()
         return category
 
     def get_categories(self, query: PaginationParams, status: str | None = None) -> tuple[list[CourseCategory], int]:
-        items = self.category_repo.list_filtered(query.search, _enum(CategoryStatus, status, "status") if status else None)
+        items = self.category_repo.list_filtered(query.search, status)
         sort_field_name = query.sort_by if query.sort_by and hasattr(CourseCategory, query.sort_by) else "created_at"
         reverse = query.sort_order != "asc"
         items.sort(key=lambda x: getattr(x, sort_field_name), reverse=reverse)
@@ -224,7 +149,7 @@ class CourseCategoryService:
         if payload.description is not None:
             category.description = payload.description
         if payload.status is not None:
-            category.status = _enum(CategoryStatus, payload.status, "status")
+            category.status = payload.status
         self.db.commit()
         self.db.refresh(category)
         return category
@@ -238,64 +163,11 @@ class CourseCategoryService:
         self.db.commit()
 
 
-class CourseTagService:
-    def __init__(self, db: Session) -> None:
-        self.db = db
-        self.tag_repo = CourseTagRepository(db)
-
-    def create_tag(self, payload: CourseTagCreate) -> CourseTag:
-        slug = payload.slug or slugify(payload.name)
-        if self.tag_repo.get_by_name(payload.name) or self.tag_repo.get_by_slug(slug):
-            raise HTTPException(status_code=400, detail="Tag name or slug already exists")
-        tag = CourseTag(name=payload.name, slug=slug)
-        self.tag_repo.create(tag)
-        self.db.commit()
-        return tag
-
-    def get_tags(self, query: PaginationParams) -> tuple[list[CourseTag], int]:
-        items = self.tag_repo.list_filtered(query.search)
-        sort_field_name = query.sort_by if query.sort_by and hasattr(CourseTag, query.sort_by) else "created_at"
-        reverse = query.sort_order != "asc"
-        items.sort(key=lambda x: getattr(x, sort_field_name), reverse=reverse)
-        total = len(items)
-        start = (query.page - 1) * query.page_size
-        end = start + query.page_size
-        return items[start:end], total
-
-    def get_tag_by_id(self, tag_id: str) -> CourseTag:
-        tag = self.tag_repo.get(tag_id)
-        if not tag:
-            raise HTTPException(status_code=404, detail="Course tag not found")
-        return tag
-
-    def update_tag(self, tag_id: str, payload: CourseTagUpdate) -> CourseTag:
-        tag = self.get_tag_by_id(tag_id)
-        if payload.name is not None:
-            tag.name = payload.name.strip()
-            if payload.slug is None:
-                tag.slug = slugify(payload.name)
-        if payload.slug is not None:
-            tag.slug = payload.slug
-        self.db.commit()
-        self.db.refresh(tag)
-        return tag
-
-    def soft_delete_tag(self, tag_id: str) -> None:
-        tag = self.get_tag_by_id(tag_id)
-        tag.deleted_at = _now()
-        self.db.commit()
-
-
 class CourseService(CourseSerializationMixin):
     def __init__(self, db: Session) -> None:
         self.db = db
         self.course_repo = CourseRepository(db)
         self.category_repo = CourseCategoryRepository(db)
-        self.tag_repo = CourseTagRepository(db)
-        self.tag_mapping_repo = CourseTagMappingRepository(db)
-        self.module_repo = CourseModuleRepository(db)
-        self.lesson_repo = LessonRepository(db)
-        self.lesson_material_repo = LessonMaterialRepository(db)
         self.media_repo = MediaRepository(db)
         self.course_media_repo = CourseMediaRepository(db)
         self.class_repo = CourseClassRepository(db)
@@ -308,28 +180,18 @@ class CourseService(CourseSerializationMixin):
             raise HTTPException(status_code=404, detail="Course category not found")
         return item
 
-    def _validate_tags(self, tag_ids: list[str]) -> list[CourseTag]:
-        if not tag_ids:
-            return []
-        items = self.tag_repo.get_active_by_ids(tag_ids)
-        if len(items) != len(set(tag_ids)):
-            raise HTTPException(status_code=404, detail="One or more tags not found")
-        return list(items)
-
     def create_course(self, payload: CourseCreate) -> Course:
         slug = payload.slug or slugify(payload.name)
         exists = self.course_repo.get_by_code(payload.code) or self.course_repo.get_by_slug(slug)
         if exists:
             raise HTTPException(status_code=400, detail="Course code or slug already exists")
         self._validate_category(payload.category_id)
-        self._validate_tags(payload.tag_ids or [])
         course = Course(
             name=payload.name,
             code=payload.code,
             slug=slug,
             description=payload.description,
             category_id=payload.category_id,
-            mode=_enum(CourseMode, payload.mode, "mode"),
             target_level=_enum(CourseTargetLevel, payload.target_level, "target_level"),
             output_goal=payload.output_goal,
             total_duration_time=payload.total_duration_time,
@@ -357,7 +219,6 @@ class CourseService(CourseSerializationMixin):
             status=_enum(CourseStatus, payload.status, "status"),
         )
         self.course_repo.create(course)
-        self.replace_course_tags(str(course.id), payload.tag_ids or [], commit=False)
         self.db.commit()
         self.db.refresh(course)
         return course
@@ -378,22 +239,16 @@ class CourseService(CourseSerializationMixin):
         self,
         query: PaginationParams,
         status: str | None = None,
-        mode: str | None = None,
         target_level: str | None = None,
         category_id: str | None = None,
-        tag_id: str | None = None,
-        tag_ids: list[str] | None = None,
         min_price: float | None = None,
         max_price: float | None = None,
     ) -> tuple[list[dict[str, Any]], int]:
         courses = self.course_repo.list_filtered(
             search=query.search,
             status=_enum(CourseStatus, status, "status") if status else None,
-            mode=_enum(CourseMode, mode, "mode") if mode else None,
             target_level=_enum(CourseTargetLevel, target_level, "target_level") if target_level else None,
             category_id=category_id,
-            tag_id=tag_id if not tag_ids else None,
-            tag_ids=tag_ids,
             min_price=min_price,
             max_price=max_price,
         )
@@ -408,7 +263,6 @@ class CourseService(CourseSerializationMixin):
     def course_list_dict(self, course: Course) -> dict[str, Any]:
         data = self._course_base_dict(course)
         data["category_id"] = str(course.category_id)
-        data["tags"] = [self._tag_dict(item) for item in self.tag_mapping_repo.get_tags_by_course_id(str(course.id))]
         data["media"] = [self._course_media_dict(item) for item in self.get_course_media(str(course.id))]
         return data
 
@@ -417,44 +271,39 @@ class CourseService(CourseSerializationMixin):
         data.update(
             {
                 "output_goal": course.output_goal,
-                "requirements": [self._requirement_dict(item, index, str(course.id)) for index, item in enumerate(course.requirements or [])],
-                "outcomes": [self._outcome_dict(item, index, str(course.id)) for index, item in enumerate(course.outcomes or [])],
-                "modules": [self._module_dict(item) for item in self.get_course_modules(str(course.id))],
+                "requirements": course.requirements or [],
+                "outcomes": course.outcomes or [],
                 "media": [self._course_media_dict(item) for item in self.get_course_media(str(course.id))],
-                "lessons_count": self.lesson_repo.count(filters=[Lesson.course_id == course.id]),
             }
         )
         return data
 
-    def get_course_statistics(self, mode: str) -> list[dict[str, Any]]:
-        course_mode = _enum(CourseMode, mode, "mode")
-        courses = self.course_repo.list_filtered(mode=course_mode)
+    def get_course_statistics(self) -> list[dict[str, Any]]:
+        courses = self.course_repo.list_filtered()
         courses.sort(key=lambda item: item.created_at, reverse=True)
         results: list[dict[str, Any]] = []
         for course in courses:
             course_data = self.course_list_dict(course)
             total_enrollments = self.enrollment_repo.count_by_course_id(str(course.id))
-            item: dict[str, Any] = {
+            classes = self.class_repo.list_by_course_id(str(course.id))
+            class_rows = [
+                {
+                    "id": str(class_obj.id),
+                    "name": class_obj.name,
+                    "code": class_obj.code,
+                    "status": class_obj.status.value,
+                    "max_students": class_obj.max_students,
+                    "students_count": self.class_student_repo.count_active_students(str(class_obj.id)),
+                }
+                for class_obj in classes
+            ]
+            results.append({
                 "course": course_data,
                 "total_enrollments": total_enrollments,
-            }
-            if course.mode == CourseMode.center:
-                classes = self.class_repo.list_by_course_id(str(course.id))
-                class_rows = [
-                    {
-                        "id": str(class_obj.id),
-                        "name": class_obj.name,
-                        "code": class_obj.code,
-                        "status": class_obj.status.value,
-                        "max_students": class_obj.max_students,
-                        "students_count": self.class_student_repo.count_active_students(str(class_obj.id)),
-                    }
-                    for class_obj in classes
-                ]
-                item["classes_count"] = len(class_rows)
-                item["total_class_students"] = sum(row["students_count"] for row in class_rows)
-                item["classes"] = class_rows
-            results.append(item)
+                "classes_count": len(class_rows),
+                "total_class_students": sum(row["students_count"] for row in class_rows),
+                "classes": class_rows,
+            })
         return results
 
     def update_course(self, course_id: str, payload: CourseUpdate) -> Course:
@@ -487,12 +336,8 @@ class CourseService(CourseSerializationMixin):
         if payload.category_id is not None:
             self._validate_category(payload.category_id)
             course.category_id = payload.category_id
-        if payload.mode is not None:
-            course.mode = _enum(CourseMode, payload.mode, "mode")
         if payload.status is not None:
             course.status = _enum(CourseStatus, payload.status, "status")
-        if payload.tag_ids is not None:
-            self.replace_course_tags(course_id, payload.tag_ids, commit=False)
         self.db.commit()
         self.db.refresh(course)
         return course
@@ -531,20 +376,6 @@ class CourseService(CourseSerializationMixin):
         course.deleted_at = _now()
         self.db.commit()
 
-    def replace_course_tags(self, course_id: str, tag_ids: list[str], commit: bool = True) -> None:
-        self._validate_tags(tag_ids)
-        active = self.tag_mapping_repo.get_active_by_course_id(course_id)
-        for mapping in active:
-            mapping.deleted_at = _now()
-        for tag_id in set(tag_ids):
-            existing = self.tag_mapping_repo.get_relation(course_id, tag_id)
-            if existing:
-                existing.deleted_at = None
-            else:
-                self.tag_mapping_repo.create(CourseTagMapping(course_id=course_id, tag_id=tag_id))
-        if commit:
-            self.db.commit()
-
     def _course_media_dict(self, mapping: CourseMedia) -> dict[str, Any]:
         media = self.media_repo.get_active_by_id(str(mapping.media_id))
         return {
@@ -559,83 +390,6 @@ class CourseService(CourseSerializationMixin):
 
     def get_course_media(self, course_id: str) -> list[CourseMedia]:
         return self.course_media_repo.get_active_by_course(course_id)
-
-    def get_course_tags(self, course_id: str) -> list[CourseTag]:
-        return self.tag_mapping_repo.get_tags_by_course_id(course_id)
-
-    def get_course_requirements(self, course_id: str) -> list[CourseRequirement]:
-        course = self.get_course_by_id(course_id)
-        return [self._requirement_dict(item, index, course_id) for index, item in enumerate(course.requirements or [])]
-
-    def get_course_outcomes(self, course_id: str) -> list[CourseOutcome]:
-        course = self.get_course_by_id(course_id)
-        return [self._outcome_dict(item, index, course_id) for index, item in enumerate(course.outcomes or [])]
-
-    def get_course_modules(self, course_id: str) -> list[CourseModule]:
-        return self.module_repo.list_by_course_id(course_id)
-
-
-class CourseRequirementService(CourseSerializationMixin):
-    def __init__(self, db: Session) -> None:
-        self.db = db
-        self.course_repo = CourseRepository(db)
-
-    def _find_course_requirement(self, requirement_id: str) -> tuple[Course, int, dict[str, Any]] | None:
-        courses = self.course_repo.list_filtered()
-        for course in courses:
-            for index, item in enumerate(course.requirements or []):
-                if isinstance(item, dict) and str(item.get("id")) == requirement_id:
-                    return course, index, item
-        return None
-
-    def create_requirement(self, course_id: str, payload: CourseRequirementCreate) -> dict[str, Any]:
-        course = CourseService(self.db).get_course_by_id(course_id)
-        requirements = list(course.requirements or [])
-        item = {
-            "id": str(uuid4()),
-            "requirement_text": payload.requirement_text.strip(),
-            "order_index": payload.order_index,
-        }
-        requirements.append(item)
-        course.requirements = requirements
-        self.db.commit()
-        return item
-
-    def get_requirements_by_course(self, course_id: str) -> list[dict[str, Any]]:
-        CourseService(self.db).get_course_by_id(course_id)
-        return CourseService(self.db).get_course_requirements(course_id)
-
-    def get_requirement_by_id(self, requirement_id: str) -> dict[str, Any]:
-        found = self._find_course_requirement(requirement_id)
-        if not found:
-            raise HTTPException(status_code=404, detail="Course requirement not found")
-        _, _, item = found
-        return item
-
-    def update_requirement(self, requirement_id: str, payload: CourseRequirementUpdate) -> dict[str, Any]:
-        found = self._find_course_requirement(requirement_id)
-        if not found:
-            raise HTTPException(status_code=404, detail="Course requirement not found")
-        course, index, item = found
-        if payload.requirement_text is not None:
-            item["requirement_text"] = payload.requirement_text.strip()
-        if payload.order_index is not None:
-            item["order_index"] = payload.order_index
-        requirements = list(course.requirements or [])
-        requirements[index] = item
-        course.requirements = requirements
-        self.db.commit()
-        return item
-
-    def soft_delete_requirement(self, requirement_id: str) -> None:
-        found = self._find_course_requirement(requirement_id)
-        if not found:
-            raise HTTPException(status_code=404, detail="Course requirement not found")
-        course, index, _ = found
-        requirements = list(course.requirements or [])
-        requirements.pop(index)
-        course.requirements = requirements
-        self.db.commit()
 
 
 class CourseMediaService(CourseSerializationMixin):
@@ -774,413 +528,3 @@ class CourseMediaService(CourseSerializationMixin):
             items.append(CourseService(self.db)._course_media_dict(mapping))
 
         return items
-
-
-class CourseOutcomeService(CourseSerializationMixin):
-    def __init__(self, db: Session) -> None:
-        self.db = db
-        self.course_repo = CourseRepository(db)
-
-    def _find_course_outcome(self, outcome_id: str) -> tuple[Course, int, dict[str, Any]] | None:
-        courses = self.course_repo.list_filtered()
-        for course in courses:
-            for index, item in enumerate(course.outcomes or []):
-                if isinstance(item, dict) and str(item.get("id")) == outcome_id:
-                    return course, index, item
-        return None
-
-    def create_outcome(self, course_id: str, payload: CourseOutcomeCreate) -> dict[str, Any]:
-        course = CourseService(self.db).get_course_by_id(course_id)
-        outcomes = list(course.outcomes or [])
-        item = {
-            "id": str(uuid4()),
-            "outcome_text": payload.outcome_text.strip(),
-            "order_index": payload.order_index,
-        }
-        outcomes.append(item)
-        course.outcomes = outcomes
-        self.db.commit()
-        return item
-
-    def get_outcomes_by_course(self, course_id: str) -> list[dict[str, Any]]:
-        CourseService(self.db).get_course_by_id(course_id)
-        return CourseService(self.db).get_course_outcomes(course_id)
-
-    def get_outcome_by_id(self, outcome_id: str) -> dict[str, Any]:
-        found = self._find_course_outcome(outcome_id)
-        if not found:
-            raise HTTPException(status_code=404, detail="Course outcome not found")
-        _, _, item = found
-        return item
-
-    def update_outcome(self, outcome_id: str, payload: CourseOutcomeUpdate) -> dict[str, Any]:
-        found = self._find_course_outcome(outcome_id)
-        if not found:
-            raise HTTPException(status_code=404, detail="Course outcome not found")
-        course, index, item = found
-        if payload.outcome_text is not None:
-            item["outcome_text"] = payload.outcome_text.strip()
-        if payload.order_index is not None:
-            item["order_index"] = payload.order_index
-        outcomes = list(course.outcomes or [])
-        outcomes[index] = item
-        course.outcomes = outcomes
-        self.db.commit()
-        return item
-
-    def soft_delete_outcome(self, outcome_id: str) -> None:
-        found = self._find_course_outcome(outcome_id)
-        if not found:
-            raise HTTPException(status_code=404, detail="Course outcome not found")
-        course, index, _ = found
-        outcomes = list(course.outcomes or [])
-        outcomes.pop(index)
-        course.outcomes = outcomes
-        self.db.commit()
-
-
-class CourseModuleService(CourseSerializationMixin):
-    def __init__(self, db: Session) -> None:
-        self.db = db
-        self.module_repo = CourseModuleRepository(db)
-        self.media_repo = MediaRepository(db)
-        self.lesson_repo = LessonRepository(db)
-
-    def _validate_media(self, media_id: str | None) -> None:
-        if not media_id:
-            return
-        media = self.media_repo.get_active_by_id(media_id)
-        if not media:
-            raise HTTPException(status_code=404, detail="Media not found")
-
-    def create_module(self, course_id: str, payload: CourseModuleCreate) -> CourseModule:
-        CourseService(self.db).get_course_by_id(course_id)
-        self._validate_media(payload.media_id)
-        module = CourseModule(
-            course_id=course_id,
-            media_id=payload.media_id,
-            title=payload.title,
-            description=payload.description,
-            order_index=payload.order_index,
-            status=_enum(CourseModuleStatus, payload.status, "status"),
-        )
-        self.module_repo.create(module)
-        self.db.commit()
-        return module
-
-    def get_modules_by_course(self, course_id: str) -> list[CourseModule]:
-        CourseService(self.db).get_course_by_id(course_id)
-        return CourseService(self.db).get_course_modules(course_id)
-
-    def get_module_by_id(self, module_id: str) -> CourseModule:
-        module = self.module_repo.get_active_by_id(module_id)
-        if not module:
-            raise HTTPException(status_code=404, detail="Course module not found")
-        return module
-
-    def module_detail_dict(self, module: CourseModule) -> dict[str, Any]:
-        data = self._module_dict(module)
-        data["lessons"] = [LessonService(self.db).lesson_list_dict(item) for item in LessonService(self.db).get_lessons_by_module(str(module.id))]
-        return data
-
-    def update_module(self, module_id: str, payload: CourseModuleUpdate) -> CourseModule:
-        module = self.get_module_by_id(module_id)
-        if payload.media_id is not None:
-            self._validate_media(payload.media_id)
-            module.media_id = payload.media_id
-        for field in ["title", "description", "order_index"]:
-            value = getattr(payload, field)
-            if value is not None:
-                setattr(module, field, value)
-        if payload.status is not None:
-            module.status = _enum(CourseModuleStatus, payload.status, "status")
-        self.db.commit()
-        self.db.refresh(module)
-        return module
-
-    def upload_module_media(self, module_id: str, file, file_size: int) -> CourseModule:
-        module = self.get_module_by_id(module_id)
-        media = MediaService(self.db).upload_media(
-            bucket_name=settings.MINIO_BUCKET_AVATARS,
-            file=file,
-            file_size=file_size,
-            folder=f"course-modules/{module_id}/media",
-        )
-        module.media_id = media.id
-        self.db.commit()
-        self.db.refresh(module)
-        return module
-
-    def soft_delete_module(self, module_id: str) -> None:
-        module = self.get_module_by_id(module_id)
-        lesson_count = self.lesson_repo.count(filters=[Lesson.module_id == module.id])
-        if lesson_count > 0:
-            raise HTTPException(status_code=400, detail="Module is in use by lessons")
-        module.deleted_at = _now()
-        self.db.commit()
-
-
-class LessonService:
-    def __init__(self, db: Session) -> None:
-        self.db = db
-        self.lesson_repo = LessonRepository(db)
-        self.media_repo = MediaRepository(db)
-
-    def _validate_module_for_course(self, course_id: str, module_id: str | None) -> None:
-        if not module_id:
-            return
-        module = CourseModuleService(self.db).get_module_by_id(module_id)
-        if str(module.course_id) != str(course_id):
-            raise HTTPException(status_code=400, detail="Module does not belong to course")
-
-    def create_lesson(self, course_id: str, payload: LessonCreate, created_by: str | None = None) -> Lesson:
-        CourseService(self.db).get_course_by_id(course_id)
-        self._validate_module_for_course(course_id, payload.module_id)
-        CourseModuleService(self.db)._validate_media(payload.media_id)
-        lesson = Lesson(
-            course_id=course_id,
-            module_id=payload.module_id,
-            media_id=payload.media_id,
-            title=payload.title,
-            description=payload.description,
-            content=normalize_editorjs_content(payload.content),
-            order_index=payload.order_index,
-            estimated_duration_minutes=payload.estimated_duration_minutes,
-            status=_enum(LessonStatus, payload.status, "status"),
-            created_by=created_by,
-        )
-        created = self.lesson_repo.create(lesson)
-        self.db.commit()
-        return created
-
-    def get_lessons_by_course(
-        self,
-        course_id: str,
-        query: PaginationParams,
-        module_id: str | None = None,
-        status: str | None = None,
-    ) -> tuple[list[Lesson], int]:
-        CourseService(self.db).get_course_by_id(course_id)
-        lessons = self.lesson_repo.list_filtered_by_course(
-            course_id=course_id,
-            module_id=module_id,
-            status=_enum(LessonStatus, status, "status") if status else None,
-            search=query.search,
-        )
-        sort_field_name = query.sort_by if query.sort_by and hasattr(Lesson, query.sort_by) else "order_index"
-        reverse = query.sort_order != "asc"
-        lessons.sort(key=lambda x: getattr(x, sort_field_name), reverse=reverse)
-        total = len(lessons)
-        start = (query.page - 1) * query.page_size
-        end = start + query.page_size
-        return lessons[start:end], total
-
-    def get_lessons_by_module(self, module_id: str) -> list[Lesson]:
-        return self.lesson_repo.list_by_module_id(module_id)
-
-    def get_lesson_by_id(self, lesson_id: str) -> Lesson:
-        lesson = self.lesson_repo.get_active_by_id(lesson_id)
-        if not lesson:
-            raise HTTPException(status_code=404, detail="Lesson not found")
-        return lesson
-
-    def set_thumbnail_media(self, lesson_id: str, media_id: str) -> Lesson:
-        lesson = self.get_lesson_by_id(lesson_id)
-        media = self.media_repo.get_active_by_id(media_id)
-        if not media:
-            raise HTTPException(status_code=404, detail="Media not found")
-        lesson.media_id = media.id
-        self.db.commit()
-        self.db.refresh(lesson)
-        return lesson
-
-    def upload_thumbnail(self, lesson_id: str, file, file_size: int) -> Lesson:
-        lesson = self.get_lesson_by_id(lesson_id)
-        media = MediaService(self.db).upload_media(
-            bucket_name=settings.MINIO_BUCKET_AVATARS,
-            file=file,
-            file_size=file_size,
-            folder=f"lessons/{lesson_id}/thumbnail",
-        )
-        lesson.media_id = media.id
-        self.db.commit()
-        self.db.refresh(lesson)
-        return lesson
-
-    def lesson_list_dict(self, lesson: Lesson) -> dict[str, Any]:
-        media = None
-        if lesson.media_id:
-            media = self.media_repo.get_active_by_id(str(lesson.media_id))
-        return {
-            "id": str(lesson.id),
-            "course_id": str(lesson.course_id),
-            "module_id": str(lesson.module_id) if lesson.module_id else None,
-            "media_id": str(lesson.media_id) if lesson.media_id else None,
-            "thumbnail": CourseService(self.db)._media_dict(media) if media else None,
-            "title": lesson.title,
-            "description": lesson.description,
-            "order_index": lesson.order_index,
-            "estimated_duration_minutes": lesson.estimated_duration_minutes,
-            "status": lesson.status.value,
-        }
-
-    def lesson_detail_dict(self, lesson: Lesson) -> dict[str, Any]:
-        course = CourseService(self.db).get_course_by_id(str(lesson.course_id))
-        module = CourseModuleService(self.db).get_module_by_id(str(lesson.module_id)) if lesson.module_id else None
-        data = self.lesson_list_dict(lesson)
-        data.update(
-            {
-                "content": normalize_editorjs_content(lesson.content),
-                "course": {"id": str(course.id), "name": course.name},
-                "module": {"id": str(module.id), "title": module.title} if module else None,
-                "materials": [
-                    LessonMaterialService(self.db).material_dict(item)
-                    for item in LessonMaterialService(self.db).get_materials_by_lesson(str(lesson.id))
-                ],
-            }
-        )
-        return data
-
-    def update_lesson(self, lesson_id: str, payload: LessonUpdate) -> Lesson:
-        lesson = self.get_lesson_by_id(lesson_id)
-        if payload.module_id is not None:
-            self._validate_module_for_course(str(lesson.course_id), payload.module_id)
-            lesson.module_id = payload.module_id
-        if payload.media_id is not None:
-            CourseModuleService(self.db)._validate_media(payload.media_id)
-            lesson.media_id = payload.media_id
-        for field in ["title", "description", "content", "order_index", "estimated_duration_minutes"]:
-            value = getattr(payload, field)
-            if value is not None:
-                setattr(lesson, field, normalize_editorjs_content(value) if field == "content" else value)
-        if payload.status is not None:
-            lesson.status = _enum(LessonStatus, payload.status, "status")
-        self.db.commit()
-        self.db.refresh(lesson)
-        return lesson
-
-    def soft_delete_lesson(self, lesson_id: str) -> None:
-        lesson = self.get_lesson_by_id(lesson_id)
-        lesson.deleted_at = _now()
-        self.db.commit()
-
-
-class LessonMaterialService:
-    def __init__(self, db: Session) -> None:
-        self.db = db
-        self.material_repo = LessonMaterialRepository(db)
-        self.media_repo = MediaRepository(db)
-
-    def _validate_material_payload(self, media_id: str | None, external_url: str | None) -> None:
-        if not media_id and not external_url:
-            raise HTTPException(status_code=400, detail="Either media_id or external_url is required")
-        if media_id:
-            media = self.media_repo.get_active_by_id(media_id)
-            if not media:
-                raise HTTPException(status_code=404, detail="Media not found")
-
-    def create_material(self, lesson_id: str, payload: LessonMaterialCreate, created_by: str | None = None) -> LessonMaterial:
-        LessonService(self.db).get_lesson_by_id(lesson_id)
-        self._validate_material_payload(payload.media_id, payload.external_url)
-        material = LessonMaterial(
-            lesson_id=lesson_id,
-            media_id=payload.media_id,
-            title=payload.title,
-            description=payload.description,
-            external_url=payload.external_url,
-            order_index=payload.order_index,
-            is_downloadable=payload.is_downloadable,
-            created_by=created_by,
-        )
-        created = self.material_repo.create(material)
-        self.db.commit()
-        return created
-
-    def get_materials_by_lesson(self, lesson_id: str) -> list[LessonMaterial]:
-        LessonService(self.db).get_lesson_by_id(lesson_id)
-        return self.material_repo.list_by_lesson_id(lesson_id)
-
-    def get_material_by_id(self, material_id: str) -> LessonMaterial:
-        material = self.material_repo.get(material_id)
-        if not material:
-            raise HTTPException(status_code=404, detail="Lesson material not found")
-        return material
-
-    def upload_material_file(
-        self,
-        lesson_id: str,
-        title: str,
-        file,
-        file_size: int,
-        description: str | None = None,
-        external_url: str | None = None,
-        order_index: int = 0,
-        is_downloadable: bool = True,
-        created_by: str | None = None,
-    ) -> LessonMaterial:
-        LessonService(self.db).get_lesson_by_id(lesson_id)
-        media = MediaService(self.db).upload_media(
-            bucket_name=settings.MINIO_BUCKET_AVATARS,
-            file=file,
-            file_size=file_size,
-            folder=f"lessons/{lesson_id}/materials",
-            uploaded_by=created_by,
-        )
-        material = LessonMaterial(
-            lesson_id=lesson_id,
-            media_id=media.id,
-            title=title,
-            description=description,
-            external_url=external_url,
-            order_index=order_index,
-            is_downloadable=is_downloadable,
-            created_by=created_by,
-        )
-        created = self.material_repo.create(material)
-        self.db.commit()
-        return created
-
-    def set_material_media(self, material_id: str, media_id: str) -> LessonMaterial:
-        material = self.get_material_by_id(material_id)
-        media = self.media_repo.get_active_by_id(media_id)
-        if not media:
-            raise HTTPException(status_code=404, detail="Media not found")
-        material.media_id = media.id
-        self._validate_material_payload(str(material.media_id), material.external_url)
-        self.db.commit()
-        self.db.refresh(material)
-        return material
-
-    def material_dict(self, material: LessonMaterial) -> dict[str, Any]:
-        media = None
-        if material.media_id:
-            media = self.media_repo.get_active_by_id(str(material.media_id))
-        return {
-            "id": str(material.id),
-            "lesson_id": str(material.lesson_id),
-            "title": material.title,
-            "description": material.description,
-            "media_id": str(material.media_id) if material.media_id else None,
-            "media": CourseService(self.db)._media_dict(media) if media else None,
-            "external_url": material.external_url,
-            "order_index": material.order_index,
-            "is_downloadable": material.is_downloadable,
-        }
-
-    def update_material(self, material_id: str, payload: LessonMaterialUpdate) -> LessonMaterial:
-        material = self.get_material_by_id(material_id)
-        for field in ["title", "description", "external_url", "order_index", "is_downloadable"]:
-            value = getattr(payload, field)
-            if value is not None:
-                setattr(material, field, value)
-        if payload.media_id is not None:
-            material.media_id = payload.media_id
-        self._validate_material_payload(str(material.media_id) if material.media_id else None, material.external_url)
-        self.db.commit()
-        self.db.refresh(material)
-        return material
-
-    def soft_delete_material(self, material_id: str) -> None:
-        material = self.get_material_by_id(material_id)
-        material.deleted_at = _now()
-        self.db.commit()

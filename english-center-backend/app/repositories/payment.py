@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.commerce import Payment, PaymentProvider, PaymentWebhookLog
+from app.models.commerce import Payment, PaymentProvider
 from app.repositories.base import BaseRepository
 
 
@@ -38,34 +38,3 @@ class PaymentRepository(BaseRepository[Payment]):
             .where(Payment.order_id == order_id, Payment.provider == provider, Payment.deleted_at.is_(None))
             .order_by(Payment.created_at.desc())
         ).scalars().first()
-
-
-class PaymentWebhookLogRepository(BaseRepository[PaymentWebhookLog]):
-    def __init__(self, db: Session) -> None:
-        super().__init__(db, PaymentWebhookLog)
-
-    def list_by_external_transaction_id(self, external_transaction_id: str) -> list[PaymentWebhookLog]:
-        return list(
-            self.db.execute(
-                select(PaymentWebhookLog)
-                .where(
-                    PaymentWebhookLog.external_transaction_id == external_transaction_id,
-                    PaymentWebhookLog.deleted_at.is_(None),
-                )
-                .order_by(PaymentWebhookLog.created_at.desc())
-            ).scalars().all()
-        )
-
-    def has_valid_event(self, provider: str, external_transaction_id: str, event_type: str, exclude_id: str | None = None) -> bool:
-        stmt = select(PaymentWebhookLog).where(
-            PaymentWebhookLog.provider == provider,
-            PaymentWebhookLog.external_transaction_id == external_transaction_id,
-            PaymentWebhookLog.event_type == event_type,
-            PaymentWebhookLog.is_valid.is_(True),
-        )
-        if exclude_id:
-            stmt = stmt.where(PaymentWebhookLog.id != exclude_id)
-        return self.db.execute(stmt).first() is not None
-
-
-SePayIPNLogRepository = PaymentWebhookLogRepository

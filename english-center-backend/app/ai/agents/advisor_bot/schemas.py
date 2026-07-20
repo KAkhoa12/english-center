@@ -2,8 +2,6 @@ from datetime import date, datetime
 from typing import Optional, Literal
 from pydantic import BaseModel, Field
 
-CourseMode = Literal["center", "template"]
-
 TaskType = Literal[
     "general",
     "search_course",
@@ -65,7 +63,7 @@ class Filters(BaseModel):
     class_id: Optional[str] = None
     class_code: Optional[str] = None
     level: Optional[Level] = None
-    course_mode: Optional[CourseMode] = None
+
 
 
 
@@ -89,7 +87,6 @@ class CourseInfo(BaseModel):
     code: Optional[str] = None
     description: Optional[str] = None
     category_name: Optional[str] = None
-    mode: Optional[CourseMode] = None
     level: Optional[Level] = None
     total_lesson: Optional[int] = None
     price: Optional[int] = None

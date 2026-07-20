@@ -11,7 +11,6 @@ def search_course_node(state: AdvisorState) -> dict:
     courses, total = service.get_courses(
         course_query(task_filters),
         status="active",
-        mode=task_filters.course_mode,
         target_level=task_filters.level,
     )
     course_infos = [course_info(item) for item in courses]

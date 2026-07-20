@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models.class_model import ClassStatus, ClassType, CourseClass
-from app.models.course import Course, CourseMode, CourseStatus
+from app.models.course import Course, CourseStatus
 from app.models.student import Student
 from app.models.teacher import Teacher
 from app.models.rbac.user import User
@@ -170,8 +170,6 @@ class ClassService(AcademicAccessMixin):
 
     def create_class(self, payload: ClassCreate) -> CourseClass:
         course = self._get_course_for_class(payload.course_id)
-        if course.mode != CourseMode.center:
-            raise HTTPException(status_code=400, detail="Cannot create class for template course")
         teacher = self._get_teacher(payload.teacher_id)
         code = generate_code(payload.code) if payload.code else self._generate_code(course, payload.start_date)
         if self.class_repo.exists_by_code(code):

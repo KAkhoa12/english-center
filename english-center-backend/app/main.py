@@ -15,23 +15,18 @@ from app.api.v1 import (
     assignment_types,
     assignments,
     auth,
-    cart,
     chat,
     class_session_media,
     class_sessions,
     class_schedules,
     classes,
     course_categories,
-    course_modules,
-    course_tags,
     courses,
     enrollments,
     files,
     media,
     guest_enrollments,
     invoices,
-    lesson_materials,
-    lessons,
     orders,
     payments,
     permissions,
@@ -128,7 +123,6 @@ app.include_router(teachers.router, prefix=settings.API_V1_PREFIX)
 app.include_router(staff.router, prefix=settings.API_V1_PREFIX)
 app.include_router(files.router, prefix=settings.API_V1_PREFIX)
 app.include_router(media.router, prefix=settings.API_V1_PREFIX)
-app.include_router(cart.router, prefix=settings.API_V1_PREFIX)
 app.include_router(chat.router, prefix=settings.API_V1_PREFIX)
 app.include_router(ai_chat.router, prefix=settings.API_V1_PREFIX)
 app.include_router(wishlist.router, prefix=settings.API_V1_PREFIX)
@@ -155,11 +149,7 @@ app.include_router(submission_attachments.router, prefix=settings.API_V1_PREFIX)
 app.include_router(submission_answers.router, prefix=settings.API_V1_PREFIX)
 app.include_router(assignment_grades.router, prefix=settings.API_V1_PREFIX)
 app.include_router(course_categories.router, prefix=settings.API_V1_PREFIX)
-app.include_router(course_tags.router, prefix=settings.API_V1_PREFIX)
 app.include_router(courses.router, prefix=settings.API_V1_PREFIX)
-app.include_router(course_modules.router, prefix=settings.API_V1_PREFIX)
-app.include_router(lessons.router, prefix=settings.API_V1_PREFIX)
-app.include_router(lesson_materials.router, prefix=settings.API_V1_PREFIX)
 
 
 @app.exception_handler(HTTPException)

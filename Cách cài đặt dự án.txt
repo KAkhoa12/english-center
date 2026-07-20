@@ -234,7 +234,7 @@ bắt buộc có: nodejs, pnpm
 2. pnpm i
 3. pnpm dev
 
-== Chạy docker compose ==  ( Chạy 1 lần duy nhất cho lần đầu )
+Không cần chạy docker == Chạy docker compose ==  ( Chạy 1 lần duy nhất cho lần đầu )
 bắt buộc có: docker destop
 1. về lại thư mục gốc english-center
 2. cd english-center-backend

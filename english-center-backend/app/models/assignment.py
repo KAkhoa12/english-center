@@ -43,7 +43,6 @@ class Assignment(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     class_id: Mapped[str | None] = mapped_column(UUID(as_uuid=True), ForeignKey("classes.id"), nullable=True, index=True)
     session_id: Mapped[str | None] = mapped_column(UUID(as_uuid=True), ForeignKey("class_sessions.id"), nullable=True, index=True)
-    lesson_id: Mapped[str | None] = mapped_column(UUID(as_uuid=True), ForeignKey("lessons.id"), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     instruction: Mapped[str | None] = mapped_column(Text, nullable=True)

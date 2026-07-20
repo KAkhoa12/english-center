@@ -1,7 +1,7 @@
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.models.course import Course, CourseMode, CourseStatus, CourseTagMapping, CourseTargetLevel
+from app.models.course import Course, CourseStatus, CourseTargetLevel
 from app.repositories.base import BaseRepository
 
 
@@ -26,11 +26,8 @@ class CourseRepository(BaseRepository[Course]):
         self,
         search: str | None = None,
         status: CourseStatus | None = None,
-        mode: CourseMode | None = None,
         target_level: CourseTargetLevel | None = None,
         category_id: str | None = None,
-        tag_id: str | None = None,
-        tag_ids: list[str] | None = None,
         min_price: float | None = None,
         max_price: float | None = None,
     ) -> list[Course]:
@@ -40,8 +37,6 @@ class CourseRepository(BaseRepository[Course]):
             stmt = stmt.where(or_(Course.name.ilike(term), Course.code.ilike(term), Course.slug.ilike(term), Course.description.ilike(term)))
         if status:
             stmt = stmt.where(Course.status == status)
-        if mode:
-            stmt = stmt.where(Course.mode == mode)
         if target_level:
             stmt = stmt.where(Course.target_level == target_level)
         if min_price is not None:
@@ -50,16 +45,4 @@ class CourseRepository(BaseRepository[Course]):
             stmt = stmt.where(Course.price <= max_price)
         if category_id:
             stmt = stmt.where(Course.category_id == category_id)
-        if tag_id:
-            stmt = stmt.join(CourseTagMapping, CourseTagMapping.course_id == Course.id).where(
-                CourseTagMapping.tag_id == tag_id,
-                CourseTagMapping.deleted_at.is_(None),
-            )
-        if tag_ids:
-            stmt = stmt.join(CourseTagMapping, CourseTagMapping.course_id == Course.id).where(
-                CourseTagMapping.tag_id.in_(tag_ids),
-                CourseTagMapping.deleted_at.is_(None),
-            )
-        if tag_id or tag_ids:
-            stmt = stmt.distinct()
         return list(self.db.execute(stmt).scalars().all())

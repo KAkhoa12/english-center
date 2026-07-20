@@ -41,7 +41,6 @@ class AssignmentRepository(BaseRepository[Assignment]):
         status: AssignmentStatus | None = None,
         assignment_type_id: str | None = None,
         session_id: str | None = None,
-        lesson_id: str | None = None,
         due_from: datetime | None = None,
         due_to: datetime | None = None,
         only_published: bool = False,
@@ -55,35 +54,10 @@ class AssignmentRepository(BaseRepository[Assignment]):
             filters.append(Assignment.assignment_type_id == assignment_type_id)
         if session_id:
             filters.append(Assignment.session_id == session_id)
-        if lesson_id:
-            filters.append(Assignment.lesson_id == lesson_id)
         if due_from:
             filters.append(Assignment.due_at >= due_from)
         if due_to:
             filters.append(Assignment.due_at <= due_to)
-        if query.search:
-            term = f"%{query.search}%"
-            filters.append(or_(Assignment.title.ilike(term), Assignment.description.ilike(term)))
-
-        sort_field = getattr(Assignment, query.sort_by, Assignment.created_at) if query.sort_by else Assignment.created_at
-        order_by = sort_field.asc() if query.sort_order == "asc" else sort_field.desc()
-        skip = (query.page - 1) * query.page_size
-        total = self.count(filters=filters)
-        items = self.list(filters=filters, skip=skip, limit=query.page_size, order_by=order_by)
-        return items, total
-
-    def list_filtered_by_lesson(
-        self,
-        lesson_id: str,
-        query: PaginationParams,
-        status: AssignmentStatus | None = None,
-        assignment_type_id: str | None = None,
-    ) -> tuple[list[Assignment], int]:
-        filters = [Assignment.lesson_id == lesson_id, Assignment.class_id.is_(None)]
-        if status:
-            filters.append(Assignment.status == status)
-        if assignment_type_id:
-            filters.append(Assignment.assignment_type_id == assignment_type_id)
         if query.search:
             term = f"%{query.search}%"
             filters.append(or_(Assignment.title.ilike(term), Assignment.description.ilike(term)))
@@ -105,7 +79,6 @@ class AssignmentRepository(BaseRepository[Assignment]):
     ) -> tuple[list[Assignment], int]:
         filters = [
             Assignment.class_id.is_(None),
-            Assignment.lesson_id.is_(None),
             Assignment.session_id.is_(None),
         ]
         if status:
