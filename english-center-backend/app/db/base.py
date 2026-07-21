@@ -14,7 +14,6 @@ from app.models.submission_answer import SubmissionAnswer, SubmissionAnswerMedia
 from app.models.class_model import CourseClass
 from app.models.class_session import ClassSchedule, ClassSession, ClassSessionMedia, ClassSessionTeacher
 from app.models.class_student import ClassStudent
-from app.models.chat import ChatMessage, ChatMessageAttachment, Conversation, ConversationParticipant
 from app.models.consultation import Consultation
 from app.models.commerce import (
     CourseEnrollment,
@@ -56,10 +55,6 @@ __all__ = [
     "ClassSession",
     "ClassSessionTeacher",
     "ClassSessionMedia",
-    "Conversation",
-    "ConversationParticipant",
-    "ChatMessage",
-    "ChatMessageAttachment",
     "Attendance",
     "Assignment",
     "AssignmentType",

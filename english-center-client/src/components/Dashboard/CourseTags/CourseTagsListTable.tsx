@@ -9,7 +9,7 @@ import {
 import { DashboardRowActions } from "@/components/Dashboard/Comon/DashboardRowActions";
 import { DashboardTablePagination } from "@/components/Dashboard/Comon/DashboardTablePagination";
 import type { Pagination } from "@/shared/types/response";
-import type { CourseTag } from "@/services/coursesTag/coursesTag.type";
+type CourseTag = { id: string; name: string; slug: string; updated_at: string; };
 
 type CourseTagsListTableProps = {
   data: CourseTag[];

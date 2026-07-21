@@ -2,7 +2,6 @@ import { Search, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import type { CourseCategory } from "@/services/coursesCategory/coursesCategory.type";
-import type { CourseTag } from "@/services/coursesTag/coursesTag.type";
 import { MutilSelect } from "@/components/Comon/MutilSelect";
 import { Select } from "@/components/Comon/Select";
 
@@ -11,7 +10,7 @@ interface FilterCourseProps {
   categoryId: string;
   tagIds: string[];
   categories: CourseCategory[];
-  tags: CourseTag[];
+  tags: any[];
   onSearchChange: (value: string) => void;
   onCategoryChange: (value: string) => void;
   onTagIdsChange: (value: string[]) => void;

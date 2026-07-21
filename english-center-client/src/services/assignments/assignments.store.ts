@@ -50,7 +50,6 @@ type AssignmentsState = {
   createClassAssignmentFromTemplate: (classId: string, templateAssignmentId: string, data?: AssignmentFromTemplateRequest) => Promise<Assignment>;
   createSessionAssignment: (sessionId: string, data: AssignmentCreateRequest) => Promise<Assignment>;
   createSessionAssignmentFromTemplate: (sessionId: string, templateAssignmentId: string, data?: AssignmentFromTemplateRequest) => Promise<Assignment>;
-  createLessonAssignmentFromTemplate: (lessonId: string, templateAssignmentId: string, data?: AssignmentFromTemplateRequest) => Promise<Assignment>;
   getAssignment: (assignmentId: string) => Promise<Assignment>;
   updateAssignment: (assignmentId: string, data: AssignmentUpdateRequest) => Promise<Assignment>;
   deleteAssignment: (assignmentId: string) => Promise<void>;
@@ -67,6 +66,10 @@ type AssignmentsState = {
   getSubmission: (submissionId: string) => Promise<AssignmentSubmission>;
   updateSubmission: (submissionId: string, data: AssignmentSubmissionUpdateRequest) => Promise<AssignmentSubmission>;
   deleteSubmission: (submissionId: string) => Promise<void>;
+  uploadSubmissionAttachment: (submissionId: string, data: FormData) => Promise<AssignmentAttachment>;
+  createSubmissionAttachment: (submissionId: string, data: Record<string, unknown>) => Promise<AssignmentAttachment>;
+  listSubmissionAttachments: (submissionId: string) => Promise<AssignmentAttachment[]>;
+  deleteSubmissionAttachment: (attachmentId: string) => Promise<void>;
   mySubmissions: (query?: ListSubmissionsQuery) => Promise<AssignmentSubmission[]>;
   gradeSubmission: (submissionId: string, data: AssignmentGradeCreateRequest) => Promise<AssignmentGrade>;
   getSubmissionGrade: (submissionId: string) => Promise<AssignmentGrade>;
@@ -105,14 +108,14 @@ export const useAssignmentsStore = create<AssignmentsState>()((set) => ({
   },
 
   createLessonAssignment: async (lessonId, data) => {
-    const response = await assignmentsApi.createLessonAssignment(lessonId, data);
+    const response = await assignmentsApi.createAssignment(lessonId, data);
     const assignment = unwrap(response, "Tao bai tap bai hoc that bai");
     set((state) => ({ assignments: [assignment, ...state.assignments], selectedAssignment: assignment }));
     return assignment;
   },
 
   listLessonAssignments: async (lessonId, query) => {
-    const response = await assignmentsApi.listLessonAssignments(lessonId, query);
+    const response = await assignmentsApi.listClassAssignments(lessonId, query);
     const assignments = unwrap(response, "Lay danh sach bai tap bai hoc that bai");
     set({ assignments, pagination: response.pagination ?? null });
     return assignments;
@@ -175,13 +178,6 @@ export const useAssignmentsStore = create<AssignmentsState>()((set) => ({
   createSessionAssignmentFromTemplate: async (sessionId, templateAssignmentId, data = {}) => {
     const response = await assignmentsApi.createSessionAssignmentFromTemplate(sessionId, templateAssignmentId, data);
     const assignment = unwrap(response, "Tao bai tap buoi hoc tu mau that bai");
-    set((state) => ({ assignments: [assignment, ...state.assignments], selectedAssignment: assignment }));
-    return assignment;
-  },
-
-  createLessonAssignmentFromTemplate: async (lessonId, templateAssignmentId, data = {}) => {
-    const response = await assignmentsApi.createLessonAssignmentFromTemplate(lessonId, templateAssignmentId, data);
-    const assignment = unwrap(response, "Tao bai tap bai hoc tu mau that bai");
     set((state) => ({ assignments: [assignment, ...state.assignments], selectedAssignment: assignment }));
     return assignment;
   },
@@ -313,6 +309,29 @@ export const useAssignmentsStore = create<AssignmentsState>()((set) => ({
       submissions: state.submissions.filter((item) => item.id !== submissionId),
       selectedSubmission: state.selectedSubmission?.id === submissionId ? null : state.selectedSubmission,
     }));
+  },
+
+  uploadSubmissionAttachment: async (submissionId, data) => {
+    const response = await assignmentsApi.uploadSubmissionAttachment(submissionId, data);
+    const attachment = unwrap(response, "Tai tep bai nop len that bai");
+    return attachment;
+  },
+
+  createSubmissionAttachment: async (submissionId, data) => {
+    const response = await assignmentsApi.createSubmissionAttachment(submissionId, data);
+    const attachment = unwrap(response, "Tao tep bai nop that bai");
+    return attachment;
+  },
+
+  listSubmissionAttachments: async (submissionId) => {
+    const response = await assignmentsApi.listSubmissionAttachments(submissionId);
+    const attachments = unwrap(response, "Lay tep bai nop that bai");
+    return attachments;
+  },
+
+  deleteSubmissionAttachment: async (attachmentId) => {
+    const response = await assignmentsApi.deleteSubmissionAttachment(attachmentId);
+    unwrap(response, "Xoa tep bai nop that bai");
   },
 
   mySubmissions: async (query) => {

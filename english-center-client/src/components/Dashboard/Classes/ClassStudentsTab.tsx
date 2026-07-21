@@ -37,7 +37,7 @@ export function ClassStudentsTab({ classId }: ClassStudentsTabProps) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-gray-100 bg-white p-4">
         <Input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Tìm học viên" className="max-w-sm" />
-        <Select value={enrollmentStatus} onValueChange={(value) => { setEnrollmentStatus(value); setPage(1); }}><SelectTrigger className="w-52"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Tất cả trạng thái</SelectItem>{enrollmentStatusOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select>
+        <Select value={enrollmentStatus} onValueChange={(value) => { setEnrollmentStatus(value); setPage(1); }}><SelectTrigger className="w-52"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Tất cả trạng thái</SelectItem>{enrollmentStatusOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.key}</SelectItem>)}</SelectContent></Select>
         <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as "asc" | "desc")}><SelectTrigger className="w-40"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="asc">Tăng dần</SelectItem><SelectItem value="desc">Giảm dần</SelectItem></SelectContent></Select>
       </div>
       <ClassStudentsTable data={classStudents} loading={isLoading} pagination={classStudentsPagination} onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} />

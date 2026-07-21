@@ -57,7 +57,7 @@ export default function DashboardTeachingSchedulePage() {
           <SelectTrigger className="h-10 w-full rounded-xl border-gray-200 bg-white"><SelectValue placeholder="Lọc trạng thái" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tất cả trạng thái</SelectItem>
-            {sessionStatusOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
+            {sessionStatusOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.key}</SelectItem>)}
           </SelectContent>
         </Select>
       ) : null}

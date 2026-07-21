@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { DashboardListPageHeader, SectionCard } from "@/components/Dashboard/Comon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +13,7 @@ import { useAssignmentQuestionsStore } from "@/services/assignmentQuestions/assi
 import { useAssignmentTypesStore } from "@/services/assignmentTypes/assignmentTypes.store";
 import { useAuthStore } from "@/services/auth/auth.store";
 import { useAssignmentsStore } from "@/services/assignments/assignments.store";
-import type { Assignment, AssignmentAttachment, AssignmentCreateRequest } from "@/services/assignments/assignments.type";
+import type { Assignment, AssignmentCreateRequest } from "@/services/assignments/assignments.type";
 import { hasRole } from "@/shared/auth/rbac";
 import { PRIVATE_ROUTES } from "@/shared/routes";
 
@@ -38,7 +37,7 @@ const fromDatetimeLocal = (value: string) => value ? new Date(value).toISOString
 export default function DashboardAssignmentsPage() {
   const me = useAuthStore((state) => state.me);
   const navigate = useNavigate();
-  const { assignments, availableAssignments, attachments, isLoading, myAssignments, listAvailableAssignments, createAvailableAssignment, updateAvailableAssignment, deleteAvailableAssignment, listAttachments, uploadAttachment, deleteAttachment } = useAssignmentsStore();
+  const { assignments, availableAssignments, attachments, isLoading, myAssignments, listAvailableAssignments, createAvailableAssignment, updateAvailableAssignment, deleteAvailableAssignment, uploadAttachment, deleteAttachment } = useAssignmentsStore();
   const { questionsByAssignmentId, listQuestions: listAssignmentQuestions } = useAssignmentQuestionsStore();
   const { assignmentTypes, listAssignmentTypes } = useAssignmentTypesStore();
   const [form, setForm] = useState<AssignmentCreateRequest>(emptyForm);

@@ -4,14 +4,12 @@ import { toast } from "sonner";
 
 import { DashboardListPageHeader } from "@/components/Dashboard/Comon/DashboardListPageHeader";
 import { DashboardRowActions } from "@/components/Dashboard/Comon/DashboardRowActions";
-import { DashboardTablePagination } from "@/components/Dashboard/Comon/DashboardTablePagination";
 import { CoursesFilter } from "@/pages/Dashboard/Courses/components/CoursesFilter";
 import { TableList } from "@/components/Comon/TableList";
 import { Badge } from "@/components/ui/badge";
 import { useCoursesStore } from "@/services/courses/courses.store";
 import type { CourseMode } from "@/services/courses/courses.type";
 import { useCoursesCategoryStore } from "@/services/coursesCategory/coursesCategory.store";
-import { useCoursesTagStore } from "@/services/coursesTag/coursesTag.store";
 import { PRIVATE_ROUTES } from "@/shared/routes";
 
 type DashboardCoursesPageProps = {
@@ -23,7 +21,7 @@ export const DashboardCoursesPage = ({ modeFilter }: DashboardCoursesPageProps) 
   const [searchInput, setSearchInput] = useState("");
   const [searchKeyword, setSearchKeyword] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize] = useState(10);
   const [status, setStatus] = useState<string>("all");
   const [mode, setMode] = useState<string>(modeFilter ?? "all");
   const [targetLevel, setTargetLevel] = useState<string>("all");
@@ -37,12 +35,11 @@ export const DashboardCoursesPage = ({ modeFilter }: DashboardCoursesPageProps) 
 
   const { courses, pagination, isLoading, listCourses, deleteCourse } = useCoursesStore();
   const { categories, listCategories } = useCoursesCategoryStore();
-  const { tags, listTags } = useCoursesTagStore();
+  const tags: any[] = [];
 
   useEffect(() => {
     void listCategories({ page: 1, page_size: 100, sort_by: "name", sort_order: "asc" });
-    void listTags({ page: 1, page_size: 100, sort_by: "name", sort_order: "asc" });
-  }, [listCategories, listTags]);
+  }, [listCategories]);
 
   useEffect(() => {
     void listCourses({

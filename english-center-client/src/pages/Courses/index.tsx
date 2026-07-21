@@ -11,7 +11,6 @@ import {
 import { useCoursesStore } from "@/services/courses/courses.store";
 import type { CourseListItem } from "@/services/courses/courses.type";
 import { useCoursesCategoryStore } from "@/services/coursesCategory/coursesCategory.store";
-import { useCoursesTagStore } from "@/services/coursesTag/coursesTag.store";
 import { PUBLIC_ROUTES } from "@/shared/routes";
 
 export default function CoursesPage() {
@@ -22,12 +21,11 @@ export default function CoursesPage() {
 
   const { courses, listCourses } = useCoursesStore();
   const { categories, listCategories } = useCoursesCategoryStore();
-  const { tags, listTags } = useCoursesTagStore();
+  const tags: any[] = [];
 
   useEffect(() => {
     void listCategories({ page: 1, page_size: 100, status: "active", sort_by: "name", sort_order: "asc" });
-    void listTags({ page: 1, page_size: 100, sort_by: "name", sort_order: "asc" });
-  }, [listCategories, listTags]);
+  }, [listCategories]);
 
   useEffect(() => {
     let mounted = true;

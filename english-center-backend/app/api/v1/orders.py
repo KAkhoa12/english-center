@@ -7,17 +7,11 @@ from app.core.response import api_response, build_pagination
 from app.db.session import get_db
 from app.dependencies.permissions import require_permission
 from app.models.rbac.user import User
-from app.schemas.commerce import CheckoutRequest, ConvertConsultationRequest, StaffCreateOrderRequest
+from app.schemas.commerce import ConvertConsultationRequest, StaffCreateOrderRequest
 from app.schemas.common import PaginationParams
 from app.services.commerce_service import OrderSerializer, OrderService
 
 router = APIRouter(prefix="/orders", tags=["orders"])
-
-
-@router.post("/checkout")
-def checkout(payload: CheckoutRequest, db: Annotated[Session, Depends(get_db)], current_user: User = Depends(require_permission("order.create"))):
-    order = OrderService(db).checkout_from_cart(current_user, payload)
-    return api_response(True, "Order created successfully", OrderSerializer(db).order_detail(order), None)
 
 
 @router.get("")
@@ -47,16 +41,6 @@ def get_order(order_id: str, db: Annotated[Session, Depends(get_db)], current_us
     order = service.get_order(order_id)
     service.assert_order_access(order, current_user)
     return api_response(True, "Order retrieved successfully", OrderSerializer(db).order_detail(order), None)
-
-
-@router.get("/by-invoice/{invoice_number}")
-def get_order_by_invoice(invoice_number: str, db: Annotated[Session, Depends(get_db)], current_user: User = Depends(require_permission("order.read"))):
-    service = OrderService(db)
-    order = service.get_order_by_invoice_number(invoice_number)
-    if not order:
-        return api_response(False, "Order not found", None, None)
-    service.assert_order_access(order, current_user)
-    return api_response(True, "Order payment status retrieved successfully", OrderSerializer(db).order_detail(order), None)
 
 
 @router.get("/{order_id}/payment-status")

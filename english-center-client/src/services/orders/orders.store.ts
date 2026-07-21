@@ -4,7 +4,6 @@ import type { ApiResponse, Pagination } from "@/shared/types/response";
 
 import { ordersApi } from "./orders.api";
 import type {
-  CheckoutRequest,
   ListMyOrdersQuery,
   ListOrdersQuery,
   Order,
@@ -23,11 +22,9 @@ type OrdersState = {
   isLoading: boolean;
   error: string | null;
 
-  checkout: (data: CheckoutRequest) => Promise<Order>;
   listOrders: (query?: ListOrdersQuery) => Promise<Order[]>;
   myOrders: (query?: ListMyOrdersQuery) => Promise<Order[]>;
   getOrder: (orderId: string) => Promise<Order>;
-  getOrderByInvoice: (invoiceNumber: string) => Promise<Order | null>;
   getOrderPaymentStatus: (orderId: string) => Promise<Order>;
   cancelOrder: (orderId: string) => Promise<Order>;
   createOrderForStudent: (data: StaffCreateOrderRequest) => Promise<Order>;
@@ -41,13 +38,6 @@ export const useOrdersStore = create<OrdersState>()((set) => ({
   selectedOrder: null,
   isLoading: false,
   error: null,
-
-  checkout: async (data) => {
-    const response = await ordersApi.checkout(data);
-    const order = unwrap(response, "Thanh toan don hang that bai");
-    set((state) => ({ orders: [order, ...state.orders], selectedOrder: order }));
-    return order;
-  },
 
   listOrders: async (query) => {
     const response = await ordersApi.listOrders(query);
@@ -66,13 +56,6 @@ export const useOrdersStore = create<OrdersState>()((set) => ({
   getOrder: async (orderId) => {
     const response = await ordersApi.getOrder(orderId);
     const order = unwrap(response, "Lay thong tin don hang that bai");
-    set({ selectedOrder: order });
-    return order;
-  },
-
-  getOrderByInvoice: async (invoiceNumber) => {
-    const response = await ordersApi.getOrderByInvoice(invoiceNumber);
-    const order = unwrap(response, "Lay don hang theo hoa don that bai");
     set({ selectedOrder: order });
     return order;
   },

@@ -15,7 +15,7 @@ export default function DashboardCashflowCreatePage() {
   const [title, setTitle] = useState("");
   const [type, setType] = useState<"income" | "expense">("income");
   const [amount, setAmount] = useState(0);
-  const [transactionDate, setTransactionDate] = useState("");
+  const [transactionDate] = useState("");
   const [note, setNote] = useState("");
 
   const handleSubmit = async () => {

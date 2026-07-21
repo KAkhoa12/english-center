@@ -42,7 +42,6 @@ import type { AttendanceItem } from "@/services/attendance/attendance.type";
 import { useClassSessionMediaStore } from "@/services/classSessionMedia/classSessionMedia.store";
 import { useClassSessionsStore } from "@/services/classSessions/classSessions.store";
 import type { UpdateClassSessionRequest } from "@/services/classSessions/classSessions.type";
-import { useLessonsStore } from "@/services/lessons/lessons.store";
 import { useRoomsStore } from "@/services/rooms/rooms.store";
 import { useTeachersStore } from "@/services/teachers/teachers.store";
 import { PRIVATE_ROUTES } from "@/shared/routes";
@@ -111,7 +110,6 @@ export default function DashboardSessionDetailPage() {
   } = useAssignmentsStore();
   const { teachers, listTeachers } = useTeachersStore();
   const { rooms, listRooms } = useRoomsStore();
-  const { lessons, listLessons } = useLessonsStore();
   const { assignmentTypes, listAssignmentTypes } = useAssignmentTypesStore();
   const [infoForm, setInfoForm] = useState<InfoFormState | null>(null);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -147,15 +145,7 @@ export default function DashboardSessionDetailPage() {
       })),
     [rooms],
   );
-  const lessonOptions = useMemo<SearchableOption[]>(
-    () =>
-      lessons.map((lesson) => ({
-        value: lesson.id,
-        label: lesson.title,
-        description: lesson.module?.title,
-      })),
-    [lessons],
-  );
+  const lessonOptions: SearchableOption[] = [];
   const templateAssignmentOptions = useMemo<SearchableOption[]>(
     () =>
       availableAssignments.map((assignment) => ({
@@ -206,12 +196,7 @@ export default function DashboardSessionDetailPage() {
 
   useEffect(() => {
     if (activeTab !== "info" || !selectedSession?.course?.id) return;
-    void listLessons(selectedSession.course.id, {
-      page: 1,
-      page_size: 100,
-      status: "active",
-    }).catch(() => toast.error("Không thể tải bài học"));
-  }, [activeTab, listLessons, selectedSession?.course?.id]);
+  }, [activeTab, selectedSession?.course?.id]);
 
   useEffect(() => {
     if (!sessionId || activeTab !== "attendance") return;
@@ -498,7 +483,7 @@ export default function DashboardSessionDetailPage() {
                     <SelectContent>
                       {sessionModeOptions.map((item) => (
                         <SelectItem key={item.value} value={item.value}>
-                          {item.label}
+                          {item.key}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -1,4 +1,3 @@
-import { BookOpen } from "lucide-react";
 import logo from "@/assets/logo.svg";
 
 export const DashboardBrand = () => {

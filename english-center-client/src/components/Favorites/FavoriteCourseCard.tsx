@@ -1,9 +1,7 @@
 import { ArrowRight, Heart, ShoppingCart } from "lucide-react";
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
-import { useCartStore } from "@/services/cart/cart.store";
 import type { WishlistItem } from "@/services/wishlist/wishlist.type";
 
 type FavoriteCourseCardProps = {
@@ -16,21 +14,11 @@ export default function FavoriteCourseCard({
   onRemove,
 }: FavoriteCourseCardProps) {
   const navigate = useNavigate();
-  const { addCartItem } = useCartStore();
-  const [adding, setAdding] = useState(false);
-
   const { course } = item;
+  const adding = false;
 
   const handleAddToCart = async () => {
-    try {
-      setAdding(true);
-      await addCartItem({ course_id: course.id });
-      toast.success("Đã thêm khóa học vào giỏ hàng");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Thêm vào giỏ hàng thất bại");
-    } finally {
-      setAdding(false);
-    }
+    toast.success("Tính năng đang phát triển");
   };
 
   return (

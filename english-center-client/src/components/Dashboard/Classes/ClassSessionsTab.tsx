@@ -18,7 +18,6 @@ import type {
   UpdateClassSessionRequest,
 } from "@/services/classSessions/classSessions.type";
 import type { ClassItem } from "@/services/classes/classes.type";
-import { useLessonsStore } from "@/services/lessons/lessons.store";
 import { useRoomsStore } from "@/services/rooms/rooms.store";
 import { useTeachersStore } from "@/services/teachers/teachers.store";
 import type { SearchableOption } from "./SearchableSelect";
@@ -44,13 +43,12 @@ export function ClassSessionsTab({ classItem }: ClassSessionsTabProps) {
   } = useClassSessionsStore();
   const { teachers, listTeachers } = useTeachersStore();
   const { rooms, listRooms } = useRoomsStore();
-  const { lessons, listLessons } = useLessonsStore();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [status, setStatus] = useState("all");
   const [mode, setMode] = useState("all");
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
+  const [fromDate] = useState("");
+  const [toDate] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [autoDialogOpen, setAutoDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ClassSession | null>(null);
@@ -64,15 +62,6 @@ export function ClassSessionsTab({ classItem }: ClassSessionsTabProps) {
       toast.error("Không thể tải phòng học"),
     );
   }, [listTeachers, listRooms]);
-
-  useEffect(() => {
-    if (!classItem.course_id) return;
-    void listLessons(classItem.course_id, {
-      page: 1,
-      page_size: 100,
-      status: "active",
-    }).catch(() => toast.error("Không thể tải bài học"));
-  }, [classItem.course_id, listLessons]);
 
   useEffect(() => {
     void listAllSessions({
@@ -117,15 +106,7 @@ export function ClassSessionsTab({ classItem }: ClassSessionsTabProps) {
       })),
     [rooms],
   );
-  const lessonOptions = useMemo<SearchableOption[]>(
-    () =>
-      lessons.map((lesson) => ({
-        value: lesson.id,
-        label: lesson.title,
-        description: lesson.module?.title,
-      })),
-    [lessons],
-  );
+  const lessonOptions: SearchableOption[] = [];
 
   const refresh = () =>
     listAllSessions({
@@ -209,7 +190,7 @@ export function ClassSessionsTab({ classItem }: ClassSessionsTabProps) {
             <SelectItem value="all">Tất cả trạng thái</SelectItem>
             {sessionStatusOptions.map((item) => (
               <SelectItem key={item.value} value={item.value}>
-                {item.label}
+                {item.key}
               </SelectItem>
             ))}
           </SelectContent>

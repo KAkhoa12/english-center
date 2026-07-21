@@ -40,18 +40,6 @@ def create_session_assignment(
     return api_response(True, "Session assignment created successfully", service.assignment_dict(item, current_user, detail=True), None)
 
 
-@router.post("/lessons/{lesson_id}/assignments")
-def create_lesson_assignment(
-    lesson_id: str,
-    payload: AssignmentCreate,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: User = Depends(require_permission(AssignmentPermission.CREATE)),
-):
-    service = AssignmentService(db)
-    item = service.create_lesson_assignment(lesson_id, payload, current_user)
-    return api_response(True, "Lesson assignment created successfully", service.assignment_dict(item, current_user, detail=True), None)
-
-
 @router.get("/classes/{class_id}/assignments")
 def list_class_assignments(
     class_id: str,
@@ -65,33 +53,13 @@ def list_class_assignments(
     status: str | None = None,
     assignment_type_id: str | None = None,
     session_id: str | None = None,
-    lesson_id: str | None = None,
     due_from: datetime | None = None,
     due_to: datetime | None = None,
 ):
     query = PaginationParams(page=page, page_size=page_size, search=search, sort_by=sort_by, sort_order=sort_order)
     service = AssignmentService(db)
-    items, total = service.get_assignments_by_class(class_id, query, current_user, status, assignment_type_id, session_id, lesson_id, due_from, due_to)
+    items, total = service.get_assignments_by_class(class_id, query, current_user, status, assignment_type_id, session_id, due_from, due_to)
     return api_response(True, "Assignments retrieved successfully", [service.assignment_dict(item, current_user) for item in items], build_pagination(page, page_size, total))
-
-
-@router.get("/lessons/{lesson_id}/assignments")
-def list_lesson_assignments(
-    lesson_id: str,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: User = Depends(require_permission(AssignmentPermission.READ)),
-    page: int = Query(1, ge=1),
-    page_size: int = Query(10, ge=1, le=100),
-    search: str | None = None,
-    sort_by: str | None = None,
-    sort_order: str = Query("desc", pattern="^(asc|desc)$"),
-    status: str | None = None,
-    assignment_type_id: str | None = None,
-):
-    query = PaginationParams(page=page, page_size=page_size, search=search, sort_by=sort_by, sort_order=sort_order)
-    service = AssignmentService(db)
-    items, total = service.get_assignments_by_lesson(lesson_id, query, current_user, status, assignment_type_id)
-    return api_response(True, "Lesson assignments retrieved successfully", [service.assignment_dict(item, current_user) for item in items], build_pagination(page, page_size, total))
 
 
 @router.post("/assignments/available")
@@ -182,19 +150,6 @@ def create_session_assignment_from_template(
     service = AssignmentService(db)
     item = service.create_session_assignment_from_template(session_id, template_assignment_id, payload, current_user)
     return api_response(True, "Session assignment created from template successfully", service.assignment_dict(item, current_user, detail=True), None)
-
-
-@router.post("/lessons/{lesson_id}/assignments/from-template/{template_assignment_id}")
-def create_lesson_assignment_from_template(
-    lesson_id: str,
-    template_assignment_id: str,
-    payload: AssignmentFromTemplateRequest,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: User = Depends(require_permission(AssignmentPermission.CREATE)),
-):
-    service = AssignmentService(db)
-    item = service.create_lesson_assignment_from_template(lesson_id, template_assignment_id, payload, current_user)
-    return api_response(True, "Lesson assignment created from template successfully", service.assignment_dict(item, current_user, detail=True), None)
 
 
 @router.get("/assignments/{assignment_id}")

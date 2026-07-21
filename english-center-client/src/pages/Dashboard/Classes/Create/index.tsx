@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { ClassFormFields, type ClassFormState } from "@/components/Dashboard/Classes/ClassFormFields";
-import type { SearchableOption } from "@/components/Dashboard/Classes/SearchableSelect";
+import type { SelectOption } from "@/components/Comon/Select";
 import { DashboardListPageHeader } from "@/components/Dashboard/Comon";
 import { Button } from "@/components/ui/button";
 import { useClassesStore } from "@/services/classes/classes.store";
@@ -38,9 +38,9 @@ export default function DashboardClassCreatePage() {
     void listRooms({ page: 1, page_size: 100, status: "active" }).catch(() => toast.error("Không thể tải danh sách phòng học"));
   }, [listCourses, listTeachers, listRooms]);
 
-  const courseOptions = useMemo<SearchableOption[]>(() => courses.map((course) => ({ value: course.id, label: course.name, description: course.code })), [courses]);
-  const teacherOptions = useMemo<SearchableOption[]>(() => teachers.map((teacher) => ({ value: teacher.id, label: teacher.user.full_name, description: teacher.user.email })), [teachers]);
-  const roomOptions = useMemo<SearchableOption[]>(() => rooms.map((room) => ({ value: room.id, label: room.name, description: room.location })), [rooms]);
+  const courseOptions = useMemo<SelectOption[]>(() => courses.map((course) => ({ key: course.id, value: course.name })), [courses]);
+  const teacherOptions = useMemo<SelectOption[]>(() => teachers.map((teacher) => ({ key: teacher.id, value: teacher.user.full_name })), [teachers]);
+  const roomOptions = useMemo<SelectOption[]>(() => rooms.map((room) => ({ key: room.id, value: room.name })), [rooms]);
 
   const handleSubmit = async () => {
     if (!form.courseId) {

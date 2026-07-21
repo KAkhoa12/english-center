@@ -33,7 +33,7 @@ async def create_sepay_payment(payload: CreateSePayPaymentRequest, db: Annotated
     payment = await service.create_sepay_payment(payload.order_id, payload.payment_method, payload.payment_type, current_user)
     data = OrderSerializer(db).payment_dict(payment)
     invoice = OrderSerializer(db).invoice(str(payment.order_id))
-    data["invoice_number"] = invoice.invoice_number if invoice else None
+    data["invoice_number"] = invoice.get("invoice_number") if invoice else None
     data["checkout_form_fields"] = (payment.raw_response or {}).get("checkout_form_fields") or payment.raw_request
     return api_response(True, "SePay payment created successfully", data, None)
 
@@ -48,13 +48,6 @@ def get_payment(payment_id: str, db: Annotated[Session, Depends(get_db)], curren
 def get_order_payments(order_id: str, db: Annotated[Session, Depends(get_db)], current_user: User = Depends(require_permission("payment.read"))):
     items = PaymentService(db).get_order_payments(order_id, current_user)
     return api_response(True, "Order payments retrieved successfully", [OrderSerializer(db).payment_dict(item) for item in items], None)
-
-
-@router.post("/payments/sepay/ipn")
-async def sepay_ipn(request: Request, db: Annotated[Session, Depends(get_db)]):
-    payload = await _read_json_body(request)
-    success, status_code = PaymentService(db).handle_sepay_ipn(payload, dict(request.headers))
-    return JSONResponse(status_code=status_code, content={"success": success})
 
 
 @router.post("/orders/{order_id}/payments/mark-paid")

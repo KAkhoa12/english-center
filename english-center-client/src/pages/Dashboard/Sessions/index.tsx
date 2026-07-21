@@ -33,8 +33,8 @@ export default function DashboardSessionsPage() {
   const [pageSize, setPageSize] = useState(10);
   const [status, setStatus] = useState("all");
   const [mode, setMode] = useState("all");
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
+  const [fromDate] = useState("");
+  const [toDate] = useState("");
   const [courseIds, setCourseIds] = useState<string[]>([]);
   const [classIds, setClassIds] = useState<string[]>([]);
   const [classOptionsSource, setClassOptionsSource] = useState<ClassItem[]>([]);

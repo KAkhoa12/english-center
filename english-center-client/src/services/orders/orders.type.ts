@@ -1,4 +1,3 @@
-
 export type OrderItemClassRef = {
   id: string;
   name: string;
@@ -60,14 +59,6 @@ export type Order = {
   payments: Payment[];
 };
 
-export type CheckoutRequest = {
-  note?: string | null;
-  buyer_name?: string | null;
-  buyer_email?: string | null;
-  buyer_phone?: string | null;
-  billing_address?: string | null;
-};
-
 export type ListOrdersQuery = {
   page?: number;
   page_size?: number;
@@ -80,18 +71,9 @@ export type ListMyOrdersQuery = {
   page_size?: number;
 };
 
-export type InstallmentInput = {
-  due_date: string;
-  amount: number;
-  note?: string | null;
-};
-
 export type StaffCreateOrderRequest = {
   student_id: string;
   course_id: string;
   class_id: string;
   note?: string | null;
-  plan_type?: string | null;
-  deposit_amount?: number | null;
-  installments?: InstallmentInput[];
 };

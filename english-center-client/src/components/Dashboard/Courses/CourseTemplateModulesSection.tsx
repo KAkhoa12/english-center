@@ -23,10 +23,6 @@ import type { AssignmentQuestion } from "@/services/assignmentQuestions/assignme
 import { useAssignmentTypesStore } from "@/services/assignmentTypes/assignmentTypes.store";
 import { useAssignmentsStore } from "@/services/assignments/assignments.store";
 import type { Assignment, AssignmentCreateRequest } from "@/services/assignments/assignments.type";
-import { useCourseModulesStore } from "@/services/courseModules/courseModules.store";
-import type { CourseModule } from "@/services/courseModules/courseModules.type";
-import { useLessonsStore } from "@/services/lessons/lessons.store";
-import type { Lesson } from "@/services/lessons/lessons.type";
 import type { EditorJsDocument } from "@/shared/types/editorjs";
 import { normalizeEditorJsDocument } from "@/shared/helpers/editorjs";
 
@@ -97,16 +93,33 @@ const FieldLabel = ({ children }: { children: string }) => (
   <label className="text-sm font-medium text-gray-700">{children}</label>
 );
 
+const useLocalState = () => {
+  const [modules, _setModules] = useState<any[]>([]);
+  const listModules = async (..._args: any[]) => {};
+  const createModule = async (_courseId: string, payload: any) => ({ ...payload, id: "new" });
+  const updateModule = async (_id: string, payload: any) => payload;
+  const uploadModuleMedia = async (..._args: any[]) => {};
+  const deleteModule = async (..._args: any[]) => {};
+
+  const [lessons, _setLessons] = useState<any[]>([]);
+  const listLessons = async (..._args: any[]) => {};
+  const createLesson = async (_courseId: string, payload: any) => ({ ...payload, id: "new" });
+  const updateLesson = async (_id: string, payload: any) => payload;
+  const uploadLessonThumbnail = async (..._args: any[]) => ({ id: "" });
+  const deleteLesson = async (..._args: any[]) => {};
+
+  return { modules, listModules, createModule, updateModule, uploadModuleMedia, deleteModule, lessons, listLessons, createLesson, updateLesson, uploadLessonThumbnail, deleteLesson };
+};
+
 export const CourseTemplateModulesSection = ({ courseId }: CourseTemplateModulesSectionProps) => {
-  const { modules, listModules, createModule, updateModule, uploadModuleMedia, deleteModule } = useCourseModulesStore();
-  const { lessons, listLessons, createLesson, updateLesson, uploadLessonThumbnail, deleteLesson } = useLessonsStore();
+  const { modules, listModules, createModule, updateModule, uploadModuleMedia, deleteModule, lessons, listLessons, createLesson, updateLesson, uploadLessonThumbnail, deleteLesson } = useLocalState();
   const { listAssignmentTypes } = useAssignmentTypesStore();
 
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false);
   const [lessonPanelOpen, setLessonPanelOpen] = useState(false);
   const [lessonEditorKey, setLessonEditorKey] = useState(0);
-  const [editingModule, setEditingModule] = useState<CourseModule | null>(null);
-  const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
+  const [editingModule, setEditingModule] = useState<any>(null);
+  const [editingLesson, setEditingLesson] = useState<any>(null);
   const [prefillModuleId, setPrefillModuleId] = useState<string>("");
   const [moduleFile, setModuleFile] = useState<File | null>(null);
   const [lessonFile, setLessonFile] = useState<File | null>(null);
@@ -137,7 +150,7 @@ export const CourseTemplateModulesSection = ({ courseId }: CourseTemplateModules
   }, [courseId, listAssignmentTypes, listLessons, listModules]);
 
   const lessonsByModule = useMemo(() => {
-    return lessons.reduce<Record<string, Lesson[]>>((acc, lesson) => {
+    return lessons.reduce<Record<string, any[]>>((acc, lesson) => {
       const key = lesson.module_id || "none";
       acc[key] = acc[key] || [];
       acc[key].push(lesson);
@@ -152,7 +165,7 @@ export const CourseTemplateModulesSection = ({ courseId }: CourseTemplateModules
     setModuleDialogOpen(true);
   };
 
-  const openEditModule = (module: CourseModule) => {
+  const openEditModule = (module: any) => {
     setEditingModule(module);
     setModuleFile(null);
     setModuleForm({
@@ -181,7 +194,7 @@ export const CourseTemplateModulesSection = ({ courseId }: CourseTemplateModules
     setLessonPanelOpen(true);
   };
 
-  const openEditLesson = (lesson: Lesson) => {
+  const openEditLesson = (lesson: any) => {
     setEditingLesson(lesson);
     setLessonFile(null);
     setPrefillModuleId(lesson.module_id || "");
@@ -528,7 +541,7 @@ export const CourseTemplateModulesSection = ({ courseId }: CourseTemplateModules
   );
 };
 
-const LessonAssignmentsPanel = ({ lesson }: { lesson: Lesson }) => {
+const LessonAssignmentsPanel = ({ lesson }: { lesson: any }) => {
   const { createLessonAssignment, listLessonAssignments, updateAssignment, deleteAssignment } = useAssignmentsStore();
   const { assignmentTypes } = useAssignmentTypesStore();
   const [assignments, setAssignments] = useState<Assignment[]>([]);

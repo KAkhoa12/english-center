@@ -18,6 +18,11 @@ import type {
   ListSubmissionsQuery,
 } from "./assignments.type";
 
+export type ListSubmissionAttachmentsQuery = {
+  page?: number;
+  page_size?: number;
+};
+
 const appendQuery = (url: string, query?: Record<string, unknown>): string => {
   if (!query) return url;
 
@@ -42,12 +47,6 @@ export const assignmentsApi = {
   listClassAssignments: (classId: string, query?: ListAssignmentsQuery) =>
     apiClient.getWithMeta<Assignment[]>(
       appendQuery(`/classes/${classId}/assignments`, query)
-    ),
-
-  createLessonAssignment: (lessonId: string, data: AssignmentCreateRequest) =>
-    apiClient.post<Assignment, AssignmentCreateRequest>(
-      `/lessons/${lessonId}/assignments`,
-      data
     ),
 
   createAvailableAssignment: (data: AssignmentCreateRequest) =>
@@ -86,17 +85,6 @@ export const assignmentsApi = {
     apiClient.post<Assignment, AssignmentFromTemplateRequest>(
       `/sessions/${sessionId}/assignments/from-template/${templateAssignmentId}`,
       data
-    ),
-
-  createLessonAssignmentFromTemplate: (lessonId: string, templateAssignmentId: string, data: AssignmentFromTemplateRequest) =>
-    apiClient.post<Assignment, AssignmentFromTemplateRequest>(
-      `/lessons/${lessonId}/assignments/from-template/${templateAssignmentId}`,
-      data
-    ),
-
-  listLessonAssignments: (lessonId: string, query?: ListAssignmentsQuery) =>
-    apiClient.getWithMeta<Assignment[]>(
-      appendQuery(`/lessons/${lessonId}/assignments`, query)
     ),
 
   getAssignment: (assignmentId: string) =>
@@ -164,6 +152,18 @@ export const assignmentsApi = {
       `/submissions/${submissionId}/attachments/upload`,
       data
     ),
+
+  createSubmissionAttachment: (submissionId: string, data: Record<string, unknown>) =>
+    apiClient.post<AssignmentAttachment, Record<string, unknown>>(
+      `/submissions/${submissionId}/attachments`,
+      data
+    ),
+
+  listSubmissionAttachments: (submissionId: string) =>
+    apiClient.get<AssignmentAttachment[]>(`/submissions/${submissionId}/attachments`),
+
+  deleteSubmissionAttachment: (attachmentId: string) =>
+    apiClient.delete<void>(`/submission-attachments/${attachmentId}`),
 
   getSubmission: (submissionId: string) =>
     apiClient.get<AssignmentSubmission>(`/submissions/${submissionId}`),

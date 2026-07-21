@@ -5,7 +5,6 @@ from app.models.staff import StaffProfile
 from app.models.teacher import Teacher
 from app.models.agent_state import AgentMessageRole, AgentState, ChatSessionMessage
 from app.models.class_session import ClassSchedule, ClassSession, ClassSessionMedia, ClassSessionTeacher
-from app.models.chat import ChatMessage, ChatMessageAttachment, Conversation, ConversationParticipant, ConversationType, ParticipantRole
 from app.models.consultation import Consultation
 __all__ = [
     "User",
@@ -23,11 +22,5 @@ __all__ = [
     "ClassSession",
     "ClassSessionTeacher",
     "ClassSessionMedia",
-    "Conversation",
-    "ConversationType",
-    "ConversationParticipant",
-    "ParticipantRole",
-    "ChatMessage",
-    "ChatMessageAttachment",
     "Consultation",
 ]

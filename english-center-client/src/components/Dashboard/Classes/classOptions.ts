@@ -30,5 +30,5 @@ export const enrollmentStatusOptions = [
   { value: "pending", key: "Chờ xử lý" },
 ];
 
-export const labelOf = (options: { key: string; label: string }[], key?: string | null) =>
-  options.find((item) => item.key === key)?.label ?? key ?? "-";
+export const labelOf = (options: { value: string; key: string }[], key?: string | null) =>
+  options.find((item) => item.value === key)?.key ?? key ?? "-";

@@ -6,12 +6,10 @@ import { DashboardListPageHeader } from "@/components/Dashboard/Comon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useOrdersStore } from "@/services/orders/orders.store";
-import { PRIVATE_ROUTES } from "@/shared/routes";
+
 
 export default function DashboardInvoiceCreatePage() {
   const navigate = useNavigate();
-  const { checkout } = useOrdersStore();
   const [buyerName, setBuyerName] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
@@ -19,19 +17,7 @@ export default function DashboardInvoiceCreatePage() {
   const [note, setNote] = useState("");
 
   const handleCreate = async () => {
-    try {
-      const created = await checkout({
-        buyer_name: buyerName || undefined,
-        buyer_email: buyerEmail || undefined,
-        buyer_phone: buyerPhone || undefined,
-        billing_address: billingAddress || undefined,
-        note: note || undefined,
-      });
-      toast.success("Tao hoa don thanh cong");
-      navigate(PRIVATE_ROUTES.DASHBOARD_FINANCE_INVOICES_EDIT.replace(":invoiceId", created.id));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Tao hoa don that bai");
-    }
+    toast.success("Tính năng đang phát triển");
   };
 
   return (

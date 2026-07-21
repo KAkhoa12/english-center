@@ -10,12 +10,11 @@ import {
   FileText,
   GraduationCap,
   LayoutDashboard,
-  MessageCircle,
   PackageOpen,
   ShieldCheck,
   UserRound,
   UserSquare2,
-  Wallet, // ponytail: one icon for payment plans
+ // ponytail: one icon for payment plans
 } from "lucide-react";
 import { type ComponentType, useState } from "react";
 import { NavLink } from "react-router-dom";
@@ -84,13 +83,13 @@ const navItems: NavItem[] = [
     children: [
       {
         label: "Danh sách khóa học",
-        href: PRIVATE_ROUTES.DASHBOARD_TEMPLATE_COURSES,
+        href: PRIVATE_ROUTES.DASHBOARD_CENTER_COURSES,
         allowedRoles: ["admin", "staff"],
         requiredPermissions: ["course.create", "course.update", "course.delete"],
       },
       {
         label: "Thống kê",
-        href: PRIVATE_ROUTES.DASHBOARD_TEMPLATE_COURSES_STATISTICS,
+        href: PRIVATE_ROUTES.DASHBOARD_CENTER_COURSES_STATISTICS,
         allowedRoles: ["admin", "staff"],
       },
     ],
@@ -108,7 +107,7 @@ const navItems: NavItem[] = [
       },
       {
         label: "Quản lý tag khóa học",
-        href: PRIVATE_ROUTES.DASHBOARD_COURSE_TAGS,
+        href: PRIVATE_ROUTES.DASHBOARD_COURSE_CATEGORIES,
         allowedRoles: ["admin", "staff"],
         requiredPermissions: ["course_tag.read"],
       },
@@ -149,12 +148,12 @@ const navItems: NavItem[] = [
           allowedRoles: ["admin", "staff"],
           requiredPermissions: ["invoice.read", "order.read"],
         },
-        {
-          label: "Kế hoạch chi trả",
-          href: PRIVATE_ROUTES.DASHBOARD_FINANCE_PAYMENT_PLANS,
-          allowedRoles: ["admin", "staff"],
-          requiredPermissions: ["payment.read"],
-        },
+        // {
+        //   label: "Kế hoạch chi trả",
+        //   href: PRIVATE_ROUTES.DASHBOARD_FINANCE_PAYMENT_PLANS,
+        //   allowedRoles: ["admin", "staff"],
+        //   requiredPermissions: ["payment.read"],
+        // },
       ],
   },
   {
@@ -262,12 +261,12 @@ const navItems: NavItem[] = [
     href: PRIVATE_ROUTES.DASHBOARD_CERTIFICATES,
     allowedRoles: ["student"],
   },
-  {
+  /* {
     label: "Tin nhắn",
     icon: MessageCircle,
     href: PRIVATE_ROUTES.DASHBOARD_MESSAGES,
     allowedRoles: ["admin", "staff", "teacher", "student"],
-  },
+  }, */
   {
     label: "Khách vãng lai",
     icon: UserRound,
@@ -294,11 +293,11 @@ const navItems: NavItem[] = [
         href: PRIVATE_ROUTES.DASHBOARD_MY_INVOICES,
         allowedRoles: ["admin", "staff", "teacher", "student"],
       },
-      {
+      /* {
         label: "Kế hoạch chi trả của tôi",
         href: PRIVATE_ROUTES.DASHBOARD_MY_PAYMENT_PLANS,
         allowedRoles: ["admin", "staff", "teacher", "student"],
-      },
+      }, */
     ],
   },
 ];

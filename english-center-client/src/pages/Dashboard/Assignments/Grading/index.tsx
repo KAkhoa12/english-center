@@ -131,7 +131,7 @@ export default function DashboardAssignmentGradingPage() {
                   const sub = submissions.find((s) => s.student_id === cs.student_id);
                   return (
                     <tr key={cs.student_id} className="border-b last:border-0">
-                      <td className="py-2 pr-4 font-medium text-gray-900">{cs.student.name}</td>
+                      <td className="py-2 pr-4 font-medium text-gray-900">{cs.student.full_name}</td>
                       <td className="py-2 pr-4">
                         {sub ? (
                           <Badge variant={sub.status === "late" ? "destructive" : "default"}>
@@ -170,7 +170,7 @@ export default function DashboardAssignmentGradingPage() {
             const isSaving = saving[submission.id] ?? false;
 
             return (
-              <SectionCard key={submission.id} title={submission.student.name} id={`submission-${submission.id}`}>
+              <SectionCard key={submission.id} title={submission.student.full_name}>
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <Badge variant={submission.status === "late" ? "destructive" : "default"}>
                     {submission.status === "late" ? "Nộp muộn" : submission.status === "submitted" ? "Đã nộp" : submission.status}

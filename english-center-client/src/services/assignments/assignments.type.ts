@@ -17,14 +17,16 @@ export type AssignmentAttachment = {
   title: string | null;
   description?: string | null;
   attachment_type?: string;
-  file_bucket: string | null;
-  file_object_name: string | null;
-  external_url?: string | null;
+  media_id: string | null;
+  location_folder: string | null;
+  order_index?: number;
   original_filename?: string | null;
+  presigned_url?: string | null;
+  file_bucket?: string | null;
+  file_object_name?: string | null;
   content_type?: string | null;
   file_size?: number | null;
-  order_index?: number;
-  presigned_url: string | null;
+  media?: Record<string, unknown> | null;
 };
 
 export type AssignmentGrade = {
@@ -62,7 +64,6 @@ export type Assignment = {
   id: string;
   class_id: string | null;
   session_id: string | null;
-  lesson_id: string | null;
   title: string;
   description: string | null;
   instruction: string | null;
@@ -76,7 +77,6 @@ export type Assignment = {
   allow_late_submission: boolean;
   class: { id: string; name: string } | null;
   session: { id: string; title: string } | null;
-  lesson: { id: string; title: string } | null;
   created_at: string;
   updated_at: string;
   attachments?: AssignmentAttachment[];
@@ -87,7 +87,6 @@ export type Assignment = {
 
 export type AssignmentCreateRequest = {
   session_id?: string | null;
-  lesson_id?: string | null;
   title: string;
   description?: string | null;
   instruction?: string | null;
@@ -102,7 +101,6 @@ export type AssignmentCreateRequest = {
 
 export type AssignmentUpdateRequest = {
   session_id?: string | null;
-  lesson_id?: string | null;
   title?: string | null;
   description?: string | null;
   instruction?: string | null;
@@ -117,7 +115,6 @@ export type AssignmentUpdateRequest = {
 
 export type AssignmentFromTemplateRequest = {
   session_id?: string | null;
-  lesson_id?: string | null;
   title?: string | null;
   status?: AssignmentStatus | null;
   due_at?: string | null;
@@ -128,11 +125,8 @@ export type AssignmentAttachmentCreateRequest = {
   title?: string | null;
   description?: string | null;
   attachment_type: string;
-  file_bucket?: string | null;
-  file_object_name?: string | null;
-  external_url?: string | null;
-  content_type?: string | null;
-  file_size?: number | null;
+  media_id?: string | null;
+  location_folder?: string | null;
   order_index?: number;
 };
 
@@ -174,7 +168,6 @@ export type ListAssignmentsQuery = {
   status?: AssignmentStatus;
   assignment_type_id?: string;
   session_id?: string;
-  lesson_id?: string;
   due_from?: string;
   due_to?: string;
 };

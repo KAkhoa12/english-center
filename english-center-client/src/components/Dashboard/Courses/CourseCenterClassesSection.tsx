@@ -21,7 +21,6 @@ import type { ClassCreateRequest, ClassItem, ClassUpdateRequest } from "@/servic
 import { useRoomsStore } from "@/services/rooms/rooms.store";
 import { useTeachersStore } from "@/services/teachers/teachers.store";
 import { generateCode } from "@/shared/helpers/code-format";
-import type { SelectValue } from "@/components/ui/select";
 
 const emptyClassForm: ClassFormState = {
   courseId: null,
@@ -31,7 +30,7 @@ const emptyClassForm: ClassFormState = {
   code: "",
   classType: "offline",
   maxStudents: 20,
-  startDate: "",
+  startDate: null,
   status: "planned",
 };
 
@@ -99,7 +98,7 @@ export const CourseCenterClassesSection = ({
       code: item.code ?? "",
       classType: item.class_type,
       maxStudents: item.max_students,
-      startDate: item.start_date ?? "",
+      startDate: item.start_date ? new Date(item.start_date) : null,
       status: item.status,
     });
     setDialogOpen(true);
@@ -126,7 +125,7 @@ export const CourseCenterClassesSection = ({
         code: form.code.trim() || generateCode(form.name),
         class_type: form.classType,
         max_students: Number(form.maxStudents || 1),
-        start_date:  new Date(form.startDate),
+        start_date: form.startDate ? form.startDate.toISOString().slice(0, 10) : null,
         status: form.status,
       };
 

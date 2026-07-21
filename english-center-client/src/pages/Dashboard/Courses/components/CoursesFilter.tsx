@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import type { CourseMode } from "@/services/courses/courses.type";
 import type { CourseCategory } from "@/services/coursesCategory/coursesCategory.type";
-import type { CourseTag } from "@/services/coursesTag/coursesTag.type";
 
 type CoursesFilterProps = {
   searchInput: string;
@@ -33,7 +32,7 @@ type CoursesFilterProps = {
   maxPrice: string;
   onMaxPriceChange: (value: string) => void;
   categories: CourseCategory[];
-  tags: CourseTag[];
+  tags: any[];
   onReset: () => void;
   onCreateCourse: () => void;
 };

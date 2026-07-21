@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useCoursesStore } from "@/services/courses/courses.store";
 import { useCoursesCategoryStore } from "@/services/coursesCategory/coursesCategory.store";
-import { useCoursesTagStore } from "@/services/coursesTag/coursesTag.store";
 import { format_code, format_slug } from "@/shared/helpers/slug_format";
 import { PRIVATE_ROUTES } from "@/shared/routes";
 
@@ -39,8 +38,7 @@ export const DashboardCourseCreatePage = () => {
   const isLoading = useCoursesStore((state) => state.isLoading);
   const categories = useCoursesCategoryStore((state) => state.categories);
   const listCategories = useCoursesCategoryStore((state) => state.listCategories);
-  const tags = useCoursesTagStore((state) => state.tags);
-  const listTags = useCoursesTagStore((state) => state.listTags);
+  const tags: any[] = [];
 
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -58,8 +56,7 @@ export const DashboardCourseCreatePage = () => {
 
   useEffect(() => {
     void listCategories({ page: 1, page_size: 100, status: "active", sort_by: "name", sort_order: "asc" });
-    void listTags({ page: 1, page_size: 100, sort_by: "name", sort_order: "asc" });
-  }, [listCategories, listTags]);
+  }, [listCategories]);
 
   const handleNameChange = useCallback(
     (value: string) => {

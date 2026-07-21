@@ -4,8 +4,7 @@ import { toast } from "sonner";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAiChatStore } from "@/services/aiChat/aiChat.store";
-import { useAuthStore } from "@/services/auth/auth.store";
-import { useChatStore } from "@/services/chat/chat.store";
+
 
 const renderInlineMarkdown = (text: string, keyPrefix: string): ReactNode[] =>
   text.split(/(\*\*[^*]+\*\*|__[^_]+__|`[^`]+`)/g).map((part, index) => {
@@ -78,7 +77,7 @@ const renderMarkdownMessage = (content: string) => {
 function AiChatTab() {
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const { messages, isStreaming, sendMessage, ensureSession } = useAiChatStore();
+  const { messages, isStreaming, sendMessage } = useAiChatStore();
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -148,14 +147,7 @@ function AiChatTab() {
 }
 
 function ConsultantChatTab() {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const me = useAuthStore((state) => state.me);
-
-  if (!isAuthenticated) {
-    return <ContactForm />;
-  }
-
-  return <AuthenticatedConsultantChat userId={me?.user?.id} />;
+  return <ContactForm />;
 }
 
 function ContactForm() {
@@ -225,106 +217,6 @@ function ContactForm() {
         {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Gui thong tin"}
       </button>
     </div>
-  );
-}
-
-function AuthenticatedConsultantChat({ userId }: { userId?: string }) {
-  const [draft, setDraft] = useState("");
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-  const { contacts, activeConversation, messages, isLoading, isSending, fetchContacts, openConversationWith, sendMessage, connectSocket, disconnectSocket } = useChatStore();
-
-  useEffect(() => {
-    connectSocket();
-    return () => disconnectSocket();
-  }, [connectSocket, disconnectSocket]);
-
-  useEffect(() => {
-    if (!activeConversation) {
-      fetchContacts().then((cts) => {
-        const consultant = cts.find((c) => c.roles?.some((r) => ["admin", "staff", "manager"].includes(r)));
-        if (consultant) {
-          openConversationWith(consultant.id);
-        }
-      }).catch(() => {});
-    }
-  }, [activeConversation, fetchContacts, openConversationWith]);
-
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages]);
-
-  const consultant = activeConversation?.participants?.find((p) => p.id !== userId);
-
-  const handleSend = () => {
-    const content = draft.trim();
-    if (!content || !activeConversation) return;
-    setDraft("");
-    sendMessage({ conversation_id: activeConversation.id, content });
-  };
-
-  if (isLoading && !activeConversation) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-5 w-5 animate-spin text-brand-500" />
-      </div>
-    );
-  }
-
-  return (
-    <>
-      {consultant && (
-        <div className="flex items-center gap-2 border-b border-gray-100 bg-gray-50 px-4 py-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-brand-600">
-            <Headset className="h-3.5 w-3.5" />
-          </span>
-          <span className="text-sm font-medium text-gray-700">{consultant.full_name}</span>
-        </div>
-      )}
-      <div ref={scrollRef} className="max-h-[310px] space-y-3 overflow-y-auto bg-gray-50 p-4">
-        {messages.length === 0 && (
-          <p className="py-6 text-center text-xs text-gray-400">Bat dau cuoc tro chuyen voi tu van vien</p>
-        )}
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex items-end gap-2 ${msg.sender_id === userId ? "justify-end" : "justify-start"}`}
-          >
-            {msg.sender_id !== userId && (
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-600">
-                <Headset className="h-3.5 w-3.5" />
-              </span>
-            )}
-            <div
-              className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
-                msg.sender_id === userId
-                  ? "rounded-br-md bg-brand-500 text-white"
-                  : "rounded-bl-md bg-white text-gray-700 shadow-sm"
-              }`}
-            >
-              {msg.content}
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="flex items-center gap-2 border-t border-gray-100 bg-white p-3">
-        <input
-          value={draft}
-          disabled={!activeConversation}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
-          placeholder="Nhap tin nhan..."
-          className="h-10 flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 text-sm text-gray-700 outline-none placeholder:text-gray-400 disabled:cursor-not-allowed disabled:opacity-60"
-        />
-        <button
-          type="button"
-          disabled={isSending || !draft.trim() || !activeConversation}
-          onClick={handleSend}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-500 text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-        </button>
-      </div>
-    </>
   );
 }
 

@@ -1,12 +1,19 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.response import api_response
 from app.db.session import get_db
-from app.schemas.chat import AiChatStreamRequest
 from app.services.ai_chat_service import AiChatService
+
+
+class AiChatStreamRequest(BaseModel):
+    message: str = Field(min_length=1)
+    context: str | None = None
+    session_id: str = Field(min_length=1)
+    client_message_id: str | None = None
 
 router = APIRouter(tags=["ai-chat"])
 

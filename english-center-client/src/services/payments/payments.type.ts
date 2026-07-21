@@ -19,15 +19,12 @@ export type Payment = {
 export type SePayCreatePaymentRequest = {
   order_id: string;
   payment_method?: string;
+  payment_type?: string;
 };
 
 export type SePayCreatePaymentResponse = Payment & {
   invoice_number: string;
   checkout_form_fields?: Record<string, unknown> | null;
-};
-
-export type SePayIpnResponse = {
-  success: boolean;
 };
 
 export type MarkOrderPaidRequest = {

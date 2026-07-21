@@ -89,7 +89,7 @@ export default function DashboardInvoiceEditPage() {
         <div className="mt-4 space-y-3 rounded-2xl border border-gray-100 bg-white p-5">
           <h3 className="font-semibold">Ke hoach thanh toan</h3>
           <p className="text-sm">Hinh thuc: {String(plan.plan_type)}</p>
-          {plan.deposit_amount && Number(plan.deposit_amount) > 0 && (
+          {Number(plan.deposit_amount) > 0 && (
             <p className="text-sm">Tien coc: {fmt(plan.deposit_amount)}</p>
           )}
           {installments.length > 0 && (

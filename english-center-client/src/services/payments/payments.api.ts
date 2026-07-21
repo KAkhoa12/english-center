@@ -5,7 +5,6 @@ import type {
   Payment,
   SePayCreatePaymentRequest,
   SePayCreatePaymentResponse,
-  SePayIpnResponse,
 } from "./payments.type";
 import type { Order } from "@/services/orders/orders.type";
 
@@ -21,7 +20,4 @@ export const paymentsApi = {
 
   markOrderPaid: (orderId: string, data: MarkOrderPaidRequest) =>
     apiClient.post<Order, MarkOrderPaidRequest>(`/orders/${orderId}/payments/mark-paid`, data),
-
-  sepayIpn: (payload: Record<string, unknown>) =>
-    apiClient.post<SePayIpnResponse, Record<string, unknown>>("/payments/sepay/ipn", payload),
 };

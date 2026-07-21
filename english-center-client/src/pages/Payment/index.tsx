@@ -6,7 +6,6 @@ import {
   Loader2,
   MapPin,
   ReceiptText,
-  ShoppingBag,
   User,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -14,8 +13,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { useAuthStore } from "@/services/auth/auth.store";
-import type { CartItem } from "@/services/cart/cart.type";
-import { useCartStore } from "@/services/cart/cart.store";
 import { useOrdersStore } from "@/services/orders/orders.store";
 import type { Order, OrderItem } from "@/services/orders/orders.type";
 import { usePaymentsStore } from "@/services/payments/payments.store";
@@ -49,17 +46,6 @@ type PaymentLineItem = {
   totalPrice: number;
 };
 
-const cartItemToLineItem = (item: CartItem): PaymentLineItem => ({
-  id: item.id,
-  name: item.course_name,
-  code: item.course_code ?? "",
-  className: item.class?.name ?? null,
-  classCode: item.class?.code ?? null,
-  classStartDate: item.class?.start_date ?? null,
-  quantity: item.quantity,
-  totalPrice: item.total_price,
-});
-
 const orderItemToLineItem = (item: OrderItem): PaymentLineItem => ({
   id: item.id,
   name: item.course_name,
@@ -78,11 +64,8 @@ export default function PaymentPage() {
   const invoiceNumber = searchParams.get("invoice_number");
   const isExistingOrderMode = Boolean(orderId || invoiceNumber);
 
-  const { cart, getCart } = useCartStore();
   const {
-    checkout,
     getOrder,
-    getOrderByInvoice,
     selectedOrder,
     clearSelectedOrder,
     isLoading,
@@ -100,14 +83,6 @@ export default function PaymentPage() {
   const [isMarkingPaid, setIsMarkingPaid] = useState(false);
 
   useEffect(() => {
-    if (isExistingOrderMode) return;
-
-    void getCart().catch(() => {
-      toast.error("Không thể tải giỏ hàng");
-    });
-  }, [getCart, isExistingOrderMode]);
-
-  useEffect(() => {
     if (!isExistingOrderMode) return;
 
     const loadOrder = async () => {
@@ -117,8 +92,8 @@ export default function PaymentPage() {
       }
 
       if (invoiceNumber) {
-        const order = await getOrderByInvoice(invoiceNumber);
-        if (!order) throw new Error("Không tìm thấy hóa đơn");
+        toast.error("Tính năng đang phát triển");
+        return;
       }
     };
 
@@ -129,20 +104,19 @@ export default function PaymentPage() {
     return () => {
       clearSelectedOrder();
     };
-  }, [clearSelectedOrder, getOrder, getOrderByInvoice, invoiceNumber, isExistingOrderMode, orderId]);
+  }, [clearSelectedOrder, getOrder, invoiceNumber, isExistingOrderMode, orderId]);
 
-  const cartItems = cart?.items ?? [];
   const orderItems = selectedOrder?.items ?? [];
   const items = useMemo(
     () =>
       isExistingOrderMode
         ? orderItems.map(orderItemToLineItem)
-        : cartItems.map(cartItemToLineItem),
-    [cartItems, isExistingOrderMode, orderItems],
+        : [],
+    [isExistingOrderMode, orderItems],
   );
   const subtotal = isExistingOrderMode
     ? selectedOrder?.subtotal_amount ?? 0
-    : cart?.subtotal_amount ?? 0;
+    : 0;
   const discount = isExistingOrderMode ? selectedOrder?.discount_amount ?? 0 : 0;
   const total = isExistingOrderMode ? selectedOrder?.total_amount ?? 0 : subtotal;
   const invoiceStatus = selectedOrder?.invoice?.invoice_status ?? selectedOrder?.status ?? "pending";
@@ -195,36 +169,8 @@ export default function PaymentPage() {
       toast.error("Vui lòng nhập email");
       return;
     }
-    if (cartItems.length === 0) {
-      toast.error("Giỏ hàng trống, không thể đặt hàng");
-      return;
-    }
 
-    try {
-      const order = await checkout({
-        buyer_name: form.buyer_name.trim(),
-        buyer_email: form.buyer_email.trim(),
-        buyer_phone: form.buyer_phone.trim() || null,
-        note: form.note.trim() || null,
-      });
-      if (useFastPay && isFastPayAvailable) {
-        setIsMarkingPaid(true);
-        await markOrderPaid(order.id, {
-          payment_method: "MANUAL_BANK_TRANSFER",
-          reference: `TEST_${order.order_code}`,
-        });
-        toast.success(`Thanh toán test thành công! Mã đơn: ${order.order_code}`);
-        void navigate("/my-courses");
-        return;
-      }
-
-      toast.success(`Đặt hàng thành công! Mã đơn: ${order.order_code}`);
-      void navigate(`/payment?order_id=${order.id}`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Đặt hàng thất bại");
-    } finally {
-      setIsMarkingPaid(false);
-    }
+    toast.success("Tính năng đang phát triển");
   };
 
   if (isLoading && items.length === 0) {
@@ -262,30 +208,7 @@ export default function PaymentPage() {
     );
   }
 
-  if (!isExistingOrderMode && cartItems.length === 0 && !isLoading) {
-    return (
-      <section className="bg-gray-50 pb-24 pt-32">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-10 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-50">
-              <ShoppingBag className="h-6 w-6 text-brand-500" />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900">Giỏ hàng trống</h2>
-            <p className="mt-2 text-sm text-gray-500">
-              Hãy thêm khóa học vào giỏ hàng trước khi thanh toán.
-            </p>
-            <button
-              type="button"
-              onClick={() => navigate("/courses")}
-              className="mt-5 rounded-full bg-brand-500 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-600"
-            >
-              Khám phá khóa học
-            </button>
-          </div>
-        </div>
-      </section>
-    );
-  }
+
 
   return (
     <section className="bg-gray-50 pb-24 pt-32">

@@ -13,7 +13,6 @@ def _not_blank(value: str) -> str:
 
 class AssignmentCreate(BaseModel):
     session_id: str | None = None
-    lesson_id: str | None = None
     title: str
     description: str | None = None
     instruction: str | None = None
@@ -33,7 +32,6 @@ class AssignmentCreate(BaseModel):
 
 class AssignmentUpdate(BaseModel):
     session_id: str | None = None
-    lesson_id: str | None = None
     title: str | None = None
     description: str | None = None
     instruction: str | None = None
@@ -48,7 +46,6 @@ class AssignmentUpdate(BaseModel):
 
 class AssignmentFromTemplateRequest(BaseModel):
     session_id: str | None = None
-    lesson_id: str | None = None
     title: str | None = None
     status: str | None = None
     due_at: datetime | None = None

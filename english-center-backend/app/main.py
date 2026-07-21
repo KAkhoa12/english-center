@@ -15,7 +15,6 @@ from app.api.v1 import (
     assignment_types,
     assignments,
     auth,
-    chat,
     class_session_media,
     class_sessions,
     class_schedules,
@@ -123,7 +122,6 @@ app.include_router(teachers.router, prefix=settings.API_V1_PREFIX)
 app.include_router(staff.router, prefix=settings.API_V1_PREFIX)
 app.include_router(files.router, prefix=settings.API_V1_PREFIX)
 app.include_router(media.router, prefix=settings.API_V1_PREFIX)
-app.include_router(chat.router, prefix=settings.API_V1_PREFIX)
 app.include_router(ai_chat.router, prefix=settings.API_V1_PREFIX)
 app.include_router(wishlist.router, prefix=settings.API_V1_PREFIX)
 app.include_router(orders.router, prefix=settings.API_V1_PREFIX)

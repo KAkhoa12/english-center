@@ -10,7 +10,7 @@ export type ClassFormState = {
   code: string;
   classType: string;
   maxStudents: number;
-  startDate: Date;
+  startDate: Date | null;
   status: string;
 };
 

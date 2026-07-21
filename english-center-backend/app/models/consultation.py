@@ -28,7 +28,6 @@ class ConsultationSource(str, enum.Enum):
 class Consultation(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "consultations"
 
-    conversation_id: Mapped[str | None] = mapped_column(UUID(as_uuid=True), ForeignKey("conversations.id"), nullable=True, unique=True, index=True)
     user_id: Mapped[str | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
     student_id: Mapped[str | None] = mapped_column(UUID(as_uuid=True), ForeignKey("students.id"), nullable=True, index=True)
     customer_name: Mapped[str | None] = mapped_column(String(255), nullable=True)

@@ -63,7 +63,7 @@ export default function DashboardClassEditPage() {
   }, [classId, getClass, clearSelectedClass]);
 
   const courseOptions = useMemo<SelectOption[]>(() => {
-    const options: SelectOption[] = courses.map((course) => ({ value: course.id, label: course.name, description: course.code }));
+    const options: SelectOption[] = courses.map((course) => ({ key: course.id, value: course.name }));
     if (selectedClass?.course && !options.some((item) => item.value === selectedClass.course_id)) {
       options.unshift({ key: selectedClass.course_id, value: selectedClass.course.name });
     }

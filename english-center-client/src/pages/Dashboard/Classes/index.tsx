@@ -3,24 +3,23 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { DashboardListPageHeader } from "@/components/Dashboard/Comon";
-import { ClassesFilterBar } from "@/components/Dashboard/Classes/ClassesFilterBar";
 import { ClassesListTable } from "@/components/Dashboard/Classes/ClassesListTable";
-import type { SearchableOption } from "@/components/Dashboard/Classes/SearchableSelect";
 import { useClassesStore } from "@/services/classes/classes.store";
 import type { ListClassesQuery } from "@/services/classes/classes.type";
+
+import type { Pagination } from "@/shared/types/response";
 import { useCoursesStore } from "@/services/courses/courses.store";
 import { useTeachersStore } from "@/services/teachers/teachers.store";
-import type { Pagination } from "@/shared/types/response";
 import { PRIVATE_ROUTES } from "@/shared/routes";
 
 export default function DashboardClassesPage() {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<ListClassesQuery>({ sort_by: "created_at", sort_order: "desc" });
+  const [filters] = useState<ListClassesQuery>({ sort_by: "created_at", sort_order: "desc" });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const { classes, isLoading, listClasses } = useClassesStore();
-  const { courses, listCourses } = useCoursesStore();
-  const { teachers, listTeachers } = useTeachersStore();
+  const { listCourses } = useCoursesStore();
+  const { listTeachers } = useTeachersStore();
 
   useEffect(() => {
     void listCourses({ page: 1, page_size: 100, mode: "center", status: "active" }).catch(() => toast.error("Không thể tải danh sách khóa học"));
@@ -33,9 +32,6 @@ export default function DashboardClassesPage() {
     }, 250);
     return () => window.clearTimeout(timeout);
   }, [listClasses, filters]);
-
-  const courseOptions = useMemo<SearchableOption[]>(() => courses.map((course) => ({ value: course.id, label: course.name, description: course.code })), [courses]);
-  const teacherOptions = useMemo<SearchableOption[]>(() => teachers.map((teacher) => ({ value: teacher.id, label: teacher.user.full_name, description: teacher.user.email })), [teachers]);
 
   const pagination = useMemo<Pagination>(() => {
     const totalItems = classes.length;

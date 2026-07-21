@@ -29,16 +29,7 @@ export const RegisterPage = () => {
       const result = await register({
         full_name: fullName.trim(),
         email: email.trim(),
-        phone: phone.trim() || null,
         password,
-        avatar_url: null,
-        date_of_birth: null,
-        gender: null,
-        address: null,
-        level: null,
-        learning_goal: null,
-        parent_name: null,
-        parent_phone: null,
       });
 
       if (result.success) {

@@ -19,7 +19,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { useAuthStore } from "@/services/auth/auth.store";
-import { useCartStore } from "@/services/cart/cart.store";
 import { useClassesStore } from "@/services/classes/classes.store";
 import type { ClassItem } from "@/services/classes/classes.type";
 import { useCoursesStore } from "@/services/courses/courses.store";
@@ -61,12 +60,11 @@ export default function CourseDetailPage() {
 
   const { selectedCourse, isLoading, getCourse, clearSelectedCourse } = useCoursesStore();
   const { classes, isLoading: isLoadingClasses, listPublicCourseClasses } = useClassesStore();
-  const { addCartItem } = useCartStore();
   const { addWishlist, getWishlistStatus, favorited } = useWishlistStore();
   const { isAuthenticated } = useAuthStore();
 
-  const [addingCart, setAddingCart] = useState(false);
   const [addingWishlist, setAddingWishlist] = useState(false);
+  const addingCart = false;
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [classLoadError, setClassLoadError] = useState<string | null>(null);
 
@@ -100,29 +98,7 @@ export default function CourseDetailPage() {
   }, [listPublicCourseClasses, selectedCourse]);
 
   const handleAddToCart = async () => {
-    if (!isAuthenticated) {
-      toast.error("Vui lòng đăng nhập để thêm vào giỏ hàng");
-      void navigate("/login");
-      return;
-    }
-    if (!selectedCourse) return;
-    if (selectedCourse.mode === "center" && !selectedClassId) {
-      toast.error("Vui lòng chọn lớp trước khi thêm vào giỏ hàng");
-      return;
-    }
-
-    try {
-      setAddingCart(true);
-      await addCartItem({
-        course_id: selectedCourse.id,
-        class_id: selectedCourse.mode === "center" ? selectedClassId : null,
-      });
-      toast.success("Đã thêm khóa học vào giỏ hàng");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Thêm vào giỏ hàng thất bại");
-    } finally {
-      setAddingCart(false);
-    }
+    toast.success("Tính năng đang phát triển");
   };
 
   const handleAddToWishlist = async () => {

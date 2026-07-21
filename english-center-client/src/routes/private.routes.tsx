@@ -4,13 +4,11 @@ import DashboardAccessGuard from "@/shared/guards/DashboardAccessGuard";
 import PrivateRoute from "@/shared/guards/PrivateRoute";
 import DashboardLayout from "@/shared/layouts/DashboardLayout";
 import MainLayout from "@/components/Layout/MainLayout";
-import CartPage from "@/pages/Cart";
 import DashboardCourseCategoriesPage from "@/pages/Dashboard/CourseCategories";
 import DashboardCoursesPage from "@/pages/Dashboard/Courses";
 import DashboardCourseCreatePage from "@/pages/Dashboard/Courses/Create";
 import DashboardCourseEditPage from "@/pages/Dashboard/Courses/Edit";
 import DashboardCourseStatisticsPage from "@/pages/Dashboard/Courses/Statistics";
-import DashboardCourseTagsPage from "@/pages/Dashboard/CourseTags";
 import DashboardHomePage from "@/pages/Dashboard/Home";
 import DashboardCashflowPage from "@/pages/Dashboard/Cashflow";
 import DashboardCashflowCreatePage from "@/pages/Dashboard/Cashflow/Create";
@@ -34,7 +32,6 @@ import DashboardCertificatesPage from "@/pages/Dashboard/Certificates";
 import DashboardPermissionsPage from "@/pages/Dashboard/Permissions";
 import DashboardPermissionCreatePage from "@/pages/Dashboard/Permissions/Create";
 import DashboardPermissionEditPage from "@/pages/Dashboard/Permissions/Edit";
-import DashboardMessagesPage from "@/pages/Dashboard/Messages";
 import DashboardProfilePage from "@/pages/Dashboard/Profile";
 import DashboardResultsPage from "@/pages/Dashboard/Results";
 import DashboardRolesPage from "@/pages/Dashboard/Roles";
@@ -58,9 +55,6 @@ import DashboardTeachingSchedulePage from "@/pages/Dashboard/TeachingSchedule";
 import DashboardSessionsPage from "@/pages/Dashboard/Sessions";
 import DashboardSessionDetailPage from "@/pages/Dashboard/Sessions/Detail";
 import DashboardOrderCreatePage from "@/pages/Dashboard/Orders/Create";
-import DashboardPaymentPlansPage from "@/pages/Dashboard/Finance/PaymentPlans";
-import DashboardPaymentPlanDetailPage from "@/pages/Dashboard/Finance/PaymentPlans/Detail";
-import MyPaymentPlansPage from "@/pages/MyPaymentPlans";
 import FavoritesPage from "@/pages/Favorites";
 import MyCoursesPage from "@/pages/MyCourses";
 import MyInvoicesPage from "@/pages/MyInvoices";
@@ -125,29 +119,10 @@ export const privateRoutes: RouteObject[] = [
             ),
           },
           {
-            path: PRIVATE_ROUTES.DASHBOARD_TEMPLATE_COURSES,
-            element: (
-              <DashboardAccessGuard
-                allowedRoles={["admin", "staff","teacher"]}
-                requiredPermissions={["course.create", "course.update", "course.delete"]}
-              >
-                <DashboardCoursesPage modeFilter="template" />
-              </DashboardAccessGuard>
-            ),
-          },
-          {
             path: PRIVATE_ROUTES.DASHBOARD_CENTER_COURSES_STATISTICS,
             element: (
               <DashboardAccessGuard allowedRoles={["admin", "staff"]}>
                 <DashboardCourseStatisticsPage mode="center" />
-              </DashboardAccessGuard>
-            ),
-          },
-          {
-            path: PRIVATE_ROUTES.DASHBOARD_TEMPLATE_COURSES_STATISTICS,
-            element: (
-              <DashboardAccessGuard allowedRoles={["admin", "staff"]}>
-                <DashboardCourseStatisticsPage mode="template" />
               </DashboardAccessGuard>
             ),
           },
@@ -172,14 +147,6 @@ export const privateRoutes: RouteObject[] = [
             element: (
               <DashboardAccessGuard allowedRoles={["admin", "staff"]} requiredPermissions={["course_category.read"]}>
                 <DashboardCourseCategoriesPage />
-              </DashboardAccessGuard>
-            ),
-          },
-          {
-            path: PRIVATE_ROUTES.DASHBOARD_COURSE_TAGS,
-            element: (
-              <DashboardAccessGuard allowedRoles={["admin", "staff"]} requiredPermissions={["course_tag.read"]}>
-                <DashboardCourseTagsPage />
               </DashboardAccessGuard>
             ),
           },
@@ -363,38 +330,6 @@ export const privateRoutes: RouteObject[] = [
             ),
           },
           {
-            path: PRIVATE_ROUTES.DASHBOARD_FINANCE_PAYMENT_PLANS,
-            element: (
-              <DashboardAccessGuard allowedRoles={["admin", "staff"]} requiredPermissions={["payment.read"]}>
-                <DashboardPaymentPlansPage />
-              </DashboardAccessGuard>
-            ),
-          },
-          {
-            path: PRIVATE_ROUTES.DASHBOARD_FINANCE_PAYMENT_PLAN_DETAIL,
-            element: (
-              <DashboardAccessGuard allowedRoles={["admin", "staff"]} requiredPermissions={["payment.read"]}>
-                <DashboardPaymentPlanDetailPage />
-              </DashboardAccessGuard>
-            ),
-          },
-          {
-            path: PRIVATE_ROUTES.DASHBOARD_MY_PAYMENT_PLANS,
-            element: (
-              <DashboardAccessGuard allowedRoles={["admin", "staff", "teacher", "student"]}>
-                <MyPaymentPlansPage />
-              </DashboardAccessGuard>
-            ),
-          },
-          {
-            path: PRIVATE_ROUTES.DASHBOARD_MY_PAYMENT_PLAN_DETAIL,
-            element: (
-              <DashboardAccessGuard allowedRoles={["admin", "staff", "teacher", "student"]}>
-                <DashboardPaymentPlanDetailPage />
-              </DashboardAccessGuard>
-            ),
-          },
-          {
             path: PRIVATE_ROUTES.DASHBOARD_DOCUMENTS,
             element: (
               <DashboardAccessGuard allowedRoles={["admin", "staff", "teacher"]}>
@@ -572,14 +507,6 @@ export const privateRoutes: RouteObject[] = [
             ),
           },
           {
-            path: PRIVATE_ROUTES.DASHBOARD_MESSAGES,
-            element: (
-              <DashboardAccessGuard allowedRoles={["admin", "staff", "teacher", "student"]}>
-                <DashboardMessagesPage />
-              </DashboardAccessGuard>
-            ),
-          },
-          {
             path: PRIVATE_ROUTES.DASHBOARD_GUEST_ENROLLMENTS,
             element: (
               <DashboardAccessGuard allowedRoles={["admin"]}>
@@ -592,10 +519,6 @@ export const privateRoutes: RouteObject[] = [
       {
         element: <MainLayout />,
         children: [
-          {
-            path: PUBLIC_ROUTES.CART,
-            element: <CartPage />,
-          },
           {
             path: PUBLIC_ROUTES.WISHLIST,
             element: <FavoritesPage />,

@@ -102,7 +102,7 @@ export function ClassesFilterBar({ value, courseOptions, teacherOptions, onChang
                 <SelectItem value="all">Tất cả trạng thái</SelectItem>
                 {classStatusOptions.map((item) => (
                   <SelectItem key={item.value} value={item.value}>
-                    {item.label}
+                    {item.key}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -119,7 +119,7 @@ export function ClassesFilterBar({ value, courseOptions, teacherOptions, onChang
                 <SelectItem value="all">Tất cả loại lớp</SelectItem>
                 {classTypeOptions.map((item) => (
                   <SelectItem key={item.value} value={item.value}>
-                    {item.label}
+                    {item.key}
                   </SelectItem>
                 ))}
               </SelectContent>

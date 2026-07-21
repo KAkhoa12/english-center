@@ -63,11 +63,6 @@ export default function DashboardOrderCreatePage() {
         course_id: selectedCourse.id,
         class_id: selectedClass.id,
         note: note || undefined,
-        plan_type: planType !== "full" ? planType : undefined,
-        deposit_amount: depositAmount ? Number(depositAmount) : undefined,
-        installments: installments
-          .filter((i) => i.due_date && i.amount)
-          .map((i) => ({ due_date: i.due_date, amount: Number(i.amount), note: i.note || undefined })),
       });
       toast.success("Tao don hang thanh cong");
       navigate(PRIVATE_ROUTES.DASHBOARD_FINANCE_INVOICES_EDIT.replace(":invoiceId", order.id));
